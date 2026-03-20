@@ -642,7 +642,7 @@ onAuthStateChanged(auth,user=>{
     if(lu)lu();lu=onSnapshot(collection(db,'users',uid,'lists'),snap=>{window.lists=snap.docs.map(d=>({id:d.id,...d.data()}));if(window.view==='planner')renderView();});
     if(tu)tu();tu=onSnapshot(doc(db,'users',uid,'config','tags'),snap=>{if(snap.exists()){const d=snap.data();window.tags=d.tags||dTags();window.tclr=d.tclr||dTclr();renderSBTags();}});
     if(su)su();su=onSnapshot(doc(db,'users',uid,'config','stickies'),snap=>{if(snap.exists()){window.stickies=snap.data().stickies||[];}else{window.stickies=[];}if(window.view==='sticky')renderView();else renderStickies();});
-    if(!window.appInited){window.appInited=true;initApp();}
+    if(!window.appInited){window.appInited=true;window._firebaseReady=true;if(window._domReady)initApp();}
   }else{document.getElementById('loginScreen').style.display='flex';document.getElementById('mainApp').style.display='none';}
 });
 function dTags(){return['Trabalho','Pessoal','Urgente','Saude'];}
@@ -988,27 +988,6 @@ function getBorderTint(hex){
   const map={'#c87060':'#e8d4cc','#8a9e78':'#d4e0cc','#7890b8':'#ccd4e4','#9b8ea8':'#dcd8e8','#c4a882':'#e4d8c4','#252829':'#d0ccc8','#5c7161':'#ccd8cc','#c26d64':'#e8d0cc','#e1c2c3':'#ead4d4','#cca2a6':'#e8d4d8','#7a9bae':'#ccd8e4','#b4a8c4':'#dcd8e8','#d4b8c4':'#e8d4dc','#998ea2':'#dcd8e4','#b17a6e':'#e4d0cc','#b17a3a':'#e4d4c0'};
   return map[hex]||'#e4d8cc';
 }
-
-    const sel=selectedEvIds.has(ev.id);
-    const tg=ev.tags&&ev.tags.length?'<div class="etgs">'+ev.tags.map(t=>'<span class="etg">'+t+'</span>').join('')+'</div>':'';
-    const tm=ev.allDay?'Dia todo':ev.startTime+' - '+ev.endTime;
-    return'<div class="ec bulk-ev '+(sel?'bulk-selected':'')+(ev.done?' done':'')+'" data-eid="'+ev.id+'" style="border-left-color:'+(ev.color||'#b07c7c')+';background:'+hr(ev.color||'#b07c7c',.14)+'">'
-      +'<div class="bulk-chk" data-bid="'+ev.id+'">'+(sel?'✓':'')+'</div>'
-      +'<div class="ecb"><div class="ect">'+(ev.emoji||'')+' '+eh(ev.title)+'</div><div class="ectm">'+tm+'</div>'+tg+'</div>'
-      +'</div>';
-  }
-
-  const tg=ev.tags&&ev.tags.length?'<div class="etgs">'+ev.tags.map(t=>'<span class="etg">'+t+'</span>').join('')+'</div>':'';
-  const sc=ev.subtasks?ev.subtasks.filter(s=>s.done).length+'/'+ev.subtasks.length:'';
-  const sh=ev.subtasks&&ev.subtasks.length?'<div class="ests">Subtarefas: '+sc+'</div>':'';
-  const tm=ev.allDay?'Dia todo':ev.startTime+' - '+ev.endTime;
-  const desc=ev.description?'<div style="font-size:11px;opacity:.7;margin-top:3px;line-height:1.4">'+linkify(ev.description)+'</div>':'';
-  return'<div class="ec '+(ev.done?'done':'')+'\" draggable="true" data-eid="'+ev.id+'" style="border-left-color:'+(ev.color||'#7c6af5')+';background:'+hr(ev.color||'#7c6af5',.14)+'">'+
-    '<div class="ecc '+(ev.done?'done':'')+'\" data-chk="'+ev.id+'">'+(ev.done?'✓':'')+'</div>'+
-    '<div class="ecb"><div class="ect">'+(ev.emoji||'')+' '+eh(ev.title)+'</div><div class="ectm">'+tm+'</div>'+tg+sh+desc+'</div>'+
-    '<div class="eca"><button class="eab" data-dup="'+ev.id+'">⧉</button><button class="eab" data-dl="'+ev.id+'" style="color:var(--red)">✕</button></div>'+
-    '</div>';
-}
 function adHTML(ev){return'<div class="adev '+(ev.done?'done':'')+'\" data-eid="'+ev.id+'" style="border-left-color:'+(ev.color||'#7c6af5')+';background:'+hr(ev.color||'#7c6af5',.2)+'\">'+(ev.emoji||'')+' '+eh(ev.title)+'</div>';}
 function bindBulk(w){
   w.querySelectorAll('[data-bid]').forEach(b=>b.addEventListener('click',e=>{toggleSelectEv(b.dataset.bid,e);}));
@@ -1341,6 +1320,8 @@ document.addEventListener('keydown',e=>{
 });
 
 function tds(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+// trigger init when both DOM and Firebase are ready
+window._domReady=true;if(window._firebaseReady)initApp();
 function gid(){return'_'+Math.random().toString(36).substr(2,9);}
 function hr(hex,a){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return'rgba('+r+','+g+','+b+','+a+')';}
 function eh(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
