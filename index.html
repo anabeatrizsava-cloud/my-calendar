@@ -1481,6 +1481,54 @@ window.renderView=function(){
 // updTop handled by new layout
 
 // New rDay for new layout — uses date-header + mini-cal + tasks-area
+function ecHTMLNew(ev){
+  if(bulkMode){
+    const sel=selectedEvIds.has(ev.id);
+    return'<div class="ec bulk-ev '+(sel?'bulk-selected':'')+(ev.done?' done':'')+'" data-eid="'+ev.id+'" data-idate="'+(ev._instanceDate||ev.date)+'" style="display:flex;align-items:stretch;border-radius:12px;overflow:hidden;border:0.5px solid rgba(180,176,170,0.3)">'+
+      '<div style="width:3px;background:'+(ev.color||'#C26D64')+';flex-shrink:0"></div>'+
+      '<div style="flex:1;background:rgba(255,255,255,0.65);padding:8px 12px;display:flex;align-items:center;gap:9px">'+
+      '<div class="bulk-chk" data-bid="'+ev.id+'">'+(sel?'✓':'')+'</div>'+
+      '<div><div style="font-size:12px;font-weight:500;color:var(--text)">'+(ev.emoji&&ev.emoji!=='none'?ev.emoji+' ':'')+eh(ev.title)+'</div>'+
+      '<div style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-top:1px">'+ev.startTime+' – '+ev.endTime+'</div></div></div></div>';
+  }
+  const col=ev.color||'#C26D64';
+  const bg=ev.done?'rgba(255,255,255,0.35)':'rgba(255,255,255,0.65)';
+  const borderTint=col+'33';
+  const tg=ev.tags&&ev.tags.length?'<div class="etgs">'+ev.tags.map(t=>'<span class="etg">'+t+'</span>').join('')+'</div>':'';
+  const sc=ev.subtasks&&ev.subtasks.length?'<div class="ec-subs">'+ev.subtasks.slice(0,2).map(s=>'<div class="ec-sub-item"><div class="ec-sub-chk'+(s.done?' done':'')+'">'+( s.done?'✓':'')+'</div><span class="'+(s.done?'ec-sub-done':'')+'">'+eh(s.text)+'</span></div>').join('')+'</div>':'';
+  const emojiStr=(ev.emoji&&ev.emoji!=='none')?ev.emoji+' ':'';
+  const idate=ev._instanceDate||ev.date;
+  return'<div class="ec'+(ev.done?' done':'')+'" data-eid="'+ev.id+'" data-idate="'+idate+'" draggable="true" style="display:flex;align-items:stretch;border-radius:12px;overflow:hidden;border:0.5px solid '+borderTint+';margin-bottom:0">'+
+    '<div style="width:3px;background:'+(ev.done?'rgba(26,26,26,0.2)':col)+';flex-shrink:0"></div>'+
+    '<div style="flex:1;background:'+bg+';padding:9px 12px;display:flex;align-items:flex-start;gap:9px;backdrop-filter:blur(4px)">'+
+      '<div style="width:16px;height:16px;border-radius:4px;border:0.5px solid rgba(26,26,26,0.2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#f5f3ef;cursor:pointer;background:'+(ev.done?col:'transparent')+'" data-chk="'+ev.id+'" data-idate="'+idate+'" onclick="event.stopPropagation();togDone(\''+ev.id+'\',\''+idate+'\')">'+(ev.done?'✓':'')+'</div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div class="ect" style="font-size:12px;font-weight:500;color:'+(ev.done?'var(--text3)':'var(--text)')+(ev.done?';text-decoration:line-through':'')+'">'+ emojiStr+eh(ev.title)+'</div>'+
+        '<div class="ectm" style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-top:1px">'+(ev.allDay?'Dia todo':ev.startTime+' – '+ev.endTime)+(ev.tags&&ev.tags.length?' · '+ev.tags[0]:'')+'</div>'+
+        tg+sc+
+      '</div>'+
+      '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">'+
+        '<button class="eab2" data-dup="'+ev.id+'" title="Duplicar" style="font-size:10px">⧉</button>'+
+        '<button class="eab2 del" data-dl="'+ev.id+'" data-idate="'+idate+'" title="Excluir" style="font-size:10px">✕</button>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+}
+
+
+function bindELNew(w){
+  w.querySelectorAll('[data-eid]').forEach(el=>el.addEventListener('click',e=>{
+    if(e.target.closest('[data-chk]')||e.target.closest('[data-dup]')||e.target.closest('[data-dl]')||e.target.tagName==='A')return;
+    openEdit(el.dataset.eid,el.dataset.idate);
+  }));
+  w.querySelectorAll('[data-chk]').forEach(b=>b.addEventListener('click',e=>{
+    e.stopPropagation();togDone(b.dataset.chk,b.dataset.idate);
+  }));
+  w.querySelectorAll('[data-dup]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();qDup(b.dataset.dup);}));
+  w.querySelectorAll('[data-dl]').forEach(b=>b.addEventListener('click',e=>{
+    e.stopPropagation();qDel(b.dataset.dl,b.dataset.idate);
+  }));
+}
 window.rDay=function(c){
   const ds=tds(cd);
   const de=getEvs(ds);
@@ -1553,53 +1601,7 @@ window.rDay=function(c){
   updSBCarga();
 };
 
-function ecHTMLNew(ev){
-  if(bulkMode){
-    const sel=selectedEvIds.has(ev.id);
-    return'<div class="ec bulk-ev '+(sel?'bulk-selected':'')+(ev.done?' done':'')+'" data-eid="'+ev.id+'" data-idate="'+(ev._instanceDate||ev.date)+'" style="display:flex;align-items:stretch;border-radius:12px;overflow:hidden;border:0.5px solid rgba(180,176,170,0.3)">'+
-      '<div style="width:3px;background:'+(ev.color||'#C26D64')+';flex-shrink:0"></div>'+
-      '<div style="flex:1;background:rgba(255,255,255,0.65);padding:8px 12px;display:flex;align-items:center;gap:9px">'+
-      '<div class="bulk-chk" data-bid="'+ev.id+'">'+(sel?'✓':'')+'</div>'+
-      '<div><div style="font-size:12px;font-weight:500;color:var(--text)">'+(ev.emoji&&ev.emoji!=='none'?ev.emoji+' ':'')+eh(ev.title)+'</div>'+
-      '<div style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-top:1px">'+ev.startTime+' – '+ev.endTime+'</div></div></div></div>';
-  }
-  const col=ev.color||'#C26D64';
-  const bg=ev.done?'rgba(255,255,255,0.35)':'rgba(255,255,255,0.65)';
-  const borderTint=col+'33';
-  const tg=ev.tags&&ev.tags.length?'<div class="etgs">'+ev.tags.map(t=>'<span class="etg">'+t+'</span>').join('')+'</div>':'';
-  const sc=ev.subtasks&&ev.subtasks.length?'<div class="ec-subs">'+ev.subtasks.slice(0,2).map(s=>'<div class="ec-sub-item"><div class="ec-sub-chk'+(s.done?' done':'')+'">'+( s.done?'✓':'')+'</div><span class="'+(s.done?'ec-sub-done':'')+'">'+eh(s.text)+'</span></div>').join('')+'</div>':'';
-  const emojiStr=(ev.emoji&&ev.emoji!=='none')?ev.emoji+' ':'';
-  const idate=ev._instanceDate||ev.date;
-  return'<div class="ec'+(ev.done?' done':'')+'" data-eid="'+ev.id+'" data-idate="'+idate+'" draggable="true" style="display:flex;align-items:stretch;border-radius:12px;overflow:hidden;border:0.5px solid '+borderTint+';margin-bottom:0">'+
-    '<div style="width:3px;background:'+(ev.done?'rgba(26,26,26,0.2)':col)+';flex-shrink:0"></div>'+
-    '<div style="flex:1;background:'+bg+';padding:9px 12px;display:flex;align-items:flex-start;gap:9px;backdrop-filter:blur(4px)">'+
-      '<div style="width:16px;height:16px;border-radius:4px;border:0.5px solid rgba(26,26,26,0.2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#f5f3ef;cursor:pointer;background:'+(ev.done?col:'transparent')+'" data-chk="'+ev.id+'" data-idate="'+idate+'">'+(ev.done?'✓':'')+'</div>'+
-      '<div style="flex:1;min-width:0">'+
-        '<div class="ect" style="font-size:12px;font-weight:500;color:'+(ev.done?'var(--text3)':'var(--text)')+(ev.done?';text-decoration:line-through':'')+'">'+ emojiStr+eh(ev.title)+'</div>'+
-        '<div class="ectm" style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-top:1px">'+(ev.allDay?'Dia todo':ev.startTime+' – '+ev.endTime)+(ev.tags&&ev.tags.length?' · '+ev.tags[0]:'')+'</div>'+
-        tg+sc+
-      '</div>'+
-      '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">'+
-        '<button class="eab2" data-dup="'+ev.id+'" title="Duplicar" style="font-size:10px">⧉</button>'+
-        '<button class="eab2 del" data-dl="'+ev.id+'" data-idate="'+idate+'" title="Excluir" style="font-size:10px">✕</button>'+
-      '</div>'+
-    '</div>'+
-  '</div>';
-}
 
-function bindELNew(w){
-  w.querySelectorAll('[data-eid]').forEach(el=>el.addEventListener('click',e=>{
-    if(e.target.closest('[data-chk]')||e.target.closest('[data-dup]')||e.target.closest('[data-dl]')||e.target.tagName==='A')return;
-    openEdit(el.dataset.eid,el.dataset.idate);
-  }));
-  w.querySelectorAll('[data-chk]').forEach(b=>b.addEventListener('click',e=>{
-    e.stopPropagation();togDone(b.dataset.chk,b.dataset.idate);
-  }));
-  w.querySelectorAll('[data-dup]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();qDup(b.dataset.dup);}));
-  w.querySelectorAll('[data-dl]').forEach(b=>b.addEventListener('click',e=>{
-    e.stopPropagation();qDel(b.dataset.dl,b.dataset.idate);
-  }));
-}
 </script>
 </body>
 </html>
