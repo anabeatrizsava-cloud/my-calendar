@@ -118,14 +118,14 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 .weather-pill{padding:4px 10px;background:var(--bg3);border-radius:20px;font-size:10px;color:var(--text2);border:0.5px solid var(--border);font-weight:400}
 
 /* MINI CAL */
-.mini-cal{padding:14px 22px;border-bottom:0.5px solid var(--border);flex-shrink:0}
+.mini-cal{padding:14px 22px;border-bottom:0.5px solid var(--border);flex-shrink:0;max-height:220px}
 .mch{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
 .mch-label{font-size:9px;font-weight:600;color:var(--text3);letter-spacing:1.2px;text-transform:uppercase}
 .mcn{background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;line-height:1;padding:0 2px}
 .mcn:hover{color:var(--text2)}
 .mcg{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
 .mcdl{text-align:center;font-size:8px;color:var(--text4);letter-spacing:.5px;margin-bottom:4px}
-.mcd{text-align:center;font-size:10px;padding:4px 2px;border-radius:50%;cursor:pointer;color:var(--text3);transition:background .1s,color .1s;aspect-ratio:1;display:flex;align-items:center;justify-content:center;position:relative;font-weight:400}
+.mcd{text-align:center;font-size:10px;padding:3px 1px;border-radius:50%;cursor:pointer;color:var(--text3);transition:background .1s,color .1s;aspect-ratio:1;display:flex;align-items:center;justify-content:center;position:relative;font-weight:400;width:22px;height:22px}
 .mcd:hover{background:var(--bg3);color:var(--text2)}
 .mcd.tod{background:var(--text);color:#f5f3ef;font-weight:500}
 .mcd.sel{background:var(--bg3);color:var(--text);font-weight:500}
@@ -1204,7 +1204,7 @@ function makeDraggable(el,idx){
 function renderMC(){
   const months=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const _mct=document.getElementById('mcTitle');if(_mct)_mct.textContent=months[mcd.getMonth()]+' '+mcd.getFullYear();
-  const g=document.getElementById('mcGrid');g.innerHTML=['D','S','T','Q','Q','S','S'].map(d=>'<div class="mcdl">'+d+'</div>').join('');
+  const g=document.getElementById('mcGrid');if(!g)return;g.innerHTML=['D','S','T','Q','Q','S','S'].map(d=>'<div class="mcdl">'+d+'</div>').join('');
   const f=new Date(mcd.getFullYear(),mcd.getMonth(),1),l=new Date(mcd.getFullYear(),mcd.getMonth()+1,0),today=new Date();
   for(let i=0;i<f.getDay();i++){const d=document.createElement('div');d.className='mcd om';d.textContent=new Date(mcd.getFullYear(),mcd.getMonth(),1-f.getDay()+i).getDate();g.appendChild(d);}
   for(let day=1;day<=l.getDate();day++){
