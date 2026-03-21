@@ -633,7 +633,7 @@ window.fbSaveStickies=async()=>{if(!auth.currentUser)return;try{await setDoc(doc
 onAuthStateChanged(auth,user=>{
   if(user){
     document.getElementById('loginScreen').style.display='none';document.getElementById('mainApp').style.display='flex';
-    document.getElementById('userAvatar').src=user.photoURL||'';document.getElementById('userName').textContent=user.displayName||user.email;
+    const _uael=document.getElementById('userAvatar');if(_uael)_uael.src=user.photoURL||'';const _un=document.getElementById('userName');if(_un)_un.textContent=user.displayName||user.email;
     const uid=user.uid;setSS('syncing');
     if(eu)eu();eu=onSnapshot(collection(db,'users',uid,'events'),snap=>{window.evs=snap.docs.map(d=>({id:d.id,...d.data()}));renderView();renderMC();renderSBTags();updProgress();setSS('ok');});
     if(lu)lu();lu=onSnapshot(collection(db,'users',uid,'lists'),snap=>{window.lists=snap.docs.map(d=>({id:d.id,...d.data()}));if(window.view==='planner')renderView();});
@@ -646,6 +646,10 @@ function dTags(){return['Trabalho','Pessoal','Urgente','Saude'];}
 function dTclr(){return{Trabalho:'#7c6af5',Pessoal:'#4ade80',Urgente:'#f87171',Saude:'#22d3ee'};}
 </script>
 <script>
+function gEl(id){return document.getElementById(id);}
+function setSafe(id,prop,val){const el=gEl(id);if(el)el[prop]=val;}
+function setStyleSafe(id,prop,val){const el=gEl(id);if(el)el.style[prop]=val;}
+
 
 // ── WEATHER ──────────────────────────────────────────────
 let weatherCache = {};
@@ -867,7 +871,7 @@ function updTop(){
   document.getElementById('tdate').innerHTML=label;updProgress();if(view==='day'){renderWeather(tds(cd));renderDayLoad(tds(cd));}const ww=document.getElementById('weatherWidget');const lw=document.getElementById('dayLoadWidget');if(ww)ww.style.display=view==='day'?'flex':'none';if(lw)lw.style.display=view==='day'?'flex':'none';
   const sab=document.getElementById('stickyAddBtn');sab.style.display=view==='sticky'?'block':'none';
 }
-function updProgress(){const pw=document.getElementById('progWrap');if(view!=='day'){pw.style.display='none';return;}const ds=tds(cd),de=getEvs(ds).filter(e=>!e.allDay);if(!de.length){pw.style.display='none';return;}const done=de.filter(e=>e.done).length;pw.style.display='flex';document.getElementById('progTxt').textContent=done+'/'+de.length;document.getElementById('progFill').style.width=((done/de.length)*100)+'%';}
+function updProgress(){const pw=document.getElementById('progWrap');if(view!=='day'){pw.style.display='none';return;}const ds=tds(cd),de=getEvs(ds).filter(e=>!e.allDay);if(!de.length){pw.style.display='none';return;}const done=de.filter(e=>e.done).length;pw.style.display='flex';const _pt=document.getElementById('progTxt');if(_pt)_pt.textContent=done+'/'+de.length;const _pf=document.getElementById('progFill');if(_pf)_pf.style.width=((done/de.length)*100)+'%';}
 function nav(d){if(view==='day')cd.setDate(cd.getDate()+d);else if(view==='week')cd.setDate(cd.getDate()+d*7);else cd.setMonth(cd.getMonth()+d);updTop();renderView();renderMC();}
 function goToday(){cd=new Date();updTop();renderView();renderMC();}
 function sw(v,el){view=v;document.querySelectorAll('.sbi').forEach(e=>e.classList.remove('act'));if(el)el.classList.add('act');document.querySelectorAll('.vb').forEach(e=>e.classList.remove('act'));const vb=document.getElementById('vb-'+v);if(vb)vb.classList.add('act');updTop();renderView();renderMC();}
@@ -1444,15 +1448,7 @@ window.renderView=function(){
 };
 
 // Override updTop to hide unwanted elements
-const _origUT=window.updTop;
-window.updTop=function(){
-  _origUT&&_origUT();
-  // In new layout, day view shows date header inline, not in topbar
-  const pw=document.getElementById('progWrap');
-  if(pw)pw.style.display='none';
-  const ww=document.getElementById('weatherWidget');
-  if(ww)ww.style.display='none';
-};
+// updTop handled by new layout
 
 // New rDay for new layout — uses date-header + mini-cal + tasks-area
 window.rDay=function(c){
