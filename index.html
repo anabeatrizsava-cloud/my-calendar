@@ -623,7 +623,7 @@ const fapp=initializeApp(FC);const auth=getAuth(fapp);const db=getFirestore(fapp
 let eu=null,lu=null,tu=null,su=null;
 window.signInWithGoogle=async()=>{try{await signInWithPopup(auth,prov);}catch(e){if(e.code!=='auth/popup-closed-by-user')showToast('Erro: '+e.message);}};
 window.doSignOut=async()=>{if(!confirm('Sair?'))return;[eu,lu,tu,su].forEach(u=>u&&u());await fbSO(auth);document.getElementById('mainApp').style.display='none';document.getElementById('loginScreen').style.display='flex';window.evs=[];window.lists=[];window.stickies=[];};
-function setSS(s){const dot=document.getElementById('syncDot'),lbl=document.getElementById('syncLabel');if(!dot)return;dot.className='sync-dot'+(s==='syncing'?' syncing':s==='err'?' offline':'');lbl.textContent=s==='syncing'?'Sincronizando...':s==='err'?'Erro':'Sincronizado';}
+function setSS(s){const dot=document.getElementById('syncDot'),lbl=document.getElementById('syncLabel');if(!dot)return;dot.className='sync-dot'+(s==='syncing'?' syncing':s==='err'?' offline':'');if(lbl)lbl.textContent=s==='syncing'?'Sincronizando...':s==='err'?'Erro':'Sincronizado';}
 window.fbSaveEv=async(ev)=>{if(!auth.currentUser)return;setSS('syncing');try{const{id,...d}=ev;Object.keys(d).forEach(k=>{if(d[k]===undefined)delete d[k];});await setDoc(doc(db,'users',auth.currentUser.uid,'events',id),d);setSS('ok');}catch(e){setSS('err');}};
 window.fbDelEv=async(id)=>{if(!auth.currentUser)return;setSS('syncing');try{await deleteDoc(doc(db,'users',auth.currentUser.uid,'events',id));setSS('ok');}catch(e){setSS('err');}};
 window.fbSaveLst=async(lst)=>{if(!auth.currentUser)return;try{const{id,...d}=lst;await setDoc(doc(db,'users',auth.currentUser.uid,'lists',id),d);}catch(e){}};
