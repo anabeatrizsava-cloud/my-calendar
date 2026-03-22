@@ -1684,7 +1684,7 @@ function ecHTMLNew(ev){
       '<div style="width:16px;height:16px;border-radius:4px;border:0.5px solid rgba(26,26,26,0.2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#f5f3ef;cursor:pointer;background:'+(ev.done?col:'transparent')+'" data-chk="'+ev.id+'" data-idate="'+idate+'">'+(ev.done?'✓':'')+'</div>'+
       '<div style="flex:1;min-width:0">'+
         '<div class="ect" style="font-size:12px;font-weight:500;color:'+(ev.done?'var(--text3)':'var(--text)')+(ev.done?';text-decoration:line-through':'')+'">'+ emojiStr+eh(ev.title)+'</div>'+
-        '<div class="ectm" style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-top:1px">'+(ev.allDay?'Dia todo':ev.startTime+' – '+ev.endTime)+(ev.tags&&ev.tags.length?' · '+ev.tags[0]:'')+'</div>'+
+        '<div class="ectm" style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-top:1px;display:flex;align-items:center;flex-wrap:wrap;gap:3px">'+(ev.allDay?'Dia todo':ev.startTime+' – '+ev.endTime)+(ev.tags&&ev.tags.length?' · '+ev.tags[0]:'')+(ev.isExternal&&ev.weatherData?'<span class="ev-weather-pill">'+ev.weatherData.icon+' '+ev.weatherData.temp+'°C'+(ev.weatherData.precip>50?' 🌂':'')+'</span>':'')+(ev.isExternal&&!ev.weatherData?'<span class="ev-weather-pill" style="opacity:.5">📍 EXT</span>':'')+'</div>'+
         tg+sc+
       '</div>'+
       '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">'+
