@@ -412,13 +412,6 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
   <div class="sb-tag" id="sbTag2" style="background:rgba(255,255,255,0.2)" title="Tag 3"></div>
   <div class="sb-tag" id="sbTag3" style="background:rgba(255,255,255,0.12)" title="Tag 4"></div>
   <div class="sb-divider"></div>
-  <div class="sb-carga" id="sbCarga">
-    <div class="sb-carga-label">Carga</div>
-    <div class="sb-carga-num" id="sbCargaNum">—</div>
-    <div class="sb-carga-bar"><div class="sb-carga-fill" id="sbCargaFill" style="width:0%"></div></div>
-    <div class="sb-carga-status" id="sbCargaStatus">—</div>
-  </div>
-  <div class="sb-divider"></div>
   <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
     <span class="sync-dot" id="syncDot"></span>
   </div>
@@ -1357,7 +1350,6 @@ function renderRightPanel(){
   const total=todayEvs.filter(e=>!e.allDay).length;
   const done=todayEvs.filter(e=>!e.allDay&&e.done).length;
   const load=getDayLoad(ds);
-  const loadColors={free:'rgba(255,255,255,0.55)',light:'rgba(255,255,255,0.55)',balanced:'rgba(255,255,255,0.55)',busy:'rgba(255,255,255,0.55)',overload:'rgba(255,255,255,0.55)'};
   const pct=load.pct||0;
 
   // tomorrow
@@ -1365,10 +1357,48 @@ function renderRightPanel(){
   const tmrDs=tds(tomorrow);
   const tmrEvs=getEvs(tmrDs).filter(e=>!e.allDay).sort((a,b)=>a.startTime.localeCompare(b.startTime)).slice(0,3);
   const days=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-  const months=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const months2rp=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const tmrLabel=days[tomorrow.getDay()]+' '+tomorrow.getDate();
 
-  let html='<div style="padding:16px 14px 12px;border-bottom:0.5px solid #d8d4ce">';
+  // ── MINI CAL ──
+  const today=new Date();
+  const f=new Date(mcd.getFullYear(),mcd.getMonth(),1);
+  const l=new Date(mcd.getFullYear(),mcd.getMonth()+1,0);
+  let calHtml='<div style="padding:14px 14px 12px;border-bottom:0.5px solid #d8d4ce">';
+  calHtml+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+  calHtml+='<div style="font-size:9px;font-weight:600;color:#aaa89e;letter-spacing:1.2px;text-transform:uppercase;font-family:Montserrat,sans-serif">'+months2rp[mcd.getMonth()]+' '+mcd.getFullYear()+'</div>';
+  calHtml+='<div style="display:flex;gap:4px"><button onclick="mcPrev();renderRightPanel()" style="background:none;border:none;color:#aaa89e;cursor:pointer;font-size:14px;line-height:1;padding:0 3px">‹</button>';
+  calHtml+='<button onclick="mcNext();renderRightPanel()" style="background:none;border:none;color:#aaa89e;cursor:pointer;font-size:14px;line-height:1;padding:0 3px">›</button></div></div>';
+  // day headers
+  calHtml+='<div style="display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:9px;color:#c8c4be;margin-bottom:4px;font-family:Montserrat,sans-serif">';
+  ['D','S','T','Q','Q','S','S'].forEach(d=>{calHtml+='<div>'+d+'</div>';});
+  calHtml+='</div>';
+  // empty days before month start
+  calHtml+='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;text-align:center;font-size:10px;font-family:Montserrat,sans-serif">';
+  for(let i=0;i<f.getDay();i++){
+    const prev=new Date(mcd.getFullYear(),mcd.getMonth(),1-f.getDay()+i);
+    calHtml+='<div style="padding:4px;color:#d8d4ce;font-size:9px">'+prev.getDate()+'</div>';
+  }
+  for(let d=1;d<=l.getDate();d++){
+    const thisDate=new Date(mcd.getFullYear(),mcd.getMonth(),d);
+    const isToday=thisDate.toDateString()===today.toDateString();
+    const isSel=thisDate.toDateString()===cd.toDateString();
+    const ds2=tds(thisDate);
+    const hasEvs=getEvs(ds2).length>0;
+    const isFer=!!getFeriado(ds2);
+    let style='padding:4px;border-radius:50%;cursor:pointer;position:relative;aspect-ratio:1;width:22px;height:22px;display:flex;align-items:center;justify-content:center;margin:0 auto;';
+    if(isToday)style+='background:#1a1a1a;color:#f5f3ef;font-weight:500;';
+    else if(isSel)style+='background:#e8e4de;color:#1a1a1a;font-weight:500;';
+    else style+='color:#aaa89e;';
+    calHtml+='<div style="'+style+'" onclick="cd=new Date('+thisDate.getFullYear()+','+thisDate.getMonth()+','+d+');renderView()">'+d+
+      (hasEvs&&!isToday?'<div style="position:absolute;bottom:1px;left:50%;transform:translateX(-50%);width:3px;height:3px;background:'+(isFer?'#b17a3a':'#aaa89e')+';border-radius:50%"></div>':'')+
+      '</div>';
+  }
+  calHtml+='</div></div>';
+
+  let html=calHtml;
+  // ── RESUMO ──
+  html+='<div style="padding:16px 14px 12px;border-bottom:0.5px solid #d8d4ce">';
   html+='<div style="font-size:9px;font-weight:600;color:#aaa89e;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:9px;font-family:Montserrat,sans-serif">Resumo</div>';
   html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px">';
   html+='<div style="background:rgba(255,255,255,0.55);border:0.5px solid rgba(255,255,255,0.8);border-radius:12px;padding:11px 12px;backdrop-filter:blur(6px)">';
@@ -1457,17 +1487,7 @@ function updSBTags(){
   }
 }
 
-// Update sidebar carga
-function updSBCarga(){
-  const ds=tds(cd);
-  const load=getDayLoad(ds);
-  const numEl=document.getElementById('sbCargaNum');
-  const fillEl=document.getElementById('sbCargaFill');
-  const statusEl=document.getElementById('sbCargaStatus');
-  if(numEl)numEl.textContent=load.pct+'%';
-  if(fillEl)fillEl.style.width=Math.min(load.pct,100)+'%';
-  if(statusEl)statusEl.textContent=load.label;
-}
+function updSBCarga(){} // carga moved to right panel
 
 // Override renderView to also update sidebar
 const _origRV=window.renderView;
@@ -1553,11 +1573,7 @@ window.rDay=function(c){
     if(w&&dateRight){dateRight.innerHTML='<div class="weather-pill">'+w.icon+' '+w.max+'° / '+w.min+'°</div>';}
   });
 
-  // mini cal
-  const mcWrap=document.createElement('div');mcWrap.className='mini-cal';
-  const months2=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  mcWrap.innerHTML='<div class="mch"><div class="mch-label">'+months2[mcd.getMonth()]+' '+mcd.getFullYear()+'</div><div style="display:flex;gap:4px"><button class="mcn" onclick="mcPrev()">‹</button><button class="mcn" onclick="mcNext()">›</button></div></div><div class="mcg" id="mcGrid"></div>';
-  c.appendChild(mcWrap);
+  // mini-cal moved to right panel
 
   // allday
   const allday=de.filter(e=>e.allDay);
@@ -1595,7 +1611,6 @@ window.rDay=function(c){
     ta.innerHTML+=html;
   }
   c.appendChild(ta);
-  renderMC();
   if(bulkMode)bindBulk(c);else{bindELNew(c);initDayDrag(ta);}
   renderRightPanel();
   updSBCarga();
