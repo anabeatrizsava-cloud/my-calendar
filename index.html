@@ -575,7 +575,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
             <label><input type="radio" name="evType" id="evTypeExt" value="external" onchange="togEvType()" style="accent-color:var(--text)"/> Externa</label>
           </div>
           <div id="evLocationWrap" style="display:none;flex-direction:column;gap:6px">
-            <input class="inp" id="evLocation" placeholder="Ex: Av. Paulista 1000, São Paulo" oninput="debounceWeatherPreview()" style="margin-top:2px"/>
+            <input class="inp" id="evLocation" placeholder="Ex: Av. Paulista, São Paulo" title="Digite o endereço ou bairro + cidade" oninput="debounceWeatherPreview()" style="margin-top:2px"/>
             <div id="evWeatherPreview" style="display:none;align-items:center;gap:6px;padding:6px 10px;background:rgba(26,26,26,.04);border:0.5px solid var(--border);border-radius:var(--rs);font-size:11px;color:var(--text2)"></div>
           </div>
         </div>
@@ -1563,9 +1563,16 @@ function debounceWeatherPreview(){
 
 async function geocodeLocation(loc){
   try{
-    const url='https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(loc)+'&count=1&language=pt&format=json';
-    const r=await fetch(url);const d=await r.json();
-    if(d.results&&d.results.length){return{lat:d.results[0].latitude,lon:d.results[0].longitude,name:d.results[0].name+(d.results[0].admin1?', '+d.results[0].admin1:'')};}
+    const url='https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(loc)+'&format=json&addressdetails=1&limit=1&accept-language=pt-BR';
+    const r=await fetch(url,{headers:{'Accept':'application/json','User-Agent':'MyCalendarApp/1.0'}});
+    const d=await r.json();
+    if(d&&d.length>0){
+      const res=d[0];
+      const a=res.address||{};
+      const name=(a.road||a.suburb||a.neighbourhood||a.city_district||'')+
+        (a.city||a.town||a.village?', '+(a.city||a.town||a.village):'');
+      return{lat:parseFloat(res.lat),lon:parseFloat(res.lon),name:name||res.display_name.split(',').slice(0,2).join(',')};
+    }
     return null;
   }catch(e){return null;}
 }
@@ -1603,7 +1610,7 @@ async function fetchWeatherPreview(){
   prev.style.display='flex';
   prev.innerHTML='<span style="color:var(--text3);font-size:10px">🔍 Buscando previsão...</span>';
   const w=await fetchActivityWeather(loc,date,time);
-  if(!w){prev.innerHTML='<span style="color:var(--text3);font-size:10px">⚠️ Localização não encontrada</span>';return;}
+  if(!w){prev.innerHTML='<span style="color:var(--text3);font-size:10px">⚠️ Endereço não encontrado. Tente ser mais específico (ex: Av. Paulista, São Paulo)</span>';return;}
   const rain=w.precip>50?'<span style="color:var(--accent);font-weight:500">🌂 Chance de chuva: '+w.precip+'%</span>':'';
   prev.innerHTML='<span style="font-size:14px">'+w.icon+'</span>'+
     '<span style="font-weight:500;color:var(--text)">'+w.temp+'°C</span>'+
