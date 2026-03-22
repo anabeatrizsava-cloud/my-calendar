@@ -207,6 +207,13 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 .mcm{font-size:9px;color:var(--text3);padding:1px 3px;cursor:pointer}
 .mcm:hover{color:var(--text2)}
 .feriado-badge{font-size:8px;background:rgba(177,122,58,.1);color:var(--yellow);border-radius:3px;padding:1px 4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev-weather-pill{display:inline-flex;align-items:center;gap:3px;padding:1px 7px;background:rgba(26,26,26,0.06);border:0.5px solid rgba(26,26,26,0.12);border-radius:20px;font-size:9px;color:var(--text3);font-family:var(--font-mono);margin-left:6px;vertical-align:middle}
+.ev-location-pill{display:inline-flex;align-items:center;gap:3px;font-size:9px;color:var(--text3);margin-top:1px}
+.ext-toggle{display:flex;align-items:center;gap:8px;padding:6px 0}
+.ext-toggle label{font-size:11px;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:6px}
+.ext-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+.ext-badge.ext{background:rgba(177,122,58,.1);color:var(--yellow);border:0.5px solid rgba(177,122,58,.3)}
+.ext-badge.int{background:rgba(26,26,26,.06);color:var(--text3);border:0.5px solid var(--border)}
 
 /* PLANNER */
 .planner{flex:1;overflow-y:auto;padding:16px 22px}
@@ -561,6 +568,18 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
           </div>
         </div>
       </div>
+      <div class="fr"><div class="fi" style="margin-top:9px"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.2"/><path d="M7 4v3l2 1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></div>
+        <div class="fc"><label class="fl">Tipo de atividade</label>
+          <div class="ext-toggle">
+            <label><input type="radio" name="evType" id="evTypeInt" value="internal" checked onchange="togEvType()" style="accent-color:var(--text)"/> Interna</label>
+            <label><input type="radio" name="evType" id="evTypeExt" value="external" onchange="togEvType()" style="accent-color:var(--text)"/> Externa</label>
+          </div>
+          <div id="evLocationWrap" style="display:none;flex-direction:column;gap:6px">
+            <input class="inp" id="evLocation" placeholder="Ex: Av. Paulista 1000, São Paulo" oninput="debounceWeatherPreview()" style="margin-top:2px"/>
+            <div id="evWeatherPreview" style="display:none;align-items:center;gap:6px;padding:6px 10px;background:rgba(26,26,26,.04);border:0.5px solid var(--border);border-radius:var(--rs);font-size:11px;color:var(--text2)"></div>
+          </div>
+        </div>
+      </div>
       <div class="fr"><div class="fi"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 1a3.5 3.5 0 0 0-3.5 3.5V8L2 10h10L10.5 8V4.5A3.5 3.5 0 0 0 7 1z" stroke="currentColor" stroke-width="1.2"/><path d="M5.5 12a1.5 1.5 0 0 0 3 0" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></div>
         <div class="fc"><label class="fl">Lembrete</label>
           <select class="sel" id="enotif"><option value="">Sem lembrete</option><option value="0">Na hora</option><option value="5">5 min antes</option><option value="10" selected>10 min</option><option value="15">15 min</option><option value="30">30 min</option><option value="60">1h antes</option><option value="1440">1 dia antes</option></select>
@@ -806,11 +825,25 @@ function schedPushNotif(ev, mins) {
   const nt = new Date(edt.getTime() - mins * 60000);
   const delay = nt - new Date();
   if (delay < 0) return;
-  const body = mins === 0 ? 'Comecando agora!' : 'Comeca em ' + mins + ' minuto' + (mins !== 1 ? 's' : '');
   const title = (ev.emoji && ev.emoji !== 'none' ? ev.emoji + ' ' : '') + ev.title;
-  setTimeout(() => {
-    try { new Notification(title, { body, icon: '', tag: ev.id }); } catch(e) {}
-  }, delay);
+  const doNotif = (body) => {
+    setTimeout(() => {
+      try { new Notification(title, { body, icon: '', tag: ev.id }); } catch(e) {}
+    }, delay);
+  };
+  if (ev.isExternal && ev.location && ev.date && ev.startTime) {
+    fetchActivityWeather(ev.location, ev.date, ev.startTime).then(w => {
+      let body = mins === 0 ? 'Comecando agora!' : 'Comeca em ' + mins + ' minuto' + (mins !== 1 ? 's' : '');
+      if (w) {
+        body += ' · ' + w.icon + ' ' + w.temp + '°C em ' + w.geo;
+        if (w.precip > 50) body += ' · 🌂 Chuva ' + w.precip + '%';
+      }
+      doNotif(body);
+    });
+  } else {
+    const body = mins === 0 ? 'Comecando agora!' : 'Comeca em ' + mins + ' minuto' + (mins !== 1 ? 's' : '');
+    doNotif(body);
+  }
 }
 
 // Check permission on load
@@ -845,7 +878,22 @@ function getFeriado(ds){
   return null;
 }
 
-function initApp(){mkManifest();buildMDGrid();renderMC();renderView();updTop();renderStickies();renderRightPanel();setInterval(()=>{if(view==='day'){renderView();renderRightPanel();}},60000);if('Notification' in window && Notification.permission==='granted'){pushEnabled=true;registerSW();}}
+function initApp(){mkManifest();buildMDGrid();renderMC();renderView();updTop();renderStickies();renderRightPanel();setInterval(()=>{
+    if(view==='day'){
+      // refresh weather on external events
+      const ds=tds(cd);
+      const extEvs=(window.evs||[]).filter(e=>e.isExternal&&e.location&&e.date===ds);
+      extEvs.forEach(ev=>{
+        fetchActivityWeather(ev.location,ev.date,ev.startTime).then(w=>{
+          if(w&&JSON.stringify(w)!==JSON.stringify(ev.weatherData)){
+            ev.weatherData=w;
+            if(window.fbSaveEv)fbSaveEv(ev);
+          }
+        });
+      });
+      renderView();renderRightPanel();
+    }
+  },60000);if('Notification' in window && Notification.permission==='granted'){pushEnabled=true;registerSW();}}
 function mkManifest(){const m={name:'My Calendar',short_name:'My Calendar',start_url:'./',display:'standalone',background_color:'#2a2320',theme_color:'#2a2320',icons:[{src:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230e0f11'/><text y='.9em' font-size='80'>📅</text></svg>",sizes:'192x192',type:'image/svg+xml'}]};const b=new Blob([JSON.stringify(m)],{type:'application/json'});document.getElementById('manifestLink').href=URL.createObjectURL(b);}
 function handleAdd(){if(view==='planner')openNewList();else if(view==='sticky')addSticky();else openNew();}
 function updTop(){
@@ -1222,7 +1270,13 @@ function openNew(ds){
   document.getElementById('eallday').checked=false;document.getElementById('edesc').value='';document.getElementById('enotif').value='10';
   document.getElementById('dbtn').style.display='none';document.getElementById('dupbtn').style.display='none';
   document.getElementById('tfields').style.cssText='display:flex;gap:5px;align-items:center';
-  cemoji='none';cclr='#C26D64';ctags=[];atts=[];sts=[];crep='none';
+  cemoji='none';cclr='#C26D64';
+  // reset type fields
+  const eti=document.getElementById('evTypeInt');const ete=document.getElementById('evTypeExt');
+  if(eti)eti.checked=true;if(ete)ete.checked=false;
+  const elw=document.getElementById('evLocationWrap');if(elw)elw.style.display='none';
+  const el=document.getElementById('evLocation');if(el)el.value='';
+  const ep=document.getElementById('evWeatherPreview');if(ep)ep.style.display='none';ctags=[];atts=[];sts=[];crep='none';
   document.getElementById('etrig').textContent=cemoji;
   rCr();rTC();rST();rAtt();setRUI('none');updDP();updMP();
   document.getElementById('evModal').classList.add('open');setTimeout(()=>document.getElementById('etitle').focus(),100);
@@ -1238,7 +1292,29 @@ function openEdit(id,instanceDate){
   document.getElementById('eallday').checked=!!ev.allDay;document.getElementById('edesc').value=ev.description||'';
   document.getElementById('enotif').value=ev.notif!==undefined?ev.notif:'10';
   document.getElementById('dbtn').style.display='block';document.getElementById('dupbtn').style.display='block';
-  cemoji=ev.emoji||'none';cclr=ev.color||CLRS[0];ctags=[...(ev.tags||[])];atts=[...(ev.attachments||[])];sts=JSON.parse(JSON.stringify(ev.subtasks||[]));crep=ev.repeat||'none';
+  cemoji=ev.emoji||'none';
+  // restore type fields
+  const _eti=document.getElementById('evTypeInt');const _ete=document.getElementById('evTypeExt');
+  const _elw=document.getElementById('evLocationWrap');const _elv=document.getElementById('evLocation');
+  const _epv=document.getElementById('evWeatherPreview');
+  if(ev.isExternal){
+    if(_ete)_ete.checked=true;if(_eti)_eti.checked=false;
+    if(_elw)_elw.style.display='flex';
+    if(_elv)_elv.value=ev.location||'';
+    if(ev.location&&ev.date&&ev.startTime){
+      fetchActivityWeather(ev.location,ev.date,ev.startTime).then(w=>{
+        if(w&&_epv){
+          _epv.style.display='flex';
+          const rain=w.precip>50?'<span style="color:var(--accent);font-weight:500">🌂 '+w.precip+'%</span>':'<span style="color:var(--text3)">'+w.precip+'%</span>';
+          _epv.innerHTML='<span style="font-size:14px">'+w.icon+'</span><span style="font-weight:500;color:var(--text)">'+w.temp+'°C</span><span style="color:var(--text3)">'+w.geo+'</span>'+rain;
+        }
+      });
+    }
+  } else {
+    if(_eti)_eti.checked=true;if(_ete)_ete.checked=false;
+    if(_elw)_elw.style.display='none';
+    if(_epv)_epv.style.display='none';
+  }cclr=ev.color||CLRS[0];ctags=[...(ev.tags||[])];atts=[...(ev.attachments||[])];sts=JSON.parse(JSON.stringify(ev.subtasks||[]));crep=ev.repeat||'none';
   document.getElementById('etrig').textContent=cemoji;
   document.getElementById('tfields').style.cssText='display:flex;gap:5px;align-items:center'+(ev.allDay?';opacity:.4;pointer-events:none':'');
   rCr();rTC();rST();rAtt();setRUI(crep);updDP();updMP();
@@ -1249,7 +1325,10 @@ function openEdit(id,instanceDate){
 function closeM(){document.getElementById('evModal').classList.remove('open');document.getElementById('epick').classList.remove('open');}
 function saveEv(){
   const title=document.getElementById('etitle').value.trim();if(!title){showToast('Digite um titulo!');return;}
-  const ev={id:eid||gid(),title,date:document.getElementById('edate').value,startTime:document.getElementById('estart').value,endTime:document.getElementById('eend').value,allDay:document.getElementById('eallday').checked,description:document.getElementById('edesc').value,color:cclr,emoji:cemoji,tags:[...ctags],attachments:[...atts],subtasks:JSON.parse(JSON.stringify(sts)),repeat:crep,repeatDays:[...selWeekDays],repeatMonthDays:[...selMonthDays],repeatInterval:parseInt(document.getElementById('rintv').value)||1,repeatUnit:document.getElementById('runit').value,notif:document.getElementById('enotif').value,done:eid?(evs.find(e=>e.id===eid)||{}).done||false:false};
+  const ev={id:eid||gid(),title,date:document.getElementById('edate').value,startTime:document.getElementById('estart').value,endTime:document.getElementById('eend').value,allDay:document.getElementById('eallday').checked,description:document.getElementById('edesc').value,color:cclr,emoji:cemoji,tags:[...ctags],attachments:[...atts],subtasks:JSON.parse(JSON.stringify(sts)),repeat:crep,repeatDays:[...selWeekDays],repeatMonthDays:[...selMonthDays],repeatInterval:parseInt(document.getElementById('rintv').value)||1,repeatUnit:document.getElementById('runit').value,notif:document.getElementById('enotif').value,done:eid?(evs.find(e=>e.id===eid)||{}).done||false:false,
+    isExternal:document.getElementById('evTypeExt')&&document.getElementById('evTypeExt').checked,
+    location:(document.getElementById('evTypeExt')&&document.getElementById('evTypeExt').checked)?(document.getElementById('evLocation')?document.getElementById('evLocation').value.trim():''):'',
+    weatherData:eid?(evs.find(e=>e.id===eid)||{}).weatherData||null:null};
   if(window.fbSaveEv)fbSaveEv(ev);closeM();schedRem(ev);showToast(eid?'Atualizado!':'Criado!');
 }
 function delEv(){if(!eid)return;const ev=evs.find(e=>e.id===eid);if(!ev)return;if(ev.repeat&&ev.repeat!=='none'&&editingInstanceDate&&editingInstanceDate!==ev.date){const all=confirm('Excluir TODAS as ocorrencias da tarefa repetida?\n\nOK = excluir todas   Cancelar = excluir so '+editingInstanceDate);if(all){if(window.fbDelEv)fbDelEv(eid);showToast('Todas excluidas.');}else{if(!ev.deletedExceptions)ev.deletedExceptions=[];if(!ev.deletedExceptions.includes(editingInstanceDate))ev.deletedExceptions.push(editingInstanceDate);if(window.fbSaveEv)fbSaveEv(ev);showToast('Dia excluido.');}}else{if(!confirm('Excluir este evento?'))return;if(window.fbDelEv)fbDelEv(eid);showToast('Excluido.');}closeM();}
@@ -1462,6 +1541,80 @@ function eh(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(
 function wkR(d){const s=new Date(d);s.setDate(d.getDate()-d.getDay());const e=new Date(s);e.setDate(s.getDate()+6);return{start:s,end:e};}
 
 
+
+// ── ACTIVITY WEATHER ─────────────────────────────────────
+let _weatherDebTimer=null;
+const _evWeatherCache={};
+
+function togEvType(){
+  const isExt=document.getElementById('evTypeExt')&&document.getElementById('evTypeExt').checked;
+  const wrap=document.getElementById('evLocationWrap');
+  if(wrap)wrap.style.display=isExt?'flex':'none';
+  if(!isExt){
+    const prev=document.getElementById('evWeatherPreview');
+    if(prev)prev.style.display='none';
+  }
+}
+
+function debounceWeatherPreview(){
+  clearTimeout(_weatherDebTimer);
+  _weatherDebTimer=setTimeout(fetchWeatherPreview,800);
+}
+
+async function geocodeLocation(loc){
+  try{
+    const url='https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(loc)+'&count=1&language=pt&format=json';
+    const r=await fetch(url);const d=await r.json();
+    if(d.results&&d.results.length){return{lat:d.results[0].latitude,lon:d.results[0].longitude,name:d.results[0].name+(d.results[0].admin1?', '+d.results[0].admin1:'')};}
+    return null;
+  }catch(e){return null;}
+}
+
+async function fetchActivityWeather(loc,date,timeStr){
+  const key=loc+'|'+date+'|'+timeStr;
+  if(_evWeatherCache[key])return _evWeatherCache[key];
+  const geo=await geocodeLocation(loc);
+  if(!geo)return null;
+  try{
+    const url='https://api.open-meteo.com/v1/forecast?latitude='+geo.lat+'&longitude='+geo.lon+'&hourly=temperature_2m,weathercode,precipitation_probability&timezone=America%2FSao_Paulo&start_date='+date+'&end_date='+date;
+    const r=await fetch(url);const d=await r.json();
+    if(!d.hourly||!d.hourly.time)return null;
+    const hour=timeStr?parseInt(timeStr.split(':')[0]):12;
+    const idx=d.hourly.time.findIndex(t=>parseInt(t.split('T')[1].split(':')[0])===hour);
+    const i=idx>=0?idx:0;
+    const code=d.hourly.weathercode[i];
+    const temp=Math.round(d.hourly.temperature_2m[i]);
+    const precip=d.hourly.precipitation_probability[i]||0;
+    const icons={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',80:'🌦️',81:'🌧️',95:'⛈️',96:'⛈️',99:'⛈️'};
+    const icon=icons[code]||'🌡️';
+    const result={icon,temp,precip,geo:geo.name,code};
+    _evWeatherCache[key]=result;
+    return result;
+  }catch(e){return null;}
+}
+
+async function fetchWeatherPreview(){
+  const loc=document.getElementById('evLocation')&&document.getElementById('evLocation').value.trim();
+  const date=document.getElementById('edate')&&document.getElementById('edate').value;
+  const time=document.getElementById('estart')&&document.getElementById('estart').value;
+  const prev=document.getElementById('evWeatherPreview');
+  if(!prev)return;
+  if(!loc||!date){prev.style.display='none';return;}
+  prev.style.display='flex';
+  prev.innerHTML='<span style="color:var(--text3);font-size:10px">🔍 Buscando previsão...</span>';
+  const w=await fetchActivityWeather(loc,date,time);
+  if(!w){prev.innerHTML='<span style="color:var(--text3);font-size:10px">⚠️ Localização não encontrada</span>';return;}
+  const rain=w.precip>50?'<span style="color:var(--accent);font-weight:500">🌂 Chance de chuva: '+w.precip+'%</span>':'';
+  prev.innerHTML='<span style="font-size:14px">'+w.icon+'</span>'+
+    '<span style="font-weight:500;color:var(--text)">'+w.temp+'°C</span>'+
+    '<span style="color:var(--text3)">em '+w.geo+'</span>'+
+    (rain?rain:'<span style="color:var(--text3)">Chuva: '+w.precip+'%</span>');
+}
+
+async function refreshActivityWeather(ev){
+  if(!ev.location||!ev.date||!ev.startTime)return null;
+  return await fetchActivityWeather(ev.location,ev.date,ev.startTime);
+}
 
 function setNoEmoji(){
   cemoji='none';
