@@ -624,7 +624,7 @@ let eu=null,lu=null,tu=null,su=null;
 window.signInWithGoogle=async()=>{try{await signInWithPopup(auth,prov);}catch(e){if(e.code!=='auth/popup-closed-by-user')showToast('Erro: '+e.message);}};
 window.doSignOut=async()=>{if(!confirm('Sair?'))return;[eu,lu,tu,su].forEach(u=>u&&u());await fbSO(auth);document.getElementById('mainApp').style.display='none';document.getElementById('loginScreen').style.display='flex';window.evs=[];window.lists=[];window.stickies=[];};
 function setSS(s){const dot=document.getElementById('syncDot');if(!dot)return;dot.className='sync-dot'+(s==='syncing'?' syncing':s==='err'?' offline':'');const lbl=document.getElementById('syncLabel');if(lbl)lbl.textContent=s==='syncing'?'Sincronizando...':s==='err'?'Erro':'Sincronizado';}
-window.fbSaveEv=async(ev)=>{if(!auth.currentUser)return;setSS('syncing');try{const{id,...d}=ev;Object.keys(d).forEach(k=>{if(d[k]===undefined)delete d[k];});await setDoc(doc(db,'users',auth.currentUser.uid,'events',id),d);setSS('ok');}catch(e){setSS('err');}};
+window.fbSaveEv=async(ev)=>{if(!auth.currentUser)return;if(!window._pendingSaves)window._pendingSaves=new Set();window._pendingSaves.add(ev.id);setSS('syncing');try{const{id,...d}=ev;Object.keys(d).forEach(k=>{if(d[k]===undefined)delete d[k];});await setDoc(doc(db,'users',auth.currentUser.uid,'events',id),d);if(window._pendingSaves)window._pendingSaves.delete(ev.id);setSS('ok');}catch(e){setSS('err');}};
 window.fbDelEv=async(id)=>{if(!auth.currentUser)return;setSS('syncing');try{await deleteDoc(doc(db,'users',auth.currentUser.uid,'events',id));setSS('ok');}catch(e){setSS('err');}};
 window.fbSaveLst=async(lst)=>{if(!auth.currentUser)return;try{const{id,...d}=lst;await setDoc(doc(db,'users',auth.currentUser.uid,'lists',id),d);}catch(e){}};
 window.fbDelLst=async(id)=>{if(!auth.currentUser)return;try{await deleteDoc(doc(db,'users',auth.currentUser.uid,'lists',id));}catch(e){}};
@@ -635,7 +635,7 @@ onAuthStateChanged(auth,user=>{
     document.getElementById('loginScreen').style.display='none';document.getElementById('mainApp').style.display='flex';
     const _uael=document.getElementById('userAvatar');if(_uael)_uael.src=user.photoURL||'';const _un=document.getElementById('userName');if(_un)_un.textContent=user.displayName||user.email;
     const uid=user.uid;setSS('syncing');
-    if(eu)eu();eu=onSnapshot(collection(db,'users',uid,'events'),snap=>{window.evs=snap.docs.map(d=>({id:d.id,...d.data()}));renderView();renderMC();renderSBTags();updProgress();setSS('ok');});
+    if(eu)eu();eu=onSnapshot(collection(db,'users',uid,'events'),snap=>{const fresh=snap.docs.map(d=>({id:d.id,...d.data()}));if(window.evs&&window.evs.length){  fresh.forEach(fe=>{    const local=window.evs.find(e=>e.id===fe.id);    if(local&&window._pendingSaves&&window._pendingSaves.has(fe.id)){      fe.done=local.done;      fe.doneExceptions=local.doneExceptions;      fe.deletedExceptions=local.deletedExceptions;    }  });}window.evs=fresh;renderView();renderMC();renderSBTags();updProgress();setSS('ok');});
     if(lu)lu();lu=onSnapshot(collection(db,'users',uid,'lists'),snap=>{window.lists=snap.docs.map(d=>({id:d.id,...d.data()}));if(window.view==='planner')renderView();});
     if(tu)tu();tu=onSnapshot(doc(db,'users',uid,'config','tags'),snap=>{if(snap.exists()){const d=snap.data();window.tags=d.tags||dTags();window.tclr=d.tclr||dTclr();renderSBTags();}});
     if(su)su();su=onSnapshot(doc(db,'users',uid,'config','stickies'),snap=>{if(snap.exists()){window.stickies=snap.data().stickies||[];}else{window.stickies=[];}if(window.view==='sticky')renderView();else renderStickies();});
@@ -970,7 +970,7 @@ function ecHTML(ev){
   const col=ev.color||'#c87060';
   const bg=ev.done?'#f5f2ed':getBgTint(col);
   const borderCol=ev.done?'#e8e0d4':getBorderTint(col);
-  return'<div class="ec'+(ev.done?' done':'')+'" draggable="true" data-eid="'+ev.id+'" style="border-radius:10px;overflow:hidden;border:0.5px solid '+borderCol+';display:flex;align-items:stretch;gap:0;cursor:pointer;transition:all .15s;margin-bottom:0">'+
+  return'<div class="ec'+(ev.done?' done':'')+'" data-eid="'+ev.id+'" style="border-radius:10px;overflow:hidden;border:0.5px solid '+borderCol+';display:flex;align-items:stretch;gap:0;cursor:pointer;transition:all .15s;margin-bottom:0">'+
     '<div style="width:3px;background:'+(ev.done?'#d4ccc0':col)+';flex-shrink:0"></div>'+
     '<div style="flex:1;background:'+bg+';padding:9px 12px 9px 11px;display:flex;align-items:flex-start;gap:10px">'+
       '<div class="ecb" style="flex:1;min-width:0">'+
@@ -1484,7 +1484,7 @@ window.renderView=function(){
 function ecHTMLNew(ev){
   if(bulkMode){
     const sel=selectedEvIds.has(ev.id);
-    return'<div class="ec bulk-ev '+(sel?'bulk-selected':'')+(ev.done?' done':'')+'" data-eid="'+ev.id+'" data-idate="'+(ev._instanceDate||ev.date)+'" style="display:flex;align-items:stretch;border-radius:12px;overflow:hidden;border:0.5px solid rgba(180,176,170,0.3)">'+
+    return'<div class="ec bulk-ev '+(sel?'bulk-selected':'')+(ev.done?' done':'')+'" data-eid="'+ev.id+'" data-idate="'+(ev._instanceDate||ev.date)+'" style="display:flex;align-items:stretch;border-radius:12px;border:0.5px solid rgba(180,176,170,0.3)">'+
       '<div style="width:3px;background:'+(ev.color||'#C26D64')+';flex-shrink:0"></div>'+
       '<div style="flex:1;background:rgba(255,255,255,0.65);padding:8px 12px;display:flex;align-items:center;gap:9px">'+
       '<div class="bulk-chk" data-bid="'+ev.id+'">'+(sel?'✓':'')+'</div>'+
@@ -1498,10 +1498,10 @@ function ecHTMLNew(ev){
   const sc=ev.subtasks&&ev.subtasks.length?'<div class="ec-subs">'+ev.subtasks.slice(0,2).map(s=>'<div class="ec-sub-item"><div class="ec-sub-chk'+(s.done?' done':'')+'">'+( s.done?'✓':'')+'</div><span class="'+(s.done?'ec-sub-done':'')+'">'+eh(s.text)+'</span></div>').join('')+'</div>':'';
   const emojiStr=(ev.emoji&&ev.emoji!=='none')?ev.emoji+' ':'';
   const idate=ev._instanceDate||ev.date;
-  return'<div class="ec'+(ev.done?' done':'')+'" data-eid="'+ev.id+'" data-idate="'+idate+'" draggable="true" style="display:flex;align-items:stretch;border-radius:12px;overflow:hidden;border:0.5px solid '+borderTint+';margin-bottom:0">'+
+  return'<div class="ec'+(ev.done?' done':'')+'" data-eid="'+ev.id+'" data-idate="'+idate+'" draggable="true" style="display:flex;align-items:stretch;border-radius:12px;border:0.5px solid '+borderTint+';margin-bottom:0">'+
     '<div style="width:3px;background:'+(ev.done?'rgba(26,26,26,0.2)':col)+';flex-shrink:0"></div>'+
     '<div style="flex:1;background:'+bg+';padding:9px 12px;display:flex;align-items:flex-start;gap:9px;backdrop-filter:blur(4px)">'+
-      '<div style="width:16px;height:16px;border-radius:4px;border:0.5px solid rgba(26,26,26,0.2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#f5f3ef;cursor:pointer;background:'+(ev.done?col:'transparent')+'" data-chk="'+ev.id+'" data-idate="'+idate+'" onclick="event.stopPropagation();togDone(\''+ev.id+'\',\''+idate+'\')">'+(ev.done?'✓':'')+'</div>'+
+      '<div style="width:16px;height:16px;border-radius:4px;border:0.5px solid rgba(26,26,26,0.2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#f5f3ef;cursor:pointer;background:'+(ev.done?col:'transparent')+'" data-chk="'+ev.id+'" data-idate="'+idate+'">'+(ev.done?'✓':'')+'</div>'+
       '<div style="flex:1;min-width:0">'+
         '<div class="ect" style="font-size:12px;font-weight:500;color:'+(ev.done?'var(--text3)':'var(--text)')+(ev.done?';text-decoration:line-through':'')+'">'+ emojiStr+eh(ev.title)+'</div>'+
         '<div class="ectm" style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-top:1px">'+(ev.allDay?'Dia todo':ev.startTime+' – '+ev.endTime)+(ev.tags&&ev.tags.length?' · '+ev.tags[0]:'')+'</div>'+
@@ -1521,9 +1521,9 @@ function bindELNew(w){
     if(e.target.closest('[data-chk]')||e.target.closest('[data-dup]')||e.target.closest('[data-dl]')||e.target.tagName==='A')return;
     openEdit(el.dataset.eid,el.dataset.idate);
   }));
-  w.querySelectorAll('[data-chk]').forEach(b=>b.addEventListener('click',e=>{
-    e.stopPropagation();togDone(b.dataset.chk,b.dataset.idate);
-  }));
+  w.querySelectorAll('[data-chk]').forEach(b=>{
+    b.addEventListener('mouseup',e=>{if(e.button===0){e.stopPropagation();togDone(b.dataset.chk,b.dataset.idate);}});
+  });
   w.querySelectorAll('[data-dup]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();qDup(b.dataset.dup);}));
   w.querySelectorAll('[data-dl]').forEach(b=>b.addEventListener('click',e=>{
     e.stopPropagation();qDel(b.dataset.dl,b.dataset.idate);
