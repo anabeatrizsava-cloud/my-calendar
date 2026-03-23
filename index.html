@@ -262,19 +262,23 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 .pl-empty{text-align:center;padding:28px;color:var(--text3);font-size:12px}
 
 /* STICKY */
-.sticky-wrap{position:fixed;inset:0;pointer-events:none;z-index:90}
-.sticky{position:absolute;width:188px;min-height:110px;border-radius:10px;padding:9px 11px 11px;box-shadow:1px 2px 10px rgba(26,26,26,.15);cursor:move;pointer-events:all;display:flex;flex-direction:column;gap:5px}
-.sticky-header{display:flex;align-items:center;justify-content:space-between}
-.sticky-colors{display:flex;gap:3px}
+.sticky-wrap{display:none}
+.sticky-panel{display:flex;flex-direction:column;gap:10px;padding:14px 14px}
+.sticky-card{border-radius:12px;overflow:hidden;display:flex;flex-direction:column;resize:vertical;min-height:100px;max-height:500px;position:relative}
+.sticky-card::-webkit-resizer{background:transparent}
+.sticky-header{display:flex;align-items:center;justify-content:space-between;padding:7px 10px 5px;flex-shrink:0}
+.sticky-colors{display:flex;gap:4px}
 .sticky-clr{width:11px;height:11px;border-radius:50%;cursor:pointer;border:1.5px solid transparent;transition:transform .1s}
 .sticky-clr:hover{transform:scale(1.2)}
-.sticky-clr.active{border-color:rgba(0,0,0,.3)}
+.sticky-clr.active{border-color:rgba(0,0,0,.35)}
+.sticky-actions{display:flex;align-items:center;gap:4px}
 .sticky-del{background:none;border:none;cursor:pointer;color:rgba(0,0,0,.3);font-size:14px;line-height:1;padding:0}
 .sticky-del:hover{color:rgba(0,0,0,.6)}
-.sticky-body{flex:1;background:none;border:none;outline:none;font-family:var(--font);font-size:11px;color:rgba(0,0,0,.7);resize:none;min-height:60px;line-height:1.55}
-.sticky-body::placeholder{color:rgba(0,0,0,.28)}
-.sticky-add-btn{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--bg2);border:0.5px solid var(--border2);color:var(--text2);cursor:pointer;padding:6px 16px;border-radius:20px;font-family:var(--font);font-size:11px;font-weight:500;box-shadow:var(--shadow);transition:all .15s;z-index:91;display:none}
-.sticky-add-btn:hover{background:var(--bg3);color:var(--text)}
+.sticky-resize-handle{width:14px;height:14px;cursor:se-resize;display:flex;align-items:center;justify-content:center;opacity:.3}
+.sticky-resize-handle:hover{opacity:.7}
+.sticky-body{flex:1;background:none;border:none;outline:none;font-family:var(--font);font-size:11px;color:rgba(0,0,0,.75);resize:none;line-height:1.6;padding:4px 10px 8px}
+.sticky-body::placeholder{color:rgba(0,0,0,.3)}
+.sticky-add-btn{display:none}
 
 /* RIGHT PANEL */
 .right-panel{flex:1;display:flex;flex-direction:column;background:var(--bg3);overflow-y:auto}
@@ -695,17 +699,18 @@ async function renderWeather(ds) {
 // ── DAY LOAD INDICATOR ────────────────────────────────────
 function getDayLoad(ds) {
   const evList = getEvs(ds).filter(e => !e.allDay && !e.done);
-  if (!evList.length) return { level: 'free', label: 'Dia livre', pct: 0 };
+  if (!evList.length) return { level: 'free', label: 'Dia livre', pct: 0, totalMins: 0 };
   let totalMins = 0;
   evList.forEach(ev => {
     if (ev.startTime && ev.endTime) {
       const [sh, sm] = ev.startTime.split(':').map(Number);
       const [eh2, em] = ev.endTime.split(':').map(Number);
-      totalMins += (eh2 * 60 + em) - (sh * 60 + sm);
+      const diff = (eh2 * 60 + em) - (sh * 60 + sm);
+      if (diff > 0) totalMins += diff; // ignora durações zero ou negativas
     } else { totalMins += 60; }
   });
   const workMins = 8 * 60;
-  const pct = Math.min(100, Math.round((totalMins / workMins) * 100));
+  const pct = Math.max(0, Math.min(100, Math.round((totalMins / workMins) * 100)));
   let level, label;
   if (pct <= 30) { level = 'light'; label = 'Dia tranquilo'; }
   else if (pct <= 65) { level = 'balanced'; label = 'Equilibrado'; }
@@ -1204,13 +1209,25 @@ function delLI(lid,idx){const lst=lists.find(l=>l.id===lid);if(lst){lst.items.sp
 // ── STICKY NOTES ──
 function rStickyView(c){
   const wrap=document.createElement('div');
-  wrap.style.cssText='flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;align-items:flex-start';
-  wrap.innerHTML='<div style="color:var(--text3);font-size:13px">As notas aparecem flutuando na tela. Clique em "+ Nova nota" para adicionar.</div>';
+  wrap.style.cssText='flex:1;overflow-y:auto;padding:32px 22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center';
+  const count=(window.stickies||[]).length;
+  wrap.innerHTML='<div style="font-size:32px;opacity:.3">📝</div>'+
+    '<div style="font-size:14px;font-weight:500;color:var(--text2)">Notas rápidas</div>'+
+    '<div style="font-size:12px;color:var(--text3);line-height:1.7;max-width:260px">Suas notas ficam no painel direito, sempre visíveis.<br>'+(count?count+' nota'+(count>1?'s':'')+' criada'+(count>1?'s':'')+'.'  :'Nenhuma nota ainda.')+'</div>'+
+    '<button onclick="addSticky()" style="background:var(--text);color:#f5f3ef;border:none;cursor:pointer;padding:8px 18px;border-radius:9px;font-family:var(--font);font-size:11px;font-weight:500;transition:background .1s">+ Nova nota</button>';
   c.appendChild(wrap);
 }
 function renderStickies(){
-  const wrap=document.getElementById('stickyWrap');wrap.innerHTML='';
-  (stickies||[]).forEach((s,i)=>wrap.appendChild(mkSticky(s,i)));
+  // Stickies are now rendered in the right panel — no floating notes
+  renderRightPanel();
+}
+function saveStickySize(i,el){
+  if(stickies[i]===undefined)return;
+  const h=el.offsetHeight;
+  if(Math.abs((stickies[i].h||120)-h)>5){
+    stickies[i].h=h;
+    if(window.fbSaveStickies)fbSaveStickies();
+  }
 }
 function mkSticky(s,i){
   const el=document.createElement('div');el.className='sticky';
@@ -1224,22 +1241,12 @@ function mkSticky(s,i){
   return el;
 }
 function addSticky(){
-  const s={id:gid(),text:'',color:'#fbbf24',x:80+Math.random()*200,y:80+Math.random()*150};
-  stickies.push(s);if(window.fbSaveStickies)fbSaveStickies();renderStickies();showToast('Nota criada!');}
-function delSticky(i){if(!confirm('Excluir esta nota?'))return;stickies.splice(i,1);if(window.fbSaveStickies)fbSaveStickies();renderStickies();}
-function updSticky(i,val){if(stickies[i]){stickies[i].text=val;if(window.fbSaveStickies)fbSaveStickies();}}
-function stickyColor(i,c,el){if(stickies[i]){stickies[i].color=c;if(window.fbSaveStickies)fbSaveStickies();renderStickies();}}
-function makeDraggable(el,idx){
-  let sx,sy,ox,oy;
-  el.addEventListener('mousedown',e=>{
-    if(e.target.tagName==='TEXTAREA'||e.target.tagName==='BUTTON'||e.target.classList.contains('sticky-clr'))return;
-    sx=e.clientX;sy=e.clientY;ox=stickies[idx].x;oy=stickies[idx].y;
-    el.classList.add('dragging-note');
-    function mm(e){const dx=e.clientX-sx,dy=e.clientY-sy;stickies[idx].x=ox+dx;stickies[idx].y=oy+dy;el.style.left=stickies[idx].x+'px';el.style.top=stickies[idx].y+'px';}
-    function mu(){el.classList.remove('dragging-note');document.removeEventListener('mousemove',mm);document.removeEventListener('mouseup',mu);if(window.fbSaveStickies)fbSaveStickies();}
-    document.addEventListener('mousemove',mm);document.addEventListener('mouseup',mu);
-  });
-}
+  const s={id:gid(),text:'',color:'#fef3c7',w:null,h:120};
+  stickies.push(s);if(window.fbSaveStickies)fbSaveStickies();renderRightPanel();showToast('Nota criada!');}
+function delSticky(i){if(!confirm('Excluir esta nota?'))return;stickies.splice(i,1);if(window.fbSaveStickies)fbSaveStickies();renderRightPanel();}
+function updSticky(i,val){if(stickies[i]!==undefined){stickies[i].text=val;if(window.fbSaveStickies)fbSaveStickies();}}
+function updStickySize(i,w,h){if(stickies[i]!==undefined){stickies[i].w=w;stickies[i].h=h;if(window.fbSaveStickies)fbSaveStickies();}}
+function stickyColor(i,c){if(stickies[i]!==undefined){stickies[i].color=c;if(window.fbSaveStickies)fbSaveStickies();renderRightPanel();}}
 
 // ── MINI CAL ──
 function renderMC(){
@@ -1514,18 +1521,28 @@ function renderRightPanel(){
   }
   html+='</div>';
 
-  // notas
+  // notas — rendered as resizable cards
   html+='<div style="padding:14px 14px;flex:1;overflow-y:auto">';
-  html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px">';
+  html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
   html+='<div style="font-size:9px;font-weight:600;color:#aaa89e;letter-spacing:1.2px;text-transform:uppercase;font-family:Montserrat,sans-serif">Notas</div>';
-  html+='<button onclick="addSticky()" style="font-size:10px;color:#1a1a1a;font-weight:500;background:none;border:none;cursor:pointer;font-family:Montserrat,sans-serif">+ nova</button></div>';
-  (window.stickies||[]).slice(0,3).forEach((s,i)=>{
-    if(!s.text)return;
-    html+='<div style="padding:9px 11px;background:rgba(255,255,255,0.55);border:0.5px solid rgba(255,255,255,0.75);border-radius:10px;margin-bottom:6px;backdrop-filter:blur(4px)">';
-    html+='<div style="font-size:11px;color:#1a1a1a;line-height:1.5;font-family:Montserrat,sans-serif">'+eh(s.text.slice(0,80))+'</div></div>';
-  });
-  if(!(window.stickies||[]).filter(s=>s.text).length){
-    html+='<div style="font-size:11px;color:#c8c4be;font-family:Montserrat,sans-serif;padding:6px 0">Nenhuma nota ainda</div>';
+  html+='<button onclick="addSticky()" style="font-size:10px;color:#1a1a1a;font-weight:500;background:none;border:none;cursor:pointer;font-family:Montserrat,sans-serif;letter-spacing:.2px">+ nova</button></div>';
+  const stickyList=window.stickies||[];
+  if(!stickyList.length){
+    html+='<div style="font-size:11px;color:#c8c4be;font-family:Montserrat,sans-serif;padding:6px 0">Nenhuma nota ainda.<br><span style=\'font-size:10px\'>Clique em + nova para adicionar.</span></div>';
+  } else {
+    const SCLRS2=['#fef3c7','#fce7f3','#e0f2fe','#dcfce7','#f3e8ff','#fff7ed'];
+    stickyList.forEach((s,i)=>{
+      const col=s.color||'#fef3c7';
+      const h=s.h||120;
+      html+='<div class="sticky-card" id="scard'+i+'" style="background:'+col+';height:'+h+'px;margin-bottom:8px" onmouseup="saveStickySize('+i+',this)">';
+      html+='<div class="sticky-header">';
+      html+='<div class="sticky-colors">'+SCLRS2.map(c=>'<div class="sticky-clr'+(c===col?' active':'')+'" style="background:'+c+'" onclick="stickyColor('+i+',\''+c+'\',this)"></div>').join('')+'</div>';
+      html+='<button class="sticky-del" onclick="delSticky('+i+')" title="Excluir nota">×</button>';
+      html+='</div>';
+      html+='<textarea class="sticky-body" placeholder="Escreva aqui..." onchange="updSticky('+i+',this.value)" onfocus="this.select()">'+eh(s.text||'')+'</textarea>';
+      html+='<div style="position:absolute;bottom:3px;right:4px;opacity:.25;font-size:10px;cursor:se-resize;user-select:none" title="Arrastar para redimensionar">⇲</div>';
+      html+='</div>';
+    });
   }
   html+='</div>';
 
