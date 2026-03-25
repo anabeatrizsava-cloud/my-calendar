@@ -2240,18 +2240,7 @@ function getWEvsForMain(ds){
 function progIcon(p,evId,idate,calId){
   var cls=p==='done'?'done':p==='in-progress'?'in-progress':'not-started';
   var inner=p==='done'?'<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>':'';
-  var el=document.createElement('div');
-  el.className='prog-icon '+cls;
-  el.title='Progresso';
-  el.innerHTML=inner;
-  el.dataset.calid=calId;
-  el.dataset.evid=evId;
-  el.dataset.idate=idate;
-  el.onclick=function(e){
-    e.stopPropagation();
-    cycleWProg(this.dataset.calid,this.dataset.evid,this.dataset.idate,this);
-  };
-  return el.outerHTML;
+  return '<div class="prog-icon '+cls+'" title="Progresso" data-calid="'+calId+'" data-evid="'+evId+'" data-idate="'+idate+'" onclick="event.stopPropagation();cycleWProg(this.dataset.calid,this.dataset.evid,this.dataset.idate,this)">'+inner+'</div>';
 }
 
 // Priority icon
@@ -2323,8 +2312,14 @@ function renderWorkDay(calId){
   var topbar=document.createElement('div');
   topbar.className='topbar';
   topbar.style.cssText='background:#f0f2f5;border-bottom:0.5px solid #d1d5db';
+  var _wvid='wv-day-'+calId;
   topbar.innerHTML='<div style="font-size:11px;font-weight:600;color:#111827;letter-spacing:1px;text-transform:uppercase;font-family:Montserrat,sans-serif">'+cal.name+'</div>'
     +'<div style="flex:1"></div>'
+    +'<div style="display:flex;background:#e5e7eb;border-radius:8px;overflow:hidden;margin-right:6px">'
+    +'<button id="wvb-day-'+calId+'" onclick="setWView(\'day\',\''+calId+'\',this)" style="background:#111827;border:none;padding:4px 11px;font-family:Montserrat,sans-serif;font-size:10px;font-weight:500;color:white;cursor:pointer">Dia</button>'
+    +'<button id="wvb-week-'+calId+'" onclick="setWView(\'week\',\''+calId+'\',this)" style="background:none;border:none;padding:4px 11px;font-family:Montserrat,sans-serif;font-size:10px;color:#6b7280;cursor:pointer">Semana</button>'
+    +'<button id="wvb-notes-'+calId+'" onclick="setWView(\'notes\',\''+calId+'\',this)" style="background:none;border:none;padding:4px 11px;font-family:Montserrat,sans-serif;font-size:10px;color:#6b7280;cursor:pointer">Notas</button>'
+    +'</div>'
     +'<button onclick="nav(-1);renderWorkDay(\''+calId+'\')" style="background:none;border:0.5px solid #d1d5db;border-radius:7px;padding:4px 8px;cursor:pointer;font-size:11px;color:#4b5563">&#8249;</button>'
     +'<button onclick="cd=new Date();renderWorkDay(\''+calId+'\')" style="background:#111827;border:none;border-radius:7px;padding:5px 12px;cursor:pointer;font-size:10px;font-weight:500;color:white;font-family:Montserrat,sans-serif">Hoje</button>'
     +'<button onclick="nav(1);renderWorkDay(\''+calId+'\')" style="background:none;border:0.5px solid #d1d5db;border-radius:7px;padding:4px 8px;cursor:pointer;font-size:11px;color:#4b5563">&#8250;</button>'
@@ -2475,8 +2470,14 @@ function saveWEv(){
   if(cal&&cal.integrated)renderView();
   showToast('Tarefa salva!');
 }
-function setWView(view,calId){
+function setWView(view,calId,btn){
   calId=calId||activeCal;
+  // Update active button styles
+  var btns=['day','week','notes'];
+  btns.forEach(function(v){
+    var b=document.getElementById('wvb-'+v+'-'+calId);
+    if(b){b.style.background=v===view?'#111827':'none';b.style.color=v===view?'white':'#6b7280';b.style.fontWeight=v===view?'500':'400';}
+  });
   if(view==='day')renderWorkDay(calId);
   else if(view==='week')renderWorkWeek(calId);
   else if(view==='notes')renderWorkNotes(calId);
@@ -2524,6 +2525,9 @@ function renderWorkWeek(calId){
   cols+='</div>';
   // Rebuild wrap with topbar + week grid
   renderWorkDay(calId); // reuse topbar
+  // Fix active button to show Semana
+  var _wb=document.getElementById('wvb-week-'+calId);if(_wb){_wb.style.background='#111827';_wb.style.color='white';_wb.style.fontWeight='500';}
+  var _wd=document.getElementById('wvb-day-'+calId);if(_wd){_wd.style.background='none';_wd.style.color='#6b7280';_wd.style.fontWeight='400';}
   var main=wrap.querySelector('div:last-child');
   if(main){main.innerHTML=header+cols;main.style.cssText='flex:1;overflow:hidden;display:flex;flex-direction:column;background:#f7f8fa';}
 }
@@ -2531,6 +2535,9 @@ function renderWorkWeek(calId){
 function renderWorkNotes(calId){
   renderWorkDay(calId);
   var wrap=document.getElementById('workApp');if(!wrap)return;
+  // Fix active button to show Notas
+  var _wbn=document.getElementById('wvb-notes-'+calId);if(_wbn){_wbn.style.background='#111827';_wbn.style.color='white';_wbn.style.fontWeight='500';}
+  var _wbd=document.getElementById('wvb-day-'+calId);if(_wbd){_wbd.style.background='none';_wbd.style.color='#6b7280';_wbd.style.fontWeight='400';}
   var main=wrap.querySelector('div:last-child');if(!main)return;
   var notesList=window.stickies||[];
   var calNotes=notesList.filter(function(s){return s.calId===calId;});
