@@ -2447,10 +2447,15 @@ function togWeAD(){
 }
 function setWSeg(groupId,val){
   var group=document.getElementById(groupId);if(!group)return;
-  // val can be a string OR a button element (from onclick="setWSeg(id,this)")
-  var strVal=(val&&typeof val==='object'&&val.dataset)?val.dataset.v:val;
+  var strVal=(val&&typeof val==='object'&&val.dataset)?val.dataset.v:String(val);
   group.querySelectorAll('.seg-btn').forEach(function(b){
-    b.classList.toggle('act',b.dataset.v===strVal);
+    var isAct=b.dataset.v===strVal;
+    b.classList.toggle('act',isAct);
+    // Force inline styles as fallback in case CSS class doesn't apply
+    b.style.background=isAct?'white':'transparent';
+    b.style.color=isAct?'#111827':'#6b7280';
+    b.style.fontWeight=isAct?'500':'400';
+    b.style.boxShadow=isAct?'0 1px 3px rgba(0,0,0,.1)':'none';
   });
 }
 function getWSeg(groupId){
