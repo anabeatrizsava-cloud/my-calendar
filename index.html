@@ -19,7 +19,7 @@
   --text:#1a1a1a;--text2:#888880;--text3:#aaa89e;--text4:#c8c4be;
   --accent:#C26D64;--accent2:#d4847c;
   --glow:rgba(194,109,100,.1);
-  --green:#5c7161;--red:#C26D64;--yellow:#b17a3a;--cyan:#7a9bae;--lavender:#9b8ea8;
+  --green:#5c7161;--red:#C26D64;--yellow:#b17a3a;--cyan:#7a9bae;--lavender:#9b8ea8;--orange:#c87060;
   --r:12px;--rs:8px;
   --shadow:0 2px 16px rgba(26,26,26,.08);
   --font:'Montserrat',sans-serif;--font-mono:'DM Mono',monospace;
@@ -715,7 +715,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
       <div class="wfield"><label>Data e Horário</label>
         <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
           <input type="date" id="wedate" style="flex:1;min-width:120px"/>
-          <input type="time" id="westart" id="westart" style="width:88px"/>
+          <input type="time" id="westart" style="width:88px"/>
           <span style="color:#9ca3af;font-size:11px">–</span>
           <input type="time" id="weend" style="width:88px"/>
           <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:#4b5563;cursor:pointer"><input type="checkbox" id="weallday" onchange="togWeAD()" style="accent-color:#111827"/> Dia todo</label>
@@ -789,6 +789,8 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut as 
 import{getFirestore,collection,doc,setDoc,deleteDoc,onSnapshot}from'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
 const FC={apiKey:"AIzaSyAduXAqG6vRTI6STlFD3psMWkYY-DbXBr8",authDomain:"my-calendar-ccfd0.firebaseapp.com",projectId:"my-calendar-ccfd0",storageBucket:"my-calendar-ccfd0.firebasestorage.app",messagingSenderId:"124871692654",appId:"1:124871692654:web:4c8a914cbcaea6167a317f"};
 const fapp=initializeApp(FC);const auth=getAuth(fapp);const db=getFirestore(fapp);const prov=new GoogleAuthProvider();
+// Expose to window for use by non-module scripts
+window._auth=auth;window._db=db;window._setDoc=setDoc;window._doc=doc;window._deleteDoc=deleteDoc;window._onSnapshot=onSnapshot;window._collection=collection;
 let eu=null,lu=null,tu=null,su=null;
 window.signInWithGoogle=async()=>{try{await signInWithPopup(auth,prov);}catch(e){if(e.code!=='auth/popup-closed-by-user')showToast('Erro: '+e.message);}};
 window.doSignOut=async()=>{if(!confirm('Sair?'))return;[eu,lu,tu,su].forEach(u=>u&&u());await fbSO(auth);document.getElementById('mainApp').style.display='none';document.getElementById('loginScreen').style.display='flex';window.evs=[];window.lists=[];window.stickies=[];};
@@ -809,6 +811,8 @@ onAuthStateChanged(auth,user=>{
     if(tu)tu();tu=onSnapshot(doc(db,'users',uid,'config','tags'),snap=>{if(snap.exists()){const d=snap.data();window.tags=d.tags||dTags();window.tclr=d.tclr||dTclr();renderSBTags();}});
     if(su)su();su=onSnapshot(doc(db,'users',uid,'config','stickies'),snap=>{if(snap.exists()){window.stickies=snap.data().stickies||[];}else{window.stickies=[];}if(window.view==='sticky')renderView();else renderStickies();});
     if(!window.appInited){window.appInited=true;window._firebaseReady=true;if(window._domReady)initApp();}
+    // Always reload work calendar data on sign-in
+    setTimeout(function(){if(window.fbLoadWorkData)fbLoadWorkData();},200);
   }else{document.getElementById('loginScreen').style.display='flex';document.getElementById('mainApp').style.display='none';}
 });
 function dTags(){return['Trabalho','Pessoal','Urgente','Saude'];}
@@ -1987,22 +1991,22 @@ var activeCal = 'main';
 
 // Firebase
 function fbSaveWorkCals(){
-  if(!window.auth||!window.auth.currentUser)return;
-  try{window.firestore.setDoc(window.firestore.doc(window.db,'users',window.auth.currentUser.uid,'config','workCals'),{list:workCals});}catch(e){}
+  if(!window._db||!window._auth||!window._auth.currentUser)return;
+  try{window._setDoc(window._doc(window._db,'users',window._auth.currentUser.uid,'config','workCals'),{list:workCals});}catch(e){}
 }
 function fbSaveWorkEvs(calId){
-  if(!window.auth||!window.auth.currentUser)return;
-  try{window.firestore.setDoc(window.firestore.doc(window.db,'users',window.auth.currentUser.uid,'workEvs',calId),{events:workEvs[calId]||[]});}catch(e){}
+  if(!window._db||!window._auth||!window._auth.currentUser)return;
+  try{window._setDoc(window._doc(window._db,'users',window._auth.currentUser.uid,'workEvs',calId),{events:workEvs[calId]||[]});}catch(e){}
 }
 function fbLoadWorkData(){
-  if(!window.auth||!window.auth.currentUser)return;
+  if(!window._db||!window._auth||!window._auth.currentUser)return;
   try{
-    var uid=window.auth.currentUser.uid;
-    window.firestore.onSnapshot(window.firestore.doc(window.db,'users',uid,'config','workCals'),function(snap){
+    var uid=window._auth.currentUser.uid;
+    window._onSnapshot(window._doc(window._db,'users',uid,'config','workCals'),function(snap){
       if(snap.exists()){window.workCals=snap.data().list||[];}
       renderCalSwitcher();
     });
-    window.firestore.onSnapshot(window.firestore.collection(window.db,'users',uid,'workEvs'),function(snap){
+    window._onSnapshot(window._collection(window._db,'users',uid,'workEvs'),function(snap){
       snap.docs.forEach(function(d){window.workEvs[d.id]=d.data().events||[];});
     });
   }catch(e){}
@@ -2212,32 +2216,6 @@ function wEvCard(ev,calId){
     +'</div>';
   return card;
 }
-
-
-
-// Priority icon
-function prioIcon(p){
-  var c=p==='high'?['#111827','#111827','#111827']:p==='low'?['#d1d5db','#e5e7eb','#e5e7eb']:['#6b7280','#6b7280','#e5e7eb'];
-  return '<div class="prio-icon" title="Prioridade: '+(p||'medium')+'">'
-    +'<div class="prio-bar" style="width:4px;height:5px;background:'+c[0]+';border-radius:1px"></div>'
-    +'<div class="prio-bar" style="width:4px;height:9px;background:'+c[1]+';border-radius:1px"></div>'
-    +'<div class="prio-bar" style="width:4px;height:13px;background:'+c[2]+';border-radius:1px"></div>'
-    +'</div>';
-}
-
-function cycleWProg(calId,evId,idate,el){
-  var list=window.workEvs[calId]||[];
-  var ev=list.find(function(e){return e.id===evId;});
-  if(!ev)return;
-  var order=['not-started','in-progress','done'];
-  var idx=order.indexOf(ev.progress||'not-started');
-  ev.progress=order[(idx+1)%3];
-  fbSaveWorkEvs(calId);
-  renderWorkDay(calId);
-}
-
-// Work event card
-
 
 // Work view
 function renderWorkDay(calId){
