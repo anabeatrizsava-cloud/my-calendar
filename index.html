@@ -464,8 +464,11 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
   <div id="calSwitcher" style="display:flex;flex-direction:column;align-items:center;gap:8px">
     <div class="cal-dot main active" id="calDotMain" style="background:#f5f3ef;width:11px;height:11px" title="Calendário principal" onclick="switchCal('main')"></div>
   </div>
-  <div class="cal-add-btn" onclick="openNewCalModal()" title="Novo calendário">
-    <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M4 1v6M1 4h6" stroke="rgba(255,255,255,.5)" stroke-width="1.4" stroke-linecap="round"/></svg>
+  <div onclick="openNewCalModal()" title="Novo calendário" style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;opacity:.7;transition:opacity .15s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.7'">
+    <div style="width:22px;height:22px;border-radius:6px;border:1.5px dashed rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center">
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1v8M1 5h8" stroke="rgba(255,255,255,.7)" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </div>
+    <span style="font-size:7px;color:rgba(255,255,255,.35);letter-spacing:.3px;font-family:Montserrat,sans-serif">CAL</span>
   </div>
   <div class="sb-divider"></div>
   <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
