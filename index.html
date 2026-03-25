@@ -50,7 +50,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 .sb-divider{width:24px;height:0.5px;background:rgba(255,255,255,0.1)}
 .sb-tag{width:9px;height:9px;border-radius:50%;cursor:pointer;transition:transform .1s}
 .sb-tag:hover{transform:scale(1.3)}
-.sb-avatar{width:28px;height:28px;border-radius:50%;background:#c8c4be;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text);font-weight:600;cursor:pointer;margin-top:auto;overflow:hidden;border:1.5px solid rgba(255,255,255,0.15)}
+.sb-avatar{width:28px;height:28px;border-radius:50%;background:#c8c4be;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text);font-weight:600;cursor:pointer;overflow:hidden;border:1.5px solid rgba(255,255,255,0.15)}
 .sb-avatar img{width:100%;height:100%;object-fit:cover}
 .sb-carga{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 6px;background:rgba(255,255,255,0.08);border:0.5px solid rgba(255,255,255,0.14);border-radius:10px;width:40px;cursor:default}
 .sb-carga-label{font-size:6px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:.5px;text-align:center;line-height:1.3;font-weight:500}
@@ -473,10 +473,14 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
   <div class="sb-divider"></div>
   <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
     <span class="sync-dot" id="syncDot"></span>
+    <span id="syncLabel" style="font-size:6px;color:rgba(255,255,255,0.3);text-align:center;letter-spacing:.3px;font-family:var(--font);line-height:1.3;max-width:38px;word-break:break-word">Sync</span>
   </div>
-  <div class="sb-avatar" id="sbAvatar" onclick="doSignOut()">
-    <img id="userAvatar" src="" alt="" style="display:none"/>
-    <span id="userInitial">A</span>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:2px;margin-top:auto">
+    <span id="userName" style="font-size:6px;color:rgba(255,255,255,0.3);text-align:center;max-width:44px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--font);display:none"></span>
+    <div class="sb-avatar" id="sbAvatar" onclick="doSignOut()">
+      <img id="userAvatar" src="" alt="" style="display:none"/>
+      <span id="userInitial">A</span>
+    </div>
   </div>
 </div>
 
@@ -487,7 +491,13 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
   <!-- TOPBAR -->
   <div class="topbar">
     <div class="logo-text">My Calendar</div>
+    <div id="tdate" style="font-size:11px;font-weight:500;color:var(--text2);letter-spacing:.2px;white-space:nowrap;margin-left:6px"></div>
     <div style="flex:1"></div>
+    <div id="progWrap" style="display:none;align-items:center;gap:6px;padding:3px 8px;background:var(--bg3);border:0.5px solid var(--border);border-radius:20px">
+      <span id="progTxt" style="font-size:9px;color:var(--text3);font-family:var(--font-mono)">0/0</span>
+      <div style="width:48px;height:3px;background:var(--bg4);border-radius:3px;overflow:hidden"><div id="progFill" style="height:100%;background:var(--text);border-radius:3px;width:0%;transition:width .3s"></div></div>
+    </div>
+    <div id="dayLoadWidget" style="display:none;align-items:center;gap:5px;padding:3px 8px;background:var(--bg3);border:0.5px solid var(--border);border-radius:20px"></div>
     <div id="weatherWidget" style="display:none;align-items:center;gap:4px;padding:3px 8px;background:var(--bg3);border:0.5px solid var(--border);border-radius:20px;font-size:10px;color:var(--text2)"></div>
     <div class="search-wrap">
       <svg class="search-icon" width="11" height="11" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="4" stroke="currentColor" stroke-width="1.2"/><path d="M9 9l2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
@@ -531,6 +541,18 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
   <span id="nav-month" style="display:none"></span>
   <span id="nav-planner" style="display:none"></span>
   <span id="nav-sticky" style="display:none"></span>
+
+  <!-- MINI CAL -->
+  <div class="mini-cal">
+    <div class="mch">
+      <span class="mch-label" id="mcTitle"></span>
+      <div style="display:flex;gap:2px">
+        <button class="mcn" onclick="mcPrev()">&#8249;</button>
+        <button class="mcn" onclick="mcNext()">&#8250;</button>
+      </div>
+    </div>
+    <div class="mcg" id="mcGrid"></div>
+  </div>
 
   <div class="vc" id="vc"></div>
 </div>
@@ -804,7 +826,7 @@ window.fbSaveStickies=async()=>{if(!auth.currentUser)return;try{await setDoc(doc
 onAuthStateChanged(auth,user=>{
   if(user){
     document.getElementById('loginScreen').style.display='none';document.getElementById('mainApp').style.display='flex';
-    const _uael=document.getElementById('userAvatar');if(_uael)_uael.src=user.photoURL||'';const _un=document.getElementById('userName');if(_un)_un.textContent=user.displayName||user.email;
+    const _uael=document.getElementById('userAvatar');if(_uael){_uael.src=user.photoURL||'';_uael.style.display=user.photoURL?'block':'none';}const _un=document.getElementById('userName');if(_un){_un.textContent=(user.displayName||user.email||'').split(' ')[0];_un.style.display='block';}const _ui=document.getElementById('userInitial');if(_ui)_ui.style.display=user.photoURL?'none':'block';
     const uid=user.uid;setSS('syncing');
     if(eu)eu();eu=onSnapshot(collection(db,'users',uid,'events'),snap=>{const fresh=snap.docs.map(d=>({id:d.id,...d.data()}));if(window.evs&&window.evs.length){  fresh.forEach(fe=>{    const local=window.evs.find(e=>e.id===fe.id);    if(local&&window._pendingSaves&&window._pendingSaves.has(fe.id)){      fe.done=local.done;      fe.doneExceptions=local.doneExceptions;      fe.deletedExceptions=local.deletedExceptions;    }  });}window.evs=fresh;renderView();renderMC();renderSBTags();updProgress();setSS('ok');});
     if(lu)lu();lu=onSnapshot(collection(db,'users',uid,'lists'),snap=>{window.lists=snap.docs.map(d=>({id:d.id,...d.data()}));if(window.view==='planner')renderView();});
@@ -1461,6 +1483,29 @@ function saveStickySize(i,el){
     stickies[i].h=h;
     if(window.fbSaveStickies)fbSaveStickies();
   }
+}
+function makeDraggable(el, idx){
+  var hdr=el.querySelector('.sticky-header');
+  if(!hdr)return;
+  var ox=0,oy=0,mx=0,my=0;
+  hdr.style.cursor='move';
+  hdr.onmousedown=function(e){
+    if(e.target.tagName==='BUTTON'||e.target.tagName==='DIV'&&e.target.classList.contains('sticky-clr'))return;
+    e.preventDefault();
+    mx=e.clientX;my=e.clientY;
+    document.onmousemove=function(e){
+      ox=mx-e.clientX;oy=my-e.clientY;mx=e.clientX;my=e.clientY;
+      el.style.top=(el.offsetTop-oy)+'px';el.style.left=(el.offsetLeft-ox)+'px';
+    };
+    document.onmouseup=function(){
+      document.onmousemove=null;document.onmouseup=null;
+      // save position
+      if(window.stickies&&window.stickies[idx]){
+        window.stickies[idx].x=el.offsetLeft;window.stickies[idx].y=el.offsetTop;
+        if(window.fbSaveStickies)fbSaveStickies();
+      }
+    };
+  };
 }
 function mkSticky(s,i){
   const el=document.createElement('div');el.className='sticky';
@@ -2390,6 +2435,13 @@ function setWView(view,calId){
   else if(view==='notes')renderWorkNotes(calId);
 }
 
+
+function wkNavDay(el){
+  var ds=el.dataset.ds;
+  var calId=el.dataset.calid;
+  if(ds)cd=new Date(ds+'T12:00:00');
+  renderWorkDay(calId||activeCal);
+}
 function renderWorkWeek(calId){
   var wrap=document.getElementById('workApp');if(!wrap)return;
   var cal=(window.workCals||[]).find(function(c){return c.id===calId;});if(!cal)return;
@@ -2415,7 +2467,7 @@ function renderWorkWeek(calId){
   days.forEach(function(d){
     var ds=tds(d);
     var evs=getWEvs(calId,ds).sort(function(a,b){return(a.startTime||'').localeCompare(b.startTime||'');});
-    cols+='<div style="border-right:0.5px solid #d1d5db;padding:6px 4px;min-height:200px;cursor:pointer" onclick="cd=new Date(''+ds+'T12:00:00');renderWorkDay(''+calId+'')">';
+    cols+='<div style="border-right:0.5px solid #d1d5db;padding:6px 4px;min-height:200px;cursor:pointer" data-ds="'+ds+'" data-calid="'+calId+'" onclick="wkNavDay(this)">';
     evs.forEach(function(ev){
       var col=ev.color||'#4a5568';
       cols+='<div style="font-size:10px;padding:3px 5px;border-radius:4px;margin-bottom:3px;border-left:2px solid '+col+';background:rgba(255,255,255,.8);color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+eh(ev.title)+'</div>';
@@ -2439,7 +2491,7 @@ function renderWorkNotes(calId){
   main.style.cssText='flex:1;overflow-y:auto;padding:20px 24px;background:#f7f8fa';
   var html='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
     +'<div style="font-size:14px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">Notas</div>'
-    +'<button onclick="addWNote(''+calId+'')" style="background:#111827;border:none;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:10px;font-weight:500;color:white;font-family:Montserrat,sans-serif">+ Nova nota</button>'
+    +'<button data-calid="'+calId+'" onclick="addWNote(this.dataset.calid)" style="background:#111827;border:none;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:10px;font-weight:500;color:white;font-family:Montserrat,sans-serif">+ Nova nota</button>'
     +'</div>';
   if(!calNotes.length){
     html+='<div style="text-align:center;color:#9ca3af;padding:40px 0;font-size:12px;font-family:Montserrat,sans-serif">Nenhuma nota. Clique em Nova nota.</div>';
@@ -2448,8 +2500,8 @@ function renderWorkNotes(calId){
     calNotes.forEach(function(s,i){
       var col=s.color||'#f0f2f5';
       html+='<div style="background:'+col+';border-radius:12px;padding:12px;min-height:120px;display:flex;flex-direction:column">'
-        +'<div style="display:flex;justify-content:flex-end"><button onclick="delWNote(''+calId+'',''+s.id+'')" style="background:none;border:none;cursor:pointer;color:rgba(0,0,0,.3);font-size:14px">x</button></div>'
-        +'<textarea style="flex:1;background:none;border:none;outline:none;font-family:Montserrat,sans-serif;font-size:12px;color:rgba(0,0,0,.75);resize:none;min-height:60px" placeholder="Escreva aqui..." onchange="updWNote(''+calId+'',''+s.id+'',this.value)">'+eh(s.text||'')+'</textarea>'
+        +'<div style="display:flex;justify-content:flex-end"><button data-calid="'+calId+'" data-sid="'+s.id+'" onclick="delWNote(this.dataset.calid,this.dataset.sid)" style="background:none;border:none;cursor:pointer;color:rgba(0,0,0,.3);font-size:14px">x</button></div>'
+        +'<textarea style="flex:1;background:none;border:none;outline:none;font-family:Montserrat,sans-serif;font-size:12px;color:rgba(0,0,0,.75);resize:none;min-height:60px" placeholder="Escreva aqui..." data-calid="'+calId+'" data-sid="'+s.id+'" onchange="updWNote(this.dataset.calid,this.dataset.sid,this.value)">'+eh(s.text||'')+'</textarea>'
         +'</div>';
     });
     html+='</div>';
