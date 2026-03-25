@@ -2309,21 +2309,64 @@ function renderWorkDay(calId){
   wrap.innerHTML='';
   _wCalId=calId;
 
+  // Build topbar using DOM (avoids all quote escaping issues in innerHTML)
   var topbar=document.createElement('div');
   topbar.className='topbar';
   topbar.style.cssText='background:#f0f2f5;border-bottom:0.5px solid #d1d5db';
-  var _wvid='wv-day-'+calId;
-  topbar.innerHTML='<div style="font-size:11px;font-weight:600;color:#111827;letter-spacing:1px;text-transform:uppercase;font-family:Montserrat,sans-serif">'+cal.name+'</div>'
-    +'<div style="flex:1"></div>'
-    +'<div style="display:flex;background:#e5e7eb;border-radius:8px;overflow:hidden;margin-right:6px">'
-    +'<button id="wvb-day-'+calId+'" onclick="setWView(\'day\',\''+calId+'\',this)" style="background:#111827;border:none;padding:4px 11px;font-family:Montserrat,sans-serif;font-size:10px;font-weight:500;color:white;cursor:pointer">Dia</button>'
-    +'<button id="wvb-week-'+calId+'" onclick="setWView(\'week\',\''+calId+'\',this)" style="background:none;border:none;padding:4px 11px;font-family:Montserrat,sans-serif;font-size:10px;color:#6b7280;cursor:pointer">Semana</button>'
-    +'<button id="wvb-notes-'+calId+'" onclick="setWView(\'notes\',\''+calId+'\',this)" style="background:none;border:none;padding:4px 11px;font-family:Montserrat,sans-serif;font-size:10px;color:#6b7280;cursor:pointer">Notas</button>'
-    +'</div>'
-    +'<button onclick="nav(-1);renderWorkDay(\''+calId+'\')" style="background:none;border:0.5px solid #d1d5db;border-radius:7px;padding:4px 8px;cursor:pointer;font-size:11px;color:#4b5563">&#8249;</button>'
-    +'<button onclick="cd=new Date();renderWorkDay(\''+calId+'\')" style="background:#111827;border:none;border-radius:7px;padding:5px 12px;cursor:pointer;font-size:10px;font-weight:500;color:white;font-family:Montserrat,sans-serif">Hoje</button>'
-    +'<button onclick="nav(1);renderWorkDay(\''+calId+'\')" style="background:none;border:0.5px solid #d1d5db;border-radius:7px;padding:4px 8px;cursor:pointer;font-size:11px;color:#4b5563">&#8250;</button>'
-    +'<button onclick="openWNew()" style="background:#111827;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;font-size:10px;font-weight:500;color:white;font-family:Montserrat,sans-serif">+ Nova tarefa</button>';
+
+  // Cal name
+  var nameDiv=document.createElement('div');
+  nameDiv.style.cssText='font-size:11px;font-weight:600;color:#111827;letter-spacing:1px;text-transform:uppercase;font-family:Montserrat,sans-serif';
+  nameDiv.textContent=cal.name;
+  topbar.appendChild(nameDiv);
+
+  // Spacer
+  var spacer=document.createElement('div');
+  spacer.style.flex='1';
+  topbar.appendChild(spacer);
+
+  // View switcher: Dia / Semana / Notas
+  var vsw=document.createElement('div');
+  vsw.style.cssText='display:flex;background:#e5e7eb;border-radius:8px;overflow:hidden;margin-right:6px';
+  [['day','Dia'],['week','Semana'],['notes','Notas']].forEach(function(pair){
+    var v=pair[0],label=pair[1];
+    var btn=document.createElement('button');
+    btn.id='wvb-'+v+'-'+calId;
+    btn.textContent=label;
+    btn.style.cssText=(v==='day'?'background:#111827;color:white;font-weight:500':'background:none;color:#6b7280;font-weight:400')+';border:none;padding:4px 11px;font-family:Montserrat,sans-serif;font-size:10px;cursor:pointer';
+    (function(view,cid){btn.onclick=function(){setWView(view,cid,this);};})(v,calId);
+    vsw.appendChild(btn);
+  });
+  topbar.appendChild(vsw);
+
+  // Nav prev
+  var btnPrev=document.createElement('button');
+  btnPrev.innerHTML='&#8249;';
+  btnPrev.style.cssText='background:none;border:0.5px solid #d1d5db;border-radius:7px;padding:4px 8px;cursor:pointer;font-size:11px;color:#4b5563';
+  (function(cid){btnPrev.onclick=function(){nav(-1);renderWorkDay(cid);};})(calId);
+  topbar.appendChild(btnPrev);
+
+  // Today
+  var btnToday=document.createElement('button');
+  btnToday.textContent='Hoje';
+  btnToday.style.cssText='background:#111827;border:none;border-radius:7px;padding:5px 12px;cursor:pointer;font-size:10px;font-weight:500;color:white;font-family:Montserrat,sans-serif';
+  (function(cid){btnToday.onclick=function(){cd=new Date();renderWorkDay(cid);};})(calId);
+  topbar.appendChild(btnToday);
+
+  // Nav next
+  var btnNext=document.createElement('button');
+  btnNext.innerHTML='&#8250;';
+  btnNext.style.cssText='background:none;border:0.5px solid #d1d5db;border-radius:7px;padding:4px 8px;cursor:pointer;font-size:11px;color:#4b5563';
+  (function(cid){btnNext.onclick=function(){nav(1);renderWorkDay(cid);};})(calId);
+  topbar.appendChild(btnNext);
+
+  // New task
+  var btnNew=document.createElement('button');
+  btnNew.textContent='+ Nova tarefa';
+  btnNew.style.cssText='background:#111827;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;font-size:10px;font-weight:500;color:white;font-family:Montserrat,sans-serif';
+  btnNew.onclick=function(){openWNew();};
+  topbar.appendChild(btnNew);
+
   wrap.appendChild(topbar);
 
   var main=document.createElement('div');
@@ -2358,8 +2401,6 @@ function renderWorkDay(calId){
   }
   wrap.appendChild(main);
 }
-
-// Work event modal
 function openWNew(){
   _weid=null;
   _weTags=[];_weColor='#4a5568';
@@ -2406,8 +2447,10 @@ function togWeAD(){
 }
 function setWSeg(groupId,val){
   var group=document.getElementById(groupId);if(!group)return;
+  // val can be a string OR a button element (from onclick="setWSeg(id,this)")
+  var strVal=(val&&typeof val==='object'&&val.dataset)?val.dataset.v:val;
   group.querySelectorAll('.seg-btn').forEach(function(b){
-    b.classList.toggle('act',b.dataset.v===val);
+    b.classList.toggle('act',b.dataset.v===strVal);
   });
 }
 function getWSeg(groupId){
