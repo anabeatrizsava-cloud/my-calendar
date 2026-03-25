@@ -538,6 +538,9 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 <!-- RIGHT PANEL -->
 <div class="right-panel" id="rightPanel"></div>
 
+<!-- WORK VIEW (replaces center+right when work cal active) -->
+<div id="workApp" style="display:none;flex:1;overflow:hidden;flex-direction:column" class="wc-app"></div>
+
 </div><!-- main-layout -->
 </div><!-- app -->
 
@@ -768,9 +771,6 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
     </div>
   </div>
 </div>
-
-<!-- WORK VIEW CONTAINER -->
-<div id="workApp" style="display:none;flex:1;overflow:hidden;display:none" class="wc-app"></div>
 
 <!-- POPUP -->
 <div class="pop-ov" id="popOv">
@@ -2011,14 +2011,17 @@ function fbLoadWorkData(){
 // Calendar switcher
 function switchCal(calId){
   activeCal=calId;
-  var mainApp=document.getElementById('mainApp');
+  var centerCol=document.querySelector('.center-col');
+  var rightPanel=document.getElementById('rightPanel');
   var workDiv=document.getElementById('workApp');
   if(calId==='main'){
-    if(mainApp)mainApp.style.display='flex';
+    if(centerCol)centerCol.style.display='flex';
+    if(rightPanel)rightPanel.style.display='flex';
     if(workDiv)workDiv.style.display='none';
   } else {
-    if(mainApp)mainApp.style.display='none';
-    if(workDiv){workDiv.style.display='flex';workDiv.style.flexDirection='column';}
+    if(centerCol)centerCol.style.display='none';
+    if(rightPanel)rightPanel.style.display='none';
+    if(workDiv)workDiv.style.display='flex';
     renderWorkDay(calId);
   }
   renderCalSwitcher();
@@ -2141,8 +2144,18 @@ function getWEvsForMain(ds){
 function progIcon(p,evId,idate,calId){
   var cls=p==='done'?'done':p==='in-progress'?'in-progress':'not-started';
   var inner=p==='done'?'<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>':'';
-  var onclick='event.stopPropagation();cycleWProg("'+calId+'","'+evId+'","'+idate+'",this)';
-  return '<div class="prog-icon '+cls+'" title="Progresso" onclick="'+onclick+'">'+inner+'</div>';
+  var el=document.createElement('div');
+  el.className='prog-icon '+cls;
+  el.title='Progresso';
+  el.innerHTML=inner;
+  el.dataset.calid=calId;
+  el.dataset.evid=evId;
+  el.dataset.idate=idate;
+  el.onclick=function(e){
+    e.stopPropagation();
+    cycleWProg(this.dataset.calid,this.dataset.evid,this.dataset.idate,this);
+  };
+  return el.outerHTML;
 }
 
 // Priority icon
@@ -2172,6 +2185,12 @@ function wEvCard(ev,calId){
   var p=ev.progress||'not-started';
   var prio=ev.priority||'medium';
   var idate=ev._instanceDate||ev.date;
+  var card=document.createElement('div');
+  card.className='wev-card';
+  card.dataset.calid=calId;
+  card.dataset.evid=ev.id;
+  card.dataset.idate=idate;
+  card.onclick=function(){openWEdit(this.dataset.calid,this.dataset.evid,this.dataset.idate);};
   var tags='';
   if(ev.tags&&ev.tags.length){
     var wc=['#374151','#4a5568','#6b7280','#1f2937','#111827'];
@@ -2181,9 +2200,7 @@ function wEvCard(ev,calId){
   }
   var tm=ev.allDay?'Dia todo':(ev.startTime||'')+(ev.endTime?' - '+ev.endTime:'');
   var titleStyle='font-size:12px;font-weight:500;color:'+(p==='done'?'#9ca3af':'#111827')+(p==='done'?';text-decoration:line-through':'');
-  var onclick='openWEdit("'+calId+'","'+ev.id+'","'+idate+'")';
-  return '<div class="wev-card" onclick="'+onclick+'">'
-    +'<div class="wev-accent" style="background:'+col+'"></div>'
+  card.innerHTML='<div class="wev-accent" style="background:'+col+'"></div>'
     +'<div class="wev-body">'
     +progIcon(p,ev.id,idate,calId)
     +'<div style="flex:1;min-width:0">'
@@ -2192,8 +2209,35 @@ function wEvCard(ev,calId){
     +tags
     +'</div>'
     +prioIcon(prio)
-    +'</div></div>';
+    +'</div>';
+  return card;
 }
+
+
+
+// Priority icon
+function prioIcon(p){
+  var c=p==='high'?['#111827','#111827','#111827']:p==='low'?['#d1d5db','#e5e7eb','#e5e7eb']:['#6b7280','#6b7280','#e5e7eb'];
+  return '<div class="prio-icon" title="Prioridade: '+(p||'medium')+'">'
+    +'<div class="prio-bar" style="width:4px;height:5px;background:'+c[0]+';border-radius:1px"></div>'
+    +'<div class="prio-bar" style="width:4px;height:9px;background:'+c[1]+';border-radius:1px"></div>'
+    +'<div class="prio-bar" style="width:4px;height:13px;background:'+c[2]+';border-radius:1px"></div>'
+    +'</div>';
+}
+
+function cycleWProg(calId,evId,idate,el){
+  var list=window.workEvs[calId]||[];
+  var ev=list.find(function(e){return e.id===evId;});
+  if(!ev)return;
+  var order=['not-started','in-progress','done'];
+  var idx=order.indexOf(ev.progress||'not-started');
+  ev.progress=order[(idx+1)%3];
+  fbSaveWorkEvs(calId);
+  renderWorkDay(calId);
+}
+
+// Work event card
+
 
 // Work view
 function renderWorkDay(calId){
@@ -2237,11 +2281,14 @@ function renderWorkDay(calId){
   var all=notDone.concat(done);
 
   if(!all.length){
-    main.innerHTML+='<div style="text-align:center;color:#9ca3af;padding:40px 0;font-size:12px;font-family:Montserrat,sans-serif">Nenhuma tarefa para hoje.</div>';
+    var empty=document.createElement('div');
+    empty.style.cssText='text-align:center;color:#9ca3af;padding:40px 0;font-size:12px;font-family:Montserrat,sans-serif';
+    empty.textContent='Nenhuma tarefa para hoje.';
+    main.appendChild(empty);
   } else {
     var grid=document.createElement('div');
     grid.style.cssText='display:flex;flex-direction:column;gap:7px';
-    grid.innerHTML=all.map(function(ev){return wEvCard(ev,calId);}).join('');
+    all.forEach(function(ev){grid.appendChild(wEvCard(ev,calId));});
     main.appendChild(grid);
   }
   wrap.appendChild(main);
@@ -2358,6 +2405,98 @@ function saveWEv(){
   if(cal&&cal.integrated)renderView();
   showToast('Tarefa salva!');
 }
+function setWView(view,calId){
+  calId=calId||activeCal;
+  if(view==='day')renderWorkDay(calId);
+  else if(view==='week')renderWorkWeek(calId);
+  else if(view==='notes')renderWorkNotes(calId);
+}
+
+function renderWorkWeek(calId){
+  var wrap=document.getElementById('workApp');if(!wrap)return;
+  var cal=(window.workCals||[]).find(function(c){return c.id===calId;});if(!cal)return;
+  // Get week days
+  var days=[];
+  var startOfWeek=new Date(cd);
+  startOfWeek.setDate(cd.getDate()-cd.getDay());
+  for(var i=0;i<7;i++){var d=new Date(startOfWeek);d.setDate(startOfWeek.getDate()+i);days.push(d);}
+  var dayNames=['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
+  var today=new Date();
+  // Build header
+  var header='<div style="display:grid;grid-template-columns:repeat(7,1fr);border-bottom:0.5px solid #d1d5db;background:#f0f2f5">';
+  days.forEach(function(d){
+    var isT=d.toDateString()===today.toDateString();
+    header+='<div style="padding:8px 6px;text-align:center;border-right:0.5px solid #d1d5db">'
+      +'<div style="font-size:9px;color:#9ca3af;font-family:Montserrat,sans-serif">'+dayNames[d.getDay()]+'</div>'
+      +'<div style="font-size:16px;font-weight:300;color:'+(isT?'white':'#111827')+';width:26px;height:26px;border-radius:50%;background:'+(isT?'#111827':'transparent')+';display:flex;align-items:center;justify-content:center;margin:2px auto 0;font-family:Montserrat,sans-serif">'+d.getDate()+'</div>'
+      +'</div>';
+  });
+  header+='</div>';
+  // Build day columns
+  var cols='<div style="display:grid;grid-template-columns:repeat(7,1fr);flex:1;overflow-y:auto">';
+  days.forEach(function(d){
+    var ds=tds(d);
+    var evs=getWEvs(calId,ds).sort(function(a,b){return(a.startTime||'').localeCompare(b.startTime||'');});
+    cols+='<div style="border-right:0.5px solid #d1d5db;padding:6px 4px;min-height:200px;cursor:pointer" onclick="cd=new Date(''+ds+'T12:00:00');renderWorkDay(''+calId+'')">';
+    evs.forEach(function(ev){
+      var col=ev.color||'#4a5568';
+      cols+='<div style="font-size:10px;padding:3px 5px;border-radius:4px;margin-bottom:3px;border-left:2px solid '+col+';background:rgba(255,255,255,.8);color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+eh(ev.title)+'</div>';
+    });
+    cols+='</div>';
+  });
+  cols+='</div>';
+  // Rebuild wrap with topbar + week grid
+  renderWorkDay(calId); // reuse topbar
+  var main=wrap.querySelector('div:last-child');
+  if(main){main.innerHTML=header+cols;main.style.cssText='flex:1;overflow:hidden;display:flex;flex-direction:column;background:#f7f8fa';}
+}
+
+function renderWorkNotes(calId){
+  renderWorkDay(calId);
+  var wrap=document.getElementById('workApp');if(!wrap)return;
+  var main=wrap.querySelector('div:last-child');if(!main)return;
+  var notesList=window.stickies||[];
+  var calNotes=notesList.filter(function(s){return s.calId===calId;});
+  var SCLRS=['#fef3c7','#fce7f3','#e0f2fe','#dcfce7','#f3f4f6'];
+  main.style.cssText='flex:1;overflow-y:auto;padding:20px 24px;background:#f7f8fa';
+  var html='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
+    +'<div style="font-size:14px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">Notas</div>'
+    +'<button onclick="addWNote(''+calId+'')" style="background:#111827;border:none;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:10px;font-weight:500;color:white;font-family:Montserrat,sans-serif">+ Nova nota</button>'
+    +'</div>';
+  if(!calNotes.length){
+    html+='<div style="text-align:center;color:#9ca3af;padding:40px 0;font-size:12px;font-family:Montserrat,sans-serif">Nenhuma nota. Clique em Nova nota.</div>';
+  } else {
+    html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">';
+    calNotes.forEach(function(s,i){
+      var col=s.color||'#f0f2f5';
+      html+='<div style="background:'+col+';border-radius:12px;padding:12px;min-height:120px;display:flex;flex-direction:column">'
+        +'<div style="display:flex;justify-content:flex-end"><button onclick="delWNote(''+calId+'',''+s.id+'')" style="background:none;border:none;cursor:pointer;color:rgba(0,0,0,.3);font-size:14px">x</button></div>'
+        +'<textarea style="flex:1;background:none;border:none;outline:none;font-family:Montserrat,sans-serif;font-size:12px;color:rgba(0,0,0,.75);resize:none;min-height:60px" placeholder="Escreva aqui..." onchange="updWNote(''+calId+'',''+s.id+'',this.value)">'+eh(s.text||'')+'</textarea>'
+        +'</div>';
+    });
+    html+='</div>';
+  }
+  main.innerHTML=html;
+}
+
+function addWNote(calId){
+  var s={id:gid(),text:'',color:'#f0f2f5',calId:calId};
+  window.stickies=window.stickies||[];
+  window.stickies.push(s);
+  if(window.fbSaveStickies)fbSaveStickies();
+  renderWorkNotes(calId);
+}
+function delWNote(calId,id){
+  if(!confirm('Excluir nota?'))return;
+  window.stickies=(window.stickies||[]).filter(function(s){return s.id!==id;});
+  if(window.fbSaveStickies)fbSaveStickies();
+  renderWorkNotes(calId);
+}
+function updWNote(calId,id,val){
+  var s=(window.stickies||[]).find(function(x){return x.id===id;});
+  if(s){s.text=val;if(window.fbSaveStickies)fbSaveStickies();}
+}
+
 function delWEv(){
   if(!_weid||!_wCalId)return;
   if(!confirm('Excluir esta tarefa?'))return;
