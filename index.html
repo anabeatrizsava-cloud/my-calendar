@@ -2036,15 +2036,20 @@ function switchCal(calId){
 
 function renderCalSwitcher(){
   const sw=document.getElementById('calSwitcher');if(!sw)return;
-  let html='<div class="cal-dot main '+(activeCal==="main"?"active":"")+'" id="calDotMain" style="background:#f5f3ef;width:11px;height:11px" title="Calendário principal" onclick="switchCal('main')"></div>';
-  (window.workCals||[]).forEach(c=>{
-    const intIcon=c.integrated
+  const mainActive=activeCal==='main'?'active':'';
+  let html='<div class="cal-dot main '+mainActive+'" id="calDotMain" style="background:#f5f3ef;width:11px;height:11px" title="Calendário principal" onclick="switchCal('main')"></div>';
+  (window.workCals||[]).forEach(function(c){
+    const isActive=activeCal===c.id?'active':'';
+    const isInt=c.integrated;
+    const intTitle=isInt?'Desintegrar do principal':'Integrar ao principal';
+    const intSvg=isInt
       ?'<svg width="7" height="7" viewBox="0 0 8 8" fill="none"><path d="M1 4h6M4 1v6" stroke="rgba(255,255,255,.6)" stroke-width="1.2" stroke-linecap="round"/></svg>'
       :'<svg width="7" height="7" viewBox="0 0 8 8" fill="none"><path d="M2 4h4" stroke="rgba(255,255,255,.4)" stroke-width="1.2" stroke-linecap="round"/></svg>';
-    html+='<div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:2px">'+
-      '<div class="cal-dot work '+(activeCal===c.id?"active":"")+'" id="calDot_'+c.id+'" style="background:'+c.color+';width:11px;height:11px" title="'+c.name+(c.integrated?" (integrado)":"")+'" onclick="switchCal(''+c.id+'')"></div>'+
-      '<div style="cursor:pointer;opacity:.5;display:flex;align-items:center;justify-content:center;width:14px;height:10px" title="'+(c.integrated?"Desintegrar do principal":"Integrar ao principal")+'" onclick="toggleCalIntegration(''+c.id+'')">'+intIcon+'</div>'+
-    '</div>';
+    const calName=c.name+(isInt?' (integrado)':'');
+    html+='<div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:2px">';
+    html+='<div class="cal-dot work '+isActive+'" id="calDot_'+c.id+'" style="background:'+c.color+';width:11px;height:11px" title="'+calName+'" onclick="switchCal(''+c.id+'')"></div>';
+    html+='<div style="cursor:pointer;opacity:.5;display:flex;align-items:center;justify-content:center;width:14px;height:10px" title="'+intTitle+'" onclick="toggleCalIntegration(''+c.id+'')">'+intSvg+'</div>';
+    html+='</div>';
   });
   sw.innerHTML=html;
 }
