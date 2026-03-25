@@ -888,11 +888,9 @@ let bulkMode = false;
 let editingInstanceDate = null;
 let hideDone = false;
 // ── WORK CALENDARS ──
-window.workCals = window.workCals || [];   // [{id,name,purpose,color,integrated}]
-window.workEvs  = window.workEvs  || {};   // {calId: [events]}
-let activeCal   = 'main';                  // 'main' | calId
-let editingInstanceDate = null;
-let hideDone = false;
+window.workCals = window.workCals || [];
+window.workEvs  = window.workEvs  || {};
+let activeCal = 'main';
 function toggleHideDone(){
   hideDone=!hideDone;
   const btn=document.getElementById('hideDoneBtn');
@@ -1042,7 +1040,7 @@ function getFeriado(ds){
   return null;
 }
 
-function initApp(){mkManifest();buildMDGrid();renderMC();renderView();updTop();renderStickies();renderRightPanel();setInterval(()=>{
+function initApp(){mkManifest();buildMDGrid();renderMC();renderView();updTop();renderStickies();renderRightPanel();initWorkCal();setInterval(()=>{
     if(view==='day'){
       // refresh weather on external events
       const ds=tds(cd);
@@ -2368,27 +2366,24 @@ function toggleCalIntegration(calId){
 }
 
 // ── Integrate work events into main calendar ──
-// Override getEvs to include integrated work events (READ-ONLY, never modifies evs[])
-const _origGetEvs=getEvs;
-function getEvs(ds){
-  const res=_origGetEvs(ds);  // original events — untouched
+// Patch getEvs to include integrated work events AFTER original definition
+function getWEvsForMain(ds){
+  const extra=[];
   (window.workCals||[]).forEach(cal=>{
     if(!cal.integrated)return;
     (getWEvs(cal.id,ds)||[]).forEach(wev=>{
-      // spread copy — never touches original workEvs array
-      res.push({...wev,_fromWork:true,_wCalId:cal.id,color:wev.color||cal.color,id:'wk_'+wev.id});
+      extra.push({...wev,_fromWork:true,_wCalId:cal.id,color:wev.color||cal.color,id:'wk_'+wev.id});
     });
   });
-  return res;
+  return extra;
 }
 
-// load work data when app starts
-const _origInitApp=window.initApp;
-window.initApp=function(){
-  _origInitApp&&_origInitApp();
+// load work data after main app inits
+// called from initApp directly
+function initWorkCal(){
   fbLoadWorkData();
   renderCalSwitcher();
-};
+}
 
 function setNoEmoji(){
   cemoji='none';
@@ -2494,7 +2489,7 @@ function bindELNew(w){
 }
 window.rDay=function(c){
   const ds=tds(cd);
-  const de=getEvs(ds);
+  const de=[...getEvs(ds),...(typeof getWEvsForMain==='function'?getWEvsForMain(ds):[])].filter((e,i,a)=>a.findIndex(x=>x.id===e.id)===i);
   const days=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
   const months=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   const today=new Date();const isT=cd.toDateString()===today.toDateString();
