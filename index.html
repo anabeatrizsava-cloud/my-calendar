@@ -2696,6 +2696,96 @@ function renderWorkRight(calId){
   rp.innerHTML='';
   rp.style.cssText='width:440px;background:#f0f2f5;display:flex;flex-direction:column;overflow-y:auto;border-left:0.5px solid #d1d5db;flex-shrink:0';
 
+  // ── MINI CALENDÁRIO ──
+  var secCal=document.createElement('div');
+  secCal.className='wc-right-sec';
+
+  var mcMonths=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  var wMcd=new Date(mcd); // use global mcd for month navigation
+
+  function buildWMiniCal(){
+    secCal.innerHTML='';
+    var hdr=document.createElement('div');
+    hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:8px';
+    var title=document.createElement('span');
+    title.style.cssText='font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1.2px;text-transform:uppercase;font-family:Montserrat,sans-serif';
+    title.textContent=mcMonths[wMcd.getMonth()]+' '+wMcd.getFullYear();
+    var navDiv=document.createElement('div');
+    navDiv.style.cssText='display:flex;gap:2px';
+    var bPrev=document.createElement('button');
+    bPrev.innerHTML='&#8249;';
+    bPrev.style.cssText='background:none;border:none;color:#9ca3af;font-size:14px;cursor:pointer;padding:0 3px;line-height:1';
+    bPrev.onclick=function(){wMcd.setMonth(wMcd.getMonth()-1);buildWMiniCal();};
+    var bNext=document.createElement('button');
+    bNext.innerHTML='&#8250;';
+    bNext.style.cssText='background:none;border:none;color:#9ca3af;font-size:14px;cursor:pointer;padding:0 3px;line-height:1';
+    bNext.onclick=function(){wMcd.setMonth(wMcd.getMonth()+1);buildWMiniCal();};
+    navDiv.appendChild(bPrev);navDiv.appendChild(bNext);
+    hdr.appendChild(title);hdr.appendChild(navDiv);
+    secCal.appendChild(hdr);
+
+    // Day headers
+    var grid=document.createElement('div');
+    grid.style.cssText='display:grid;grid-template-columns:repeat(7,1fr);gap:1px';
+    ['D','S','T','Q','Q','S','S'].forEach(function(d){
+      var dl=document.createElement('div');
+      dl.style.cssText='text-align:center;font-size:8px;color:#c8c4be;letter-spacing:.5px;margin-bottom:3px;font-family:Montserrat,sans-serif';
+      dl.textContent=d;
+      grid.appendChild(dl);
+    });
+
+    var today=new Date();
+    var f=new Date(wMcd.getFullYear(),wMcd.getMonth(),1);
+    var l=new Date(wMcd.getFullYear(),wMcd.getMonth()+1,0);
+
+    // Empty days before month start
+    for(var i=0;i<f.getDay();i++){
+      var prev=new Date(wMcd.getFullYear(),wMcd.getMonth(),1-f.getDay()+i);
+      var emp=document.createElement('div');
+      emp.style.cssText='text-align:center;font-size:9px;color:#d8d4ce;padding:4px;font-family:Montserrat,sans-serif';
+      emp.textContent=prev.getDate();
+      grid.appendChild(emp);
+    }
+
+    // Month days
+    for(var day=1;day<=l.getDate();day++){
+      var thisDate=new Date(wMcd.getFullYear(),wMcd.getMonth(),day);
+      var ds2=tds(thisDate);
+      var isToday=thisDate.toDateString()===today.toDateString();
+      var isSel=thisDate.toDateString()===cd.toDateString();
+      var hasTasks=getWEvs(calId,ds2).length>0;
+
+      var cell=document.createElement('div');
+      cell.style.cssText='text-align:center;font-size:10px;border-radius:50%;cursor:pointer;width:26px;height:26px;display:flex;align-items:center;justify-content:center;margin:0 auto;position:relative;font-family:Montserrat,sans-serif;transition:background .1s;';
+      cell.textContent=day;
+
+      if(isToday){cell.style.background='#111827';cell.style.color='#f5f3ef';cell.style.fontWeight='500';}
+      else if(isSel){cell.style.background='#e5e7eb';cell.style.color='#111827';cell.style.fontWeight='500';}
+      else{cell.style.color='#9ca3af';}
+
+      if(hasTasks&&!isToday){
+        var dot=document.createElement('div');
+        dot.style.cssText='position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:3px;height:3px;background:#4a5568;border-radius:50%';
+        cell.appendChild(dot);
+      }
+
+      cell.onmouseover=function(){if(!this.style.background||this.style.background==='transparent'||this.style.color==='#9ca3af')this.style.background='#e5e7eb';};
+      cell.onmouseout=function(d2,isTod,isSel2){return function(){if(isTod)this.style.background='#111827';else if(isSel2)this.style.background='#e5e7eb';else this.style.background='transparent';};}(ds2,isToday,isSel);
+
+      (function(d2,cid){cell.onclick=function(){
+        var p=d2.split('-');
+        cd=new Date(+p[0],+p[1]-1,+p[2]);
+        renderWorkDay(cid);
+      };})(ds2,calId);
+
+      grid.appendChild(cell);
+    }
+    secCal.appendChild(grid);
+  }
+
+  buildWMiniCal();
+  rp.appendChild(secCal);
+
   // ── AMANHÃ ──
   var tomorrow=new Date(cd);tomorrow.setDate(tomorrow.getDate()+1);
   var tmrDs=tds(tomorrow);
@@ -2725,7 +2815,10 @@ function renderWorkRight(calId){
       var tm=ev.allDay?'Dia todo':(ev.startTime||'')+(ev.endTime?' – '+ev.endTime:'');
       card.innerHTML='<div class="wc-tmr-title">'+eh(ev.title)+'</div>'
         +'<div class="wc-tmr-time">'+tm+'</div>';
-      (function(cid,eid){card.onclick=function(){cd=new Date(tomorrow);renderWorkDay(cid);setTimeout(function(){openWEdit(cid,eid,tmrDs);},100);};})(calId,ev.id);
+      (function(cid,eid,ds){card.onclick=function(){
+        var p=ds.split('-');cd=new Date(+p[0],+p[1]-1,+p[2]);
+        renderWorkDay(cid);setTimeout(function(){openWEdit(cid,eid,ds);},100);
+      };})(calId,ev.id,tmrDs);
       secTmr.appendChild(card);
     });
   }
@@ -2733,7 +2826,7 @@ function renderWorkRight(calId){
 
   // ── NOTAS ──
   var secNotes=document.createElement('div');
-  secNotes.style.cssText='padding:12px 14px;flex:1;overflow-y:auto';
+  secNotes.style.cssText='padding:12px 16px;flex:1;overflow-y:auto';
 
   var notesHdr=document.createElement('div');
   notesHdr.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:9px';
@@ -2758,58 +2851,49 @@ function renderWorkRight(calId){
     noNotes.textContent='Nenhuma nota. Clique em + nova.';
     secNotes.appendChild(noNotes);
   } else {
-    calNotes.forEach(function(s,i){
+    calNotes.forEach(function(s){
       var col=s.color||'#fef3c7';
       var card=document.createElement('div');
       card.className='wc-note';
       card.style.background=col;
-      // Header with color dots + delete
-      var hdr=document.createElement('div');
-      hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:4px';
+      var hdr2=document.createElement('div');
+      hdr2.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:4px';
       var dots=document.createElement('div');
       dots.style.cssText='display:flex;gap:4px';
       NCLRS.forEach(function(clr){
         var dot=document.createElement('div');
         dot.style.cssText='width:10px;height:10px;border-radius:50%;background:'+clr+';cursor:pointer;border:1.5px solid '+(clr===col?'rgba(0,0,0,.3)':'transparent');
-        (function(noteId,color,dotEl){
-          dot.onclick=function(){
-            var ns=(window.stickies||[]).find(function(x){return x.id===noteId;});
-            if(ns){ns.color=color;if(window.fbSaveStickies)fbSaveStickies();renderWorkRight(calId);}
-          };
-        })(s.id,clr,dot);
+        (function(noteId,color){dot.onclick=function(){
+          var ns=(window.stickies||[]).find(function(x){return x.id===noteId;});
+          if(ns){ns.color=color;if(window.fbSaveStickies)fbSaveStickies();renderWorkRight(calId);}
+        };})(s.id,clr);
         dots.appendChild(dot);
       });
       var delBtn=document.createElement('button');
       delBtn.textContent='×';
       delBtn.style.cssText='background:none;border:none;cursor:pointer;color:rgba(0,0,0,.35);font-size:14px;line-height:1;padding:0';
-      (function(noteId,cid){
-        delBtn.onclick=function(){
-          if(!confirm('Excluir nota?'))return;
-          window.stickies=(window.stickies||[]).filter(function(x){return x.id!==noteId;});
-          if(window.fbSaveStickies)fbSaveStickies();
-          renderWorkRight(cid);
-        };
-      })(s.id,calId);
-      hdr.appendChild(dots);hdr.appendChild(delBtn);
-      card.appendChild(hdr);
-      // Textarea
+      (function(noteId,cid){delBtn.onclick=function(){
+        if(!confirm('Excluir nota?'))return;
+        window.stickies=(window.stickies||[]).filter(function(x){return x.id!==noteId;});
+        if(window.fbSaveStickies)fbSaveStickies();
+        renderWorkRight(cid);
+      };})(s.id,calId);
+      hdr2.appendChild(dots);hdr2.appendChild(delBtn);
+      card.appendChild(hdr2);
       var ta=document.createElement('textarea');
       ta.style.cssText='flex:1;background:none;border:none;outline:none;font-family:Montserrat,sans-serif;font-size:11px;color:rgba(0,0,0,.75);resize:none;min-height:48px;width:100%;display:block';
       ta.placeholder='Escreva aqui...';
       ta.value=s.text||'';
-      (function(noteId){
-        ta.onchange=function(){
-          var ns=(window.stickies||[]).find(function(x){return x.id===noteId;});
-          if(ns){ns.text=this.value;if(window.fbSaveStickies)fbSaveStickies();}
-        };
-      })(s.id);
+      (function(noteId){ta.onchange=function(){
+        var ns=(window.stickies||[]).find(function(x){return x.id===noteId;});
+        if(ns){ns.text=this.value;if(window.fbSaveStickies)fbSaveStickies();}
+      };})(s.id);
       card.appendChild(ta);
       secNotes.appendChild(card);
     });
   }
   rp.appendChild(secNotes);
 }
-
 function renderWorkWeek(calId){
   var wrap=document.getElementById('workApp');if(!wrap)return;
   var cal=(window.workCals||[]).find(function(c){return c.id===calId;});if(!cal)return;
