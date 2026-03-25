@@ -2442,10 +2442,12 @@ function renderWorkDay(calId){
   var dayNames=['Domingo','Segunda','Terca','Quarta','Quinta','Sexta','Sabado'];
   var monthNames=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 
-  main.innerHTML='<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:18px;padding-bottom:14px;border-bottom:0.5px solid #d1d5db">'
-    +'<div style="font-size:9px;font-weight:500;color:#9ca3af;letter-spacing:1.5px;text-transform:uppercase;margin-right:4px;font-family:Montserrat,sans-serif">'+dayNames[cd.getDay()]+(isT?' - Hoje':'')+'</div>'
-    +'<div style="font-size:48px;font-weight:300;color:#111827;line-height:1;font-family:Montserrat,sans-serif">'+cd.getDate()+'</div>'
-    +'<div style="font-size:13px;color:#9ca3af;font-weight:300;font-family:Montserrat,sans-serif">'+monthNames[cd.getMonth()]+' - '+cd.getFullYear()+'</div>'
+  main.innerHTML='<div style="padding-bottom:14px;margin-bottom:18px;border-bottom:0.5px solid #d1d5db">'
+    +'<div style="font-size:9px;font-weight:500;color:#9ca3af;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px;font-family:Montserrat,sans-serif">'+dayNames[cd.getDay()].toUpperCase()+(isT?' · HOJE':'')+'</div>'
+    +'<div style="display:flex;align-items:baseline;gap:0">'
+    +'<div style="font-size:52px;font-weight:300;color:#111827;line-height:1;font-family:Montserrat,sans-serif">'+cd.getDate()+'</div>'
+    +'<div style="font-size:13px;color:#9ca3af;font-weight:300;margin-left:10px;font-family:Montserrat,sans-serif">'+monthNames[cd.getMonth()]+' · '+cd.getFullYear()+'</div>'
+    +'</div>'
     +'</div>';
 
   var wevs=getWEvs(calId,ds).sort(function(a,b){return(a.startTime||'').localeCompare(b.startTime||'');});
