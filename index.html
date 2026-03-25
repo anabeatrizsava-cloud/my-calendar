@@ -397,7 +397,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 .wc-app .topbar{background:var(--wbg2);border-bottom-color:var(--wborder)}
 .wc-app .right-panel{background:var(--wbg3)}
 .wc-app .sidebar{background:#111827}
-.wc-right{width:220px;background:#f0f2f5;display:flex;flex-direction:column;overflow-y:auto;border-left:0.5px solid #d1d5db;flex-shrink:0}
+.wc-right{width:440px;background:#f0f2f5;display:flex;flex-direction:column;overflow-y:auto;border-left:0.5px solid #d1d5db;flex-shrink:0}
 .wc-right-sec{padding:12px 14px;border-bottom:0.5px solid #d1d5db}
 .wc-right-lbl{font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:9px;font-family:Montserrat,sans-serif}
 .wc-tmr{padding:7px 9px;background:rgba(255,255,255,.6);border:0.5px solid rgba(255,255,255,.9);border-left:3px solid;margin-bottom:5px}
@@ -2241,7 +2241,7 @@ function saveNewCal(){
 }
 
 // Work events
-var _weid=null,_wCalId=null,_weTags=[],_weColor='#4a5568',_weRepeatDays=[],_weRepeatMonthDays=[];
+var _weid=null,_wCalId=null,_weTags=[],_weColor='#4a5568',_weRepeatDays=[],_weRepeatMonthDays=[],_wHideDone=false;
 
 function getWEvs(calId,ds){
   var evList=window.workEvs[calId]||[];
@@ -2416,6 +2416,13 @@ function renderWorkDay(calId){
   (function(cid){btnNext.onclick=function(){nav(1);renderWorkDay(cid);};})(calId);
   topbar.appendChild(btnNext);
 
+  var btnHide=document.createElement('button');
+  btnHide.id='wHideBtn-'+calId;
+  btnHide.textContent=_wHideDone?'👁 Mostrar concluídas':'👁 Ocultar concluídas';
+  btnHide.style.cssText='background:'+(_wHideDone?'#111827':'none')+';color:'+(_wHideDone?'white':'#6b7280')+';border:0.5px solid #d1d5db;border-radius:7px;padding:4px 9px;cursor:pointer;font-size:10px;font-family:Montserrat,sans-serif';
+  (function(cid){btnHide.onclick=function(){_wHideDone=!_wHideDone;renderWorkDay(cid);};})(calId);
+  topbar.appendChild(btnHide);
+
   var btnNew=document.createElement('button');
   btnNew.textContent='+ Nova tarefa';
   btnNew.style.cssText='background:#111827;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;font-size:10px;font-weight:500;color:white;font-family:Montserrat,sans-serif';
@@ -2444,17 +2451,25 @@ function renderWorkDay(calId){
   var wevs=getWEvs(calId,ds).sort(function(a,b){return(a.startTime||'').localeCompare(b.startTime||'');});
   var notDone=wevs.filter(function(e){return e.progress!=='done';});
   var done=wevs.filter(function(e){return e.progress==='done';});
-  var all=notDone.concat(done);
+  var all=_wHideDone?notDone:notDone.concat(done);
 
   if(!all.length){
     var empty=document.createElement('div');
     empty.style.cssText='text-align:center;color:#9ca3af;padding:40px 0;font-size:12px;font-family:Montserrat,sans-serif';
-    empty.textContent='Nenhuma tarefa para hoje.';
+    empty.textContent=_wHideDone&&done.length?'Nenhuma tarefa pendente. ('+done.length+' concluída'+(done.length!==1?'s':'')+' oculta'+(done.length!==1?'s':'')+'.)':'Nenhuma tarefa para hoje.';
     main.appendChild(empty);
   } else {
     var grid=document.createElement('div');
     grid.style.cssText='display:flex;flex-direction:column;gap:7px';
     all.forEach(function(ev){grid.appendChild(wEvCard(ev,calId));});
+    // Show count of hidden done tasks
+    if(_wHideDone&&done.length){
+      var hiddenMsg=document.createElement('div');
+      hiddenMsg.style.cssText='font-size:10px;color:#9ca3af;padding:8px 4px;font-family:Montserrat,sans-serif;cursor:pointer';
+      hiddenMsg.textContent=done.length+' tarefa'+(done.length!==1?'s':'')+' concluída'+(done.length!==1?'s':'')+' oculta'+(done.length!==1?'s':'');
+      (function(cid){hiddenMsg.onclick=function(){_wHideDone=false;renderWorkDay(cid);};})(calId);
+      grid.appendChild(hiddenMsg);
+    }
     main.appendChild(grid);
   }
   leftCol.appendChild(main);
@@ -2679,7 +2694,7 @@ function renderWorkRight(calId){
   var rp=document.getElementById('workRight');
   if(!rp)return;
   rp.innerHTML='';
-  rp.style.cssText='width:220px;background:#f0f2f5;display:flex;flex-direction:column;overflow-y:auto;border-left:0.5px solid #d1d5db;flex-shrink:0';
+  rp.style.cssText='width:440px;background:#f0f2f5;display:flex;flex-direction:column;overflow-y:auto;border-left:0.5px solid #d1d5db;flex-shrink:0';
 
   // ── AMANHÃ ──
   var tomorrow=new Date(cd);tomorrow.setDate(tomorrow.getDate()+1);
