@@ -385,6 +385,44 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 @media(max-width:768px){.right-panel{display:none}.center-col{flex:1}}
 @media(max-width:500px){.sidebar{display:none}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── WORK CALENDAR ─────────────────────────── */
+.wc-app{--wbg:#f7f8fa;--wbg2:#f0f2f5;--wbg3:#e8eaed;--wborder:#d1d5db;--wborder2:#9ca3af;--wtext:#111827;--wtext2:#4b5563;--wtext3:#9ca3af;--wacc:#374151;--wacc2:#4a5568}
+.wc-app .center-col{background:var(--wbg)}
+.wc-app .topbar{background:var(--wbg2);border-bottom-color:var(--wborder)}
+.wc-app .right-panel{background:var(--wbg3)}
+.wc-app .sidebar{background:#111827}
+/* progress icon */
+.prog-icon{width:18px;height:18px;border-radius:50%;flex-shrink:0;cursor:pointer;position:relative;overflow:visible}
+.prog-icon.not-started{border:2px solid #d1d5db;background:transparent}
+.prog-icon.in-progress{border:2px solid #4a5568;background:conic-gradient(#4a5568 50%,transparent 50%)}
+.prog-icon.done{background:#111827;border:2px solid #111827;display:flex;align-items:center;justify-content:center}
+/* priority icon */
+.prio-icon{display:flex;gap:2px;align-items:flex-end;cursor:pointer;padding:2px}
+.prio-bar{border-radius:1px}
+/* work event card */
+.wev-card{display:flex;align-items:stretch;border-radius:10px;overflow:hidden;border:0.5px solid rgba(74,85,104,.18);margin-bottom:0;cursor:pointer;transition:transform .12s}
+.wev-card:hover{transform:translateX(2px)}
+.wev-card .wev-body{flex:1;background:rgba(255,255,255,.85);padding:9px 11px;display:flex;align-items:center;gap:9px}
+.wev-card .wev-accent{width:3px;flex-shrink:0}
+/* tag pill – prominent */
+.wtag-pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;margin-right:4px}
+/* work modal fields */
+.wfield{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.wfield label{font-size:9px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:1px}
+.wfield input,.wfield textarea,.wfield select{background:#f0f2f5;border:0.5px solid #d1d5db;border-radius:8px;padding:7px 10px;font-family:Montserrat,sans-serif;font-size:12px;color:#111827;outline:none;width:100%;transition:border-color .15s}
+.wfield input:focus,.wfield textarea:focus,.wfield select:focus{border-color:#4a5568}
+.seg-ctrl{display:flex;background:#e8eaed;border-radius:8px;padding:3px;gap:2px}
+.seg-btn{flex:1;padding:5px 8px;border-radius:6px;border:none;background:transparent;font-family:Montserrat,sans-serif;font-size:10px;font-weight:500;color:#6b7280;cursor:pointer;transition:all .12s;text-align:center}
+.seg-btn.act{background:white;color:#111827;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+/* cal switcher in sidebar */
+.cal-dot{width:11px;height:11px;cursor:pointer;transition:transform .1s;flex-shrink:0}
+.cal-dot:hover{transform:scale(1.2)}
+.cal-dot.main{border-radius:50%}
+.cal-dot.work{border-radius:2px}
+.cal-dot.active{box-shadow:0 0 0 2px rgba(255,255,255,.6)}
+.cal-add-btn{width:18px;height:18px;border-radius:50%;border:1.5px dashed rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .1s}
+.cal-add-btn:hover{border-color:rgba(255,255,255,.6)}
 </style>
 </head>
 <body>
@@ -422,6 +460,13 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
   <div class="sb-tag" id="sbTag1" style="background:rgba(255,255,255,0.35)" title="Tag 2"></div>
   <div class="sb-tag" id="sbTag2" style="background:rgba(255,255,255,0.2)" title="Tag 3"></div>
   <div class="sb-tag" id="sbTag3" style="background:rgba(255,255,255,0.12)" title="Tag 4"></div>
+  <div class="sb-divider"></div>
+  <div id="calSwitcher" style="display:flex;flex-direction:column;align-items:center;gap:8px">
+    <div class="cal-dot main active" id="calDotMain" style="background:#f5f3ef;width:11px;height:11px" title="Calendário principal" onclick="switchCal('main')"></div>
+  </div>
+  <div class="cal-add-btn" onclick="openNewCalModal()" title="Novo calendário">
+    <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M4 1v6M1 4h6" stroke="rgba(255,255,255,.5)" stroke-width="1.4" stroke-linecap="round"/></svg>
+  </div>
   <div class="sb-divider"></div>
   <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
     <span class="sync-dot" id="syncDot"></span>
@@ -619,6 +664,111 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
   </div>
 </div>
 
+<!-- NEW CALENDAR MODAL -->
+<div class="mo" id="newCalModal" onclick="if(event.target===this)closeNewCalModal()">
+  <div class="modal" style="width:400px" onclick="event.stopPropagation()">
+    <div class="mhd"><h3 style="font-size:15px;font-weight:500;letter-spacing:.3px;font-family:Montserrat,sans-serif">Novo calendário</h3><button class="mcl" onclick="closeNewCalModal()">✕</button></div>
+    <div class="mb" style="gap:14px">
+      <div class="wfield"><label>Nome</label><input id="ncName" placeholder="Ex: Trabalho, Projetos..."/></div>
+      <div class="wfield"><label>Finalidade</label><input id="ncPurpose" placeholder="Ex: Gestão de projetos, reuniões..."/></div>
+      <div class="wfield">
+        <label>Cor de identificação</label>
+        <div style="display:flex;gap:7px;flex-wrap:wrap" id="ncColorRow">
+          <div class="csw sel2" style="background:#4a5568;width:20px;height:20px;border-radius:4px" onclick="selNcColor(this,'#4a5568')"></div>
+          <div class="csw" style="background:#374151;width:20px;height:20px;border-radius:4px" onclick="selNcColor(this,'#374151')"></div>
+          <div class="csw" style="background:#1f2937;width:20px;height:20px;border-radius:4px" onclick="selNcColor(this,'#1f2937')"></div>
+          <div class="csw" style="background:#6b7280;width:20px;height:20px;border-radius:4px" onclick="selNcColor(this,'#6b7280')"></div>
+          <div class="csw" style="background:#111827;width:20px;height:20px;border-radius:4px" onclick="selNcColor(this,'#111827')"></div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg3);border-radius:10px;border:0.5px solid var(--border)">
+        <div>
+          <div style="font-size:12px;font-weight:500;color:var(--text)">Integrar ao calendário principal</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px">Tarefas aparecem no calendário pessoal</div>
+        </div>
+        <label style="position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0">
+          <input type="checkbox" id="ncIntegrated" checked style="opacity:0;width:0;height:0">
+          <span onclick="this.previousElementSibling.click()" style="position:absolute;cursor:pointer;inset:0;background:#d1d5db;border-radius:20px;transition:.2s" id="ncToggleSpan">
+            <span style="position:absolute;width:14px;height:14px;background:white;border-radius:50%;bottom:3px;left:3px;transition:.2s" id="ncToggleThumb"></span>
+          </span>
+        </label>
+      </div>
+    </div>
+    <div class="mf"><button class="bg-btn" onclick="closeNewCalModal()">Cancelar</button><button class="bp" onclick="saveNewCal()">Criar calendário</button></div>
+  </div>
+</div>
+
+<!-- WORK EVENT MODAL -->
+<div class="mo" id="wEvModal" onclick="if(event.target===this)closeWEvModal()">
+  <div class="modal wc-app" style="width:480px" onclick="event.stopPropagation()">
+    <div class="mhd" style="padding-bottom:8px">
+      <input class="mti" id="wetitle" placeholder="Título da tarefa..." style="font-family:Montserrat,sans-serif"/>
+      <button class="mcl" onclick="closeWEvModal()">✕</button>
+    </div>
+    <div class="mb" style="gap:12px">
+      <div class="wfield"><label>Data e Horário</label>
+        <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+          <input type="date" id="wedate" style="flex:1;min-width:120px"/>
+          <input type="time" id="westart" id="westart" style="width:88px"/>
+          <span style="color:#9ca3af;font-size:11px">–</span>
+          <input type="time" id="weend" style="width:88px"/>
+          <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:#4b5563;cursor:pointer"><input type="checkbox" id="weallday" onchange="togWeAD()" style="accent-color:#111827"/> Dia todo</label>
+        </div>
+      </div>
+      <div class="wfield"><label>Tags</label>
+        <div class="tw" id="wetw" onclick="document.getElementById('weti').focus()" style="background:#f0f2f5;border-color:#d1d5db">
+          <input class="tti" id="weti" placeholder="Digitar e Enter..." onkeydown="hWTag(event)" style="font-family:Montserrat,sans-serif"/>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="wfield"><label>Prioridade</label>
+          <div class="seg-ctrl" id="wePriority">
+            <button class="seg-btn" data-v="low" onclick="setWSeg('wePriority',this)">Baixa</button>
+            <button class="seg-btn act" data-v="medium" onclick="setWSeg('wePriority',this)">Média</button>
+            <button class="seg-btn" data-v="high" onclick="setWSeg('wePriority',this)">Alta</button>
+          </div>
+        </div>
+        <div class="wfield"><label>Progresso</label>
+          <div class="seg-ctrl" id="weProgress">
+            <button class="seg-btn act" data-v="not-started" onclick="setWSeg('weProgress',this)">—</button>
+            <button class="seg-btn" data-v="in-progress" onclick="setWSeg('weProgress',this)">Em and.</button>
+          </div>
+        </div>
+      </div>
+      <div class="wfield"><label>Cores</label>
+        <div style="display:flex;gap:5px;flex-wrap:wrap" id="weColorRow">
+          <div class="csw" style="background:#374151;width:18px;height:18px;border-radius:3px" onclick="selWEvColor(this,'#374151')"></div>
+          <div class="csw" style="background:#4a5568;width:18px;height:18px;border-radius:3px" onclick="selWEvColor(this,'#4a5568')"></div>
+          <div class="csw" style="background:#6b7280;width:18px;height:18px;border-radius:3px" onclick="selWEvColor(this,'#6b7280')"></div>
+          <div class="csw" style="background:#9ca3af;width:18px;height:18px;border-radius:3px" onclick="selWEvColor(this,'#9ca3af')"></div>
+          <div class="csw" style="background:#111827;width:18px;height:18px;border-radius:3px" onclick="selWEvColor(this,'#111827')"></div>
+          <div class="csw" style="background:#1f2937;width:18px;height:18px;border-radius:3px" onclick="selWEvColor(this,'#1f2937')"></div>
+          <div class="csw" style="background:#d1d5db;width:18px;height:18px;border-radius:3px" onclick="selWEvColor(this,'#d1d5db')"></div>
+          <div class="csw" style="background:#f3f4f6;width:18px;height:18px;border-radius:3px;border:0.5px solid #d1d5db" onclick="selWEvColor(this,'#f3f4f6')"></div>
+        </div>
+      </div>
+      <div class="wfield"><label>Descrição</label><textarea id="wedesc" placeholder="Notas..." style="min-height:50px;resize:vertical"></textarea></div>
+      <div class="wfield"><label>Repetir</label>
+        <div class="seg-ctrl" id="weRepeat" style="flex-wrap:wrap">
+          <button class="seg-btn act" data-v="none" onclick="setWSeg('weRepeat',this)">Nunca</button>
+          <button class="seg-btn" data-v="daily" onclick="setWSeg('weRepeat',this)">Diário</button>
+          <button class="seg-btn" data-v="weekly" onclick="setWSeg('weRepeat',this)">Semanal</button>
+          <button class="seg-btn" data-v="monthly" onclick="setWSeg('weRepeat',this)">Mensal</button>
+        </div>
+      </div>
+    </div>
+    <div class="mdiv"></div>
+    <div class="mf">
+      <button class="bdel" id="weDbtn" onclick="delWEv()" style="display:none">Excluir</button>
+      <button class="bg-btn" onclick="closeWEvModal()">Cancelar</button>
+      <button class="bp" style="background:#111827" onclick="saveWEv()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- WORK VIEW CONTAINER -->
+<div id="workApp" style="display:none;flex:1;overflow:hidden;display:none" class="wc-app"></div>
+
 <!-- POPUP -->
 <div class="pop-ov" id="popOv">
   <div class="pop-box">
@@ -732,6 +882,12 @@ function renderDayLoad(ds) {
 
 // ── BULK SELECT ───────────────────────────────────────────
 let bulkMode = false;
+let editingInstanceDate = null;
+let hideDone = false;
+// ── WORK CALENDARS ──
+window.workCals = window.workCals || [];   // [{id,name,purpose,color,integrated}]
+window.workEvs  = window.workEvs  || {};   // {calId: [events]}
+let activeCal   = 'main';                  // 'main' | calId
 let editingInstanceDate = null;
 let hideDone = false;
 function toggleHideDone(){
@@ -1009,7 +1165,11 @@ function rDay(c){
 function ecHTML(ev){
   if(bulkMode){
     const sel=selectedEvIds.has(ev.id);
-    const tg=ev.tags&&ev.tags.length?'<div class="etgs">'+ev.tags.map(t=>'<span class="etg">'+t+'</span>').join('')+'</div>':'';
+    const tg=ev.tags&&ev.tags.length?
+    (ev._fromWork
+      ? '<div class="etgs">'+ev.tags.map((t,i)=>{const wc=['#374151','#4a5568','#6b7280','#1f2937','#111827'];return'<span class="wtag-pill" style="background:'+wc[i%5]+';color:white">'+t+'</span>';}).join('')+'</div>'
+      : '<div class="etgs">'+ev.tags.map(t=>'<span class="etg">'+t+'</span>').join('')+'</div>'
+    ):'';
     const tm=ev.allDay?'Dia todo':ev.startTime+' - '+ev.endTime;
     return'<div class="ec bulk-ev '+(sel?'bulk-selected':'')+(ev.done?' done':'')+'" data-eid="'+ev.id+'" data-idate="'+(ev._instanceDate||ev.date)+'" style="border-left-color:'+(ev.color||'#c87060')+'">'
       +'<div class="bulk-chk" data-bid="'+ev.id+'">'+(sel?'✓':'')+'</div>'
@@ -1371,6 +1531,13 @@ function openNew(ds){
 function qNew(ds){openNew(ds);}
 function goDV(ds){const p=ds.split('-');cd=new Date(+p[0],+p[1]-1,+p[2]);sw('day',null);}
 function openEdit(id,instanceDate){
+  // work calendar events shown in main are read-only — redirect to work modal
+  if(id&&id.startsWith('wk_')){
+    const realId=id.slice(3);
+    const calId=(window.workCals||[]).find(c=>(window.workEvs[c.id]||[]).some(e=>e.id===realId));
+    if(calId)openWEdit(calId.id,realId,instanceDate);
+    return;
+  }
   const ev=evs.find(e=>e.id===id);if(!ev)return;
   editingInstanceDate=instanceDate||null;
   eid=id;selWeekDays=[...(ev.repeatDays||[])];selMonthDays=[...(ev.repeatMonthDays||[])];
@@ -1423,6 +1590,8 @@ function dupEv(){if(!eid)return;const o=evs.find(e=>e.id===eid);if(!o)return;con
 function qDup(id){const o=evs.find(e=>e.id===id);if(!o)return;const cp=JSON.parse(JSON.stringify(o));cp.id=gid();cp.title+=' (copia)';if(window.fbSaveEv)fbSaveEv(cp);showToast('Duplicado!');}
 function qDel(id,idate){const ev=evs.find(e=>e.id===id);if(!ev)return;if(ev.repeat&&ev.repeat!=='none'&&idate&&idate!==ev.date){const all=confirm('Excluir TODAS as ocorrencias?\n\nOK = todas   Cancelar = so '+idate);if(all){if(window.fbDelEv)fbDelEv(id);showToast('Todas excluidas.');}else{if(!ev.deletedExceptions)ev.deletedExceptions=[];if(!ev.deletedExceptions.includes(idate))ev.deletedExceptions.push(idate);if(window.fbSaveEv)fbSaveEv(ev);showToast('Dia excluido.');}}else{if(!confirm('Excluir?'))return;if(window.fbDelEv)fbDelEv(id);showToast('Excluido.');}renderView();}
 function togDone(id,idate){
+  // ignore work events shown in main — they're managed in work calendar
+  if(id&&id.startsWith('wk_'))return;
   const ev=evs.find(e=>e.id===id);
   if(!ev)return;
   const isRepeated=ev.repeat&&ev.repeat!=='none';
@@ -1808,6 +1977,416 @@ async function refreshActivityWeather(ev){
   return await fetchActivityWeather(ev.location,ev.date,ev.startTime);
 }
 
+// ══════════════════════════════════════════════════════════
+// WORK CALENDAR ENGINE
+// ══════════════════════════════════════════════════════════
+let _weid=null, _wCalId=null, _weTags=[], _weColor='#4a5568';
+const WC_COLORS=['#374151','#4a5568','#6b7280','#9ca3af','#111827','#1f2937','#d1d5db','#f3f4f6'];
+let _ncColor='#4a5568';
+
+// ── Firebase helpers for work cals ──
+function fbSaveWorkCals(){
+  if(!window.auth||!window.auth.currentUser)return;
+  try{
+    const {setDoc,doc}=window.firestore;
+    setDoc(doc(window.db,'users',window.auth.currentUser.uid,'config','workCals'),{list:workCals});
+  }catch(e){}
+}
+function fbSaveWorkEvs(calId){
+  if(!window.auth||!window.auth.currentUser)return;
+  try{
+    const {setDoc,doc}=window.firestore;
+    setDoc(doc(window.db,'users',window.auth.currentUser.uid,'workEvs',calId),{events:workEvs[calId]||[]});
+  }catch(e){}
+}
+function fbLoadWorkData(){
+  if(!window.auth||!window.auth.currentUser)return;
+  try{
+    const {onSnapshot,doc,collection}=window.firestore;
+    const uid=window.auth.currentUser.uid;
+    onSnapshot(doc(window.db,'users',uid,'config','workCals'),snap=>{
+      if(snap.exists()){window.workCals=(snap.data().list||[]);renderCalSwitcher();}
+    });
+    onSnapshot(collection(window.db,'users',uid,'workEvs'),snap=>{
+      snap.docs.forEach(d=>{window.workEvs[d.id]=d.data().events||[];});
+      if(activeCal!=='main')renderWorkView();
+    });
+  }catch(e){}
+}
+
+// ── Calendar switcher ──
+function switchCal(calId){
+  activeCal=calId;
+  const mainApp=document.getElementById('mainApp');
+  const workDiv=document.getElementById('workApp');
+  if(calId==='main'){
+    if(mainApp)mainApp.style.display='flex';
+    if(workDiv)workDiv.style.display='none';
+    document.querySelectorAll('.cal-dot').forEach(d=>d.classList.remove('active'));
+    const m=document.getElementById('calDotMain');if(m)m.classList.add('active');
+  } else {
+    if(mainApp)mainApp.style.display='none';
+    if(workDiv){workDiv.style.display='flex';workDiv.style.flexDirection='column';}
+    document.querySelectorAll('.cal-dot').forEach(d=>d.classList.remove('active'));
+    const d=document.getElementById('calDot_'+calId);if(d)d.classList.add('active');
+    renderWorkView(calId);
+  }
+}
+
+function renderCalSwitcher(){
+  const sw=document.getElementById('calSwitcher');if(!sw)return;
+  let html='<div class="cal-dot main '+(activeCal==="main"?"active":"")+'" id="calDotMain" style="background:#f5f3ef;width:11px;height:11px" title="Calendário principal" onclick="switchCal('main')"></div>';
+  (window.workCals||[]).forEach(c=>{
+    const intIcon=c.integrated
+      ?'<svg width="7" height="7" viewBox="0 0 8 8" fill="none"><path d="M1 4h6M4 1v6" stroke="rgba(255,255,255,.6)" stroke-width="1.2" stroke-linecap="round"/></svg>'
+      :'<svg width="7" height="7" viewBox="0 0 8 8" fill="none"><path d="M2 4h4" stroke="rgba(255,255,255,.4)" stroke-width="1.2" stroke-linecap="round"/></svg>';
+    html+='<div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:2px">'+
+      '<div class="cal-dot work '+(activeCal===c.id?"active":"")+'" id="calDot_'+c.id+'" style="background:'+c.color+';width:11px;height:11px" title="'+c.name+(c.integrated?" (integrado)":"")+'" onclick="switchCal(''+c.id+'')"></div>'+
+      '<div style="cursor:pointer;opacity:.5;display:flex;align-items:center;justify-content:center;width:14px;height:10px" title="'+(c.integrated?"Desintegrar do principal":"Integrar ao principal")+'" onclick="toggleCalIntegration(''+c.id+'')">'+intIcon+'</div>'+
+    '</div>';
+  });
+  sw.innerHTML=html;
+}
+
+// ── New Calendar Modal ──
+function openNewCalModal(){
+  const m=document.getElementById('newCalModal');if(m)m.classList.add('open');
+  const inp=document.getElementById('ncName');if(inp)inp.focus();
+  // toggle visual sync
+  const cb=document.getElementById('ncIntegrated');
+  const sp=document.getElementById('ncToggleSpan');
+  const th=document.getElementById('ncToggleThumb');
+  if(cb&&sp&&th){
+    cb.onchange=function(){
+      sp.style.background=cb.checked?'#111827':'#d1d5db';
+      th.style.left=cb.checked?'19px':'3px';
+    };
+    sp.style.background='#111827';th.style.left='19px';
+  }
+}
+function closeNewCalModal(){const m=document.getElementById('newCalModal');if(m)m.classList.remove('open');}
+function selNcColor(el,c){
+  _ncColor=c;
+  document.querySelectorAll('#ncColorRow .csw').forEach(e=>e.classList.remove('sel2'));
+  el.classList.add('sel2');
+}
+function saveNewCal(){
+  const name=(document.getElementById('ncName')||{}).value||'';
+  if(!name.trim()){showToast('Digite um nome!');return;}
+  const cal={
+    id:'cal_'+Date.now(),
+    name:name.trim(),
+    purpose:(document.getElementById('ncPurpose')||{}).value||'',
+    color:_ncColor,
+    integrated:(document.getElementById('ncIntegrated')||{}).checked
+  };
+  window.workCals.push(cal);
+  window.workEvs[cal.id]=[];
+  fbSaveWorkCals();fbSaveWorkEvs(cal.id);
+  renderCalSwitcher();
+  closeNewCalModal();
+  showToast('Calendário "'+cal.name+'" criado!');
+}
+
+// ── Work Event helpers ──
+function getWEvs(calId,ds){
+  const evList=window.workEvs[calId]||[];
+  const res=[];
+  evList.forEach(ev=>{
+    if(ev.date===ds){
+      if(ev.repeat&&ev.repeat!=='none'){res.push({...ev,_instanceDate:ds,progress:ev.doneExceptions&&ev.doneExceptions[ds]!==undefined?ev.doneExceptions[ds]:ev.progress});}
+      else{res.push(ev);}
+      return;
+    }
+    if(!ev.repeat||ev.repeat==='none')return;
+    if(ev.deletedExceptions&&ev.deletedExceptions.includes(ds))return;
+    const ed=new Date(ev.date+'T00:00:00'),cd2=new Date(ds+'T00:00:00');
+    if(cd2<=ed)return;
+    const diff=Math.round((cd2-ed)/86400000),dow=cd2.getDay();
+    if(ev.repeat==='daily')res.push({...ev,date:ds,_instanceDate:ds});
+    else if(ev.repeat==='weekly'&&diff%7===0)res.push({...ev,date:ds,_instanceDate:ds});
+    else if(ev.repeat==='monthly'&&cd2.getDate()===ed.getDate())res.push({...ev,date:ds,_instanceDate:ds});
+  });
+  return res;
+}
+
+// progress icon SVG
+function progIcon(p,evId,idate,calId){
+  const cls=p==='done'?'done':p==='in-progress'?'in-progress':'not-started';
+  const inner=p==='done'?'<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>':'';
+  return '<div class="prog-icon '+cls+'" title="Progresso" onclick="event.stopPropagation();cycleWProg(''+calId+'',''+evId+'',''+idate+'',this)">'+inner+'</div>';
+}
+
+// priority icon
+function prioIcon(p){
+  const colors={high:['#111827','#111827','#111827'],medium:['#6b7280','#6b7280','#e5e7eb'],low:['#d1d5db','#e5e7eb','#e5e7eb']};
+  const c=colors[p]||colors.medium;
+  return '<div class="prio-icon" title="Prioridade: '+p+'">'+
+    '<div class="prio-bar" style="width:4px;height:5px;background:'+c[0]+'"></div>'+
+    '<div class="prio-bar" style="width:4px;height:9px;background:'+c[1]+'"></div>'+
+    '<div class="prio-bar" style="width:4px;height:13px;background:'+c[2]+'"></div>'+
+  '</div>';
+}
+
+function cycleWProg(calId,evId,idate,el){
+  const evList=window.workEvs[calId]||[];
+  const ev=evList.find(e=>e.id===evId);if(!ev)return;
+  const order=['not-started','in-progress','done'];
+  const cur=ev.progress||'not-started';
+  const next=order[(order.indexOf(cur)+1)%3];
+  ev.progress=next;
+  fbSaveWorkEvs(calId);
+  renderWorkView(calId);
+}
+
+// tag pill rendering
+function wTagPills(tags){
+  if(!tags||!tags.length)return'';
+  const colors=['#374151','#4a5568','#6b7280','#1f2937','#111827'];
+  return tags.map((t,i)=>{
+    const bg=colors[i%colors.length];
+    return'<span class="wtag-pill" style="background:'+bg+';color:white">'+t+'</span>';
+  }).join('');
+}
+
+// work event card HTML
+function wEvCard(ev,calId){
+  const col=ev.color||'#4a5568';
+  const p=ev.progress||'not-started';
+  const prio=ev.priority||'medium';
+  const idate=ev._instanceDate||ev.date;
+  const tags=wTagPills(ev.tags);
+  const tm=ev.allDay?'Dia todo':(ev.startTime||'')+(ev.endTime?' – '+ev.endTime:'');
+  return'<div class="wev-card" onclick="openWEdit(''+calId+'',''+ev.id+'',''+idate+'')" data-weid="'+ev.id+'">'+
+    '<div class="wev-accent" style="background:'+col+'"></div>'+
+    '<div class="wev-body">'+
+      progIcon(p,ev.id,idate,calId)+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:12px;font-weight:500;color:'+(p==='done'?'#9ca3af':'#111827')+(p==='done'?';text-decoration:line-through':'')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+eh(ev.title)+'</div>'+
+        '<div style="font-size:10px;color:#9ca3af;font-family:monospace;margin-top:1px">'+tm+'</div>'+
+        (tags?'<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px">'+tags+'</div>':'')+
+      '</div>'+
+      prioIcon(prio)+
+    '</div>'+
+  '</div>';
+}
+
+// ── Work View ──
+function renderWorkView(calId){
+  calId=calId||activeCal;if(calId==='main')return;
+  const cal=(window.workCals||[]).find(c=>c.id===calId);if(!cal)return;
+  const wrap=document.getElementById('workApp');if(!wrap)return;
+  wrap.innerHTML='';
+
+  // topbar
+  const tb=document.createElement('div');
+  tb.className='topbar wc-app';
+  tb.style.cssText='background:#f0f2f5;border-bottom:0.5px solid #d1d5db';
+  const ds=tds(cd);
+  tb.innerHTML='<div style="font-size:11px;font-weight:600;color:#111827;letter-spacing:1px;text-transform:uppercase">'+cal.name+'</div>'+
+    '<div style="flex:1"></div>'+
+    '<div style="display:flex;gap:3px;background:#e8eaed;border-radius:9px;padding:3px" id="wViewSw">'+
+      '<button class="seg-btn act" data-wv="day" onclick="setWView('day',this)">Dia</button>'+
+      '<button class="seg-btn" data-wv="week" onclick="setWView('week',this)">Semana</button>'+
+      '<button class="seg-btn" data-wv="notes" onclick="setWView('notes',this)">Notas</button>'+
+    '</div>'+
+    '<button onclick="nav(-1);renderWorkView(''+calId+'')" style="background:none;border:0.5px solid #d1d5db;border-radius:7px;padding:4px 8px;cursor:pointer;font-size:11px;color:#4b5563">‹</button>'+
+    '<button onclick="goToday();renderWorkView(''+calId+'')" style="background:#111827;border:none;border-radius:7px;padding:5px 12px;cursor:pointer;font-size:10px;font-weight:500;color:white">Hoje</button>'+
+    '<button onclick="nav(1);renderWorkView(''+calId+'')" style="background:none;border:0.5px solid #d1d5db;border-radius:7px;padding:4px 8px;cursor:pointer;font-size:11px;color:#4b5563">›</button>'+
+    '<button onclick="openWNew(''+calId+'')" style="background:#111827;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;font-size:10px;font-weight:500;color:white;display:flex;align-items:center;gap:4px">'+
+      '<svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Nova tarefa</button>';
+  wrap.appendChild(tb);
+
+  // main area
+  const main=document.createElement('div');
+  main.style.cssText='flex:1;overflow-y:auto;padding:20px 24px';
+  const days=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const months=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const today=new Date();const isT=cd.toDateString()===today.toDateString();
+
+  // date header
+  main.innerHTML='<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:18px;padding-bottom:14px;border-bottom:0.5px solid #d1d5db">'+
+    '<div style="font-size:9px;font-weight:500;color:#9ca3af;letter-spacing:1.5px;text-transform:uppercase;margin-right:4px">'+days[cd.getDay()]+(isT?' · Hoje':'')+'</div>'+
+    '<div style="font-size:48px;font-weight:300;color:#111827;line-height:1;font-family:Montserrat,sans-serif">'+cd.getDate()+'</div>'+
+    '<div style="font-size:13px;color:#9ca3af;font-weight:300">'+months[cd.getMonth()]+' · '+cd.getFullYear()+'</div>'+
+  '</div>';
+
+  // tasks
+  const wevs=getWEvs(calId,ds).sort((a,b)=>(a.startTime||'').localeCompare(b.startTime||''));
+  const notDone=wevs.filter(e=>e.progress!=='done');
+  const done=wevs.filter(e=>e.progress==='done');
+  const all=[...notDone,...done];
+
+  if(!all.length){
+    main.innerHTML+='<div style="text-align:center;color:#9ca3af;padding:40px 0;font-size:12px">Nenhuma tarefa para hoje.<br><span style="font-size:11px">Clique em Nova tarefa para adicionar.</span></div>';
+  } else {
+    const grid=document.createElement('div');grid.style.cssText='display:flex;flex-direction:column;gap:7px';
+    all.forEach(ev=>{grid.innerHTML+=wEvCard(ev,calId);});
+    main.appendChild(grid);
+  }
+  wrap.appendChild(main);
+}
+
+// ── Work Event Modal ──
+function openWNew(calId){
+  _weid=null;_wCalId=calId;_weTags=[];_weColor='#4a5568';
+  const m=document.getElementById('wEvModal');if(!m)return;
+  document.getElementById('wetitle').value='';
+  document.getElementById('wedate').value=tds(cd);
+  document.getElementById('westart').value='09:00';
+  document.getElementById('weend').value='10:00';
+  document.getElementById('weallday').checked=false;
+  document.getElementById('wedesc').value='';
+  document.getElementById('weDbtn').style.display='none';
+  // reset segs
+  setWSeg('wePriority',document.querySelector('#wePriority [data-v="medium"]'));
+  setWSeg('weProgress',document.querySelector('#weProgress [data-v="not-started"]'));
+  setWSeg('weRepeat',document.querySelector('#weRepeat [data-v="none"]'));
+  // reset tags
+  _weTags=[];renderWTags();
+  // reset color
+  document.querySelectorAll('#weColorRow .csw').forEach(e=>e.classList.remove('sel2'));
+  const first=document.querySelector('#weColorRow .csw');if(first)first.classList.add('sel2');
+  m.classList.add('open');
+  document.getElementById('wetitle').focus();
+}
+function openWEdit(calId,evId,idate){
+  const ev=(window.workEvs[calId]||[]).find(e=>e.id===evId);if(!ev)return;
+  _weid=evId;_wCalId=calId;_weTags=ev.tags||[];_weColor=ev.color||'#4a5568';
+  const m=document.getElementById('wEvModal');if(!m)return;
+  document.getElementById('wetitle').value=ev.title||'';
+  document.getElementById('wedate').value=ev.date;
+  document.getElementById('westart').value=ev.startTime||'';
+  document.getElementById('weend').value=ev.endTime||'';
+  document.getElementById('weallday').checked=!!ev.allDay;
+  document.getElementById('wedesc').value=ev.description||'';
+  document.getElementById('weDbtn').style.display='block';
+  setWSeg('wePriority',document.querySelector('#wePriority [data-v="'+(ev.priority||'medium')+'"]'));
+  setWSeg('weProgress',document.querySelector('#weProgress [data-v="'+(ev.progress||'not-started')+'"]'));
+  setWSeg('weRepeat',document.querySelector('#weRepeat [data-v="'+(ev.repeat||'none')+'"]'));
+  renderWTags();
+  document.querySelectorAll('#weColorRow .csw').forEach(e=>e.classList.remove('sel2'));
+  const target=document.querySelector('#weColorRow .csw[style*="'+ev.color+'"]');
+  if(target)target.classList.add('sel2');
+  m.classList.add('open');
+}
+function closeWEvModal(){const m=document.getElementById('wEvModal');if(m)m.classList.remove('open');}
+function togWeAD(){
+  const ad=document.getElementById('weallday');
+  const sf=document.getElementById('westart');const ef=document.getElementById('weend');
+  if(sf)sf.disabled=ad.checked;if(ef)ef.disabled=ad.checked;
+}
+function setWSeg(groupId,btn){
+  if(!btn)return;
+  document.querySelectorAll('#'+groupId+' .seg-btn').forEach(b=>b.classList.remove('act'));
+  btn.classList.add('act');
+}
+function getWSeg(groupId){
+  const btn=document.querySelector('#'+groupId+' .seg-btn.act');
+  return btn?btn.dataset.v:'';
+}
+function selWEvColor(el,c){
+  _weColor=c;
+  document.querySelectorAll('#weColorRow .csw').forEach(e=>e.classList.remove('sel2'));
+  el.classList.add('sel2');
+}
+function hWTag(e){
+  if(e.key==='Enter'||e.key===','){
+    e.preventDefault();
+    const v=e.target.value.trim();
+    if(v&&!_weTags.includes(v)){_weTags.push(v);renderWTags();}
+    e.target.value='';
+  }
+}
+function renderWTags(){
+  const tw=document.getElementById('wetw');if(!tw)return;
+  const inp=document.getElementById('weti');
+  tw.innerHTML='';
+  _weTags.forEach((t,i)=>{
+    const chip=document.createElement('div');
+    chip.className='tch';chip.style.background='#374151';
+    chip.innerHTML=t+'<button class="tcr" onclick="_weTags.splice('+i+',1);renderWTags()">×</button>';
+    tw.appendChild(chip);
+  });
+  if(inp)tw.appendChild(inp);
+}
+function saveWEv(){
+  const title=(document.getElementById('wetitle')||{}).value||'';
+  if(!title.trim()){showToast('Digite um título!');return;}
+  const ev={
+    id:_weid||gid(),
+    title:title.trim(),
+    date:document.getElementById('wedate').value,
+    startTime:document.getElementById('westart').value,
+    endTime:document.getElementById('weend').value,
+    allDay:document.getElementById('weallday').checked,
+    description:document.getElementById('wedesc').value,
+    priority:getWSeg('wePriority'),
+    progress:getWSeg('weProgress'),
+    repeat:getWSeg('weRepeat'),
+    color:_weColor,
+    tags:[..._weTags],
+    calId:_wCalId
+  };
+  const list=window.workEvs[_wCalId]||[];
+  if(_weid){const idx=list.findIndex(e=>e.id===_weid);if(idx>=0)list[idx]=ev;else list.push(ev);}
+  else list.push(ev);
+  window.workEvs[_wCalId]=list;
+  fbSaveWorkEvs(_wCalId);
+  closeWEvModal();
+  renderWorkView(_wCalId);
+  // if integrated, also show in main
+  const cal=(window.workCals||[]).find(c=>c.id===_wCalId);
+  if(cal&&cal.integrated)renderView();
+  showToast('Tarefa salva!');
+}
+function delWEv(){
+  if(!_weid||!_wCalId)return;
+  if(!confirm('Excluir esta tarefa?'))return;
+  const list=window.workEvs[_wCalId]||[];
+  window.workEvs[_wCalId]=list.filter(e=>e.id!==_weid);
+  fbSaveWorkEvs(_wCalId);
+  closeWEvModal();renderWorkView(_wCalId);
+  showToast('Excluída.');
+}
+function setWView(v,btn){
+  setWSeg('wViewSw',btn);
+  renderWorkView(_wCalId||activeCal);
+}
+
+function toggleCalIntegration(calId){
+  const cal=(window.workCals||[]).find(c=>c.id===calId);
+  if(!cal)return;
+  cal.integrated=!cal.integrated;
+  fbSaveWorkCals();
+  renderCalSwitcher();
+  renderView(); // refresh main calendar immediately
+  showToast(cal.integrated?'"'+cal.name+'" integrado ao principal':'"'+cal.name+'" removido do principal.');
+}
+
+// ── Integrate work events into main calendar ──
+// Override getEvs to include integrated work events (READ-ONLY, never modifies evs[])
+const _origGetEvs=getEvs;
+function getEvs(ds){
+  const res=_origGetEvs(ds);  // original events — untouched
+  (window.workCals||[]).forEach(cal=>{
+    if(!cal.integrated)return;
+    (getWEvs(cal.id,ds)||[]).forEach(wev=>{
+      // spread copy — never touches original workEvs array
+      res.push({...wev,_fromWork:true,_wCalId:cal.id,color:wev.color||cal.color,id:'wk_'+wev.id});
+    });
+  });
+  return res;
+}
+
+// load work data when app starts
+const _origInitApp=window.initApp;
+window.initApp=function(){
+  _origInitApp&&_origInitApp();
+  fbLoadWorkData();
+  renderCalSwitcher();
+};
+
 function setNoEmoji(){
   cemoji='none';
   const btn=document.getElementById('etrig');
@@ -1859,7 +2438,11 @@ function ecHTMLNew(ev){
   const col=ev.color||'#C26D64';
   const bg=ev.done?'rgba(255,255,255,0.35)':'rgba(255,255,255,0.65)';
   const borderTint=col+'33';
-  const tg=ev.tags&&ev.tags.length?'<div class="etgs">'+ev.tags.map(t=>'<span class="etg">'+t+'</span>').join('')+'</div>':'';
+  const tg=ev.tags&&ev.tags.length?
+    (ev._fromWork
+      ? '<div class="etgs">'+ev.tags.map((t,i)=>{const wc=['#374151','#4a5568','#6b7280','#1f2937','#111827'];return'<span class="wtag-pill" style="background:'+wc[i%5]+';color:white">'+t+'</span>';}).join('')+'</div>'
+      : '<div class="etgs">'+ev.tags.map(t=>'<span class="etg">'+t+'</span>').join('')+'</div>'
+    ):'';
   const sc=ev.subtasks&&ev.subtasks.length?'<div class="ec-subs">'+ev.subtasks.slice(0,2).map(s=>'<div class="ec-sub-item"><div class="ec-sub-chk'+(s.done?' done':'')+'">'+( s.done?'✓':'')+'</div><span class="'+(s.done?'ec-sub-done':'')+'">'+eh(s.text)+'</span></div>').join('')+'</div>':'';
   const emojiStr=(ev.emoji&&ev.emoji!=='none')?ev.emoji+' ':'';
   const idate=ev._instanceDate||ev.date;
@@ -1868,6 +2451,12 @@ function ecHTMLNew(ev){
     '<div style="flex:1;background:'+bg+';padding:9px 12px;display:flex;align-items:flex-start;gap:9px;backdrop-filter:blur(4px)">'+
       '<div style="width:16px;height:16px;border-radius:4px;border:0.5px solid rgba(26,26,26,0.2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#f5f3ef;cursor:pointer;background:'+(ev.done?col:'transparent')+'" data-chk="'+ev.id+'" data-idate="'+idate+'">'+(ev.done?'✓':'')+'</div>'+
       '<div style="flex:1;min-width:0">'+
+        '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:1px">'+
+          (ev._fromWork?'<span style="display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:4px;font-size:9px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;background:'+(ev.color||'#4a5568')+';color:white;flex-shrink:0">'+
+            '<svg width="7" height="7" viewBox="0 0 8 8" fill="none"><rect x=".5" y=".5" width="7" height="7" rx="1" stroke="rgba(255,255,255,.7)" stroke-width="1"/></svg>'+
+            eh((window.workCals||[]).find(c=>c.id===ev._wCalId)?((window.workCals||[]).find(c=>c.id===ev._wCalId).name):'Trabalho')+
+          '</span>':'')+
+        '</div>'+
         '<div class="ect" style="font-size:12px;font-weight:500;color:'+(ev.done?'var(--text3)':'var(--text)')+(ev.done?';text-decoration:line-through':'')+'">'+ emojiStr+eh(ev.title)+'</div>'+
         '<div class="ectm" style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-top:1px;display:flex;align-items:center;flex-wrap:wrap;gap:3px">'+(ev.allDay?'Dia todo':ev.startTime+' – '+ev.endTime)+(ev.tags&&ev.tags.length?' · '+ev.tags[0]:'')+(ev.isExternal&&ev.weatherData?'<span class="ev-weather-pill">'+ev.weatherData.icon+' '+ev.weatherData.temp+'°C'+(ev.weatherData.precip>50?' 🌂':'')+'</span>':'')+(ev.isExternal&&!ev.weatherData?'<span class="ev-weather-pill" style="opacity:.5">📍 EXT</span>':'')+'</div>'+
         tg+sc+
