@@ -397,6 +397,14 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 .wc-app .topbar{background:var(--wbg2);border-bottom-color:var(--wborder)}
 .wc-app .right-panel{background:var(--wbg3)}
 .wc-app .sidebar{background:#111827}
+.wc-right{width:220px;background:#f0f2f5;display:flex;flex-direction:column;overflow-y:auto;border-left:0.5px solid #d1d5db;flex-shrink:0}
+.wc-right-sec{padding:12px 14px;border-bottom:0.5px solid #d1d5db}
+.wc-right-lbl{font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:9px;font-family:Montserrat,sans-serif}
+.wc-tmr{padding:7px 9px;background:rgba(255,255,255,.6);border:0.5px solid rgba(255,255,255,.9);border-left:3px solid;margin-bottom:5px}
+.wc-tmr-title{font-size:11px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wc-tmr-time{font-size:9px;color:#9ca3af;font-family:monospace;margin-top:1px}
+.wc-note{border-radius:10px;padding:9px 10px;margin-bottom:6px;font-size:11px;font-family:Montserrat,sans-serif;color:rgba(0,0,0,.75);cursor:text}
+.wc-note textarea{flex:1;background:none;border:none;outline:none;font-family:Montserrat,sans-serif;font-size:11px;color:rgba(0,0,0,.75);resize:none;min-height:48px;width:100%;display:block}
 /* progress icon */
 .prog-icon{width:18px;height:18px;border-radius:50%;flex-shrink:0;cursor:pointer;position:relative;overflow:visible}
 .prog-icon.not-started{border:2px solid #d1d5db;background:transparent}
@@ -560,7 +568,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 <div class="right-panel" id="rightPanel"></div>
 
 <!-- WORK VIEW (replaces center+right when work cal active) -->
-<div id="workApp" style="display:none;flex:1;overflow:hidden;flex-direction:column" class="wc-app"></div>
+<div id="workApp" style="display:none;flex:1;overflow:hidden;flex-direction:column" class="wc-app"><div class="wc-right" id="workRight" style="display:none"></div></div>
 
 </div><!-- main-layout -->
 </div><!-- app -->
@@ -2349,71 +2357,75 @@ function renderWorkDay(calId){
   if(!cal)return;
   var wrap=document.getElementById('workApp');
   if(!wrap)return;
-  wrap.innerHTML='';
+  // Clear all children EXCEPT wc-right (to preserve it between view switches)
+  Array.from(wrap.children).forEach(function(ch){
+    if(!ch.classList.contains('wc-right'))ch.remove();
+  });
   _wCalId=calId;
 
-  // Build topbar using DOM (avoids all quote escaping issues in innerHTML)
+  // ── TOPBAR (DOM-based, no innerHTML escaping issues) ──
   var topbar=document.createElement('div');
   topbar.className='topbar';
   topbar.style.cssText='background:#f0f2f5;border-bottom:0.5px solid #d1d5db';
 
-  // Cal name
   var nameDiv=document.createElement('div');
   nameDiv.style.cssText='font-size:11px;font-weight:600;color:#111827;letter-spacing:1px;text-transform:uppercase;font-family:Montserrat,sans-serif';
   nameDiv.textContent=cal.name;
   topbar.appendChild(nameDiv);
 
-  // Spacer
-  var spacer=document.createElement('div');
-  spacer.style.flex='1';
+  var spacer=document.createElement('div');spacer.style.flex='1';
   topbar.appendChild(spacer);
 
-  // View switcher: Dia / Semana / Notas
   var vsw=document.createElement('div');
   vsw.style.cssText='display:flex;background:#e5e7eb;border-radius:8px;overflow:hidden;margin-right:6px';
   [['day','Dia'],['week','Semana'],['notes','Notas']].forEach(function(pair){
-    var v=pair[0],label=pair[1];
     var btn=document.createElement('button');
-    btn.id='wvb-'+v+'-'+calId;
-    btn.textContent=label;
-    btn.style.cssText=(v==='day'?'background:#111827;color:white;font-weight:500':'background:none;color:#6b7280;font-weight:400')+';border:none;padding:4px 11px;font-family:Montserrat,sans-serif;font-size:10px;cursor:pointer';
-    (function(view,cid){btn.onclick=function(){setWView(view,cid,this);};})(v,calId);
+    btn.id='wvb-'+pair[0]+'-'+calId;
+    btn.textContent=pair[1];
+    btn.style.cssText=(pair[0]==='day'?'background:#111827;color:white;font-weight:500':'background:none;color:#6b7280;font-weight:400')+';border:none;padding:4px 11px;font-family:Montserrat,sans-serif;font-size:10px;cursor:pointer';
+    (function(v,cid){btn.onclick=function(){setWView(v,cid,this);};})(pair[0],calId);
     vsw.appendChild(btn);
   });
   topbar.appendChild(vsw);
 
-  // Nav prev
   var btnPrev=document.createElement('button');
   btnPrev.innerHTML='&#8249;';
   btnPrev.style.cssText='background:none;border:0.5px solid #d1d5db;border-radius:7px;padding:4px 8px;cursor:pointer;font-size:11px;color:#4b5563';
   (function(cid){btnPrev.onclick=function(){nav(-1);renderWorkDay(cid);};})(calId);
   topbar.appendChild(btnPrev);
 
-  // Today
   var btnToday=document.createElement('button');
   btnToday.textContent='Hoje';
   btnToday.style.cssText='background:#111827;border:none;border-radius:7px;padding:5px 12px;cursor:pointer;font-size:10px;font-weight:500;color:white;font-family:Montserrat,sans-serif';
   (function(cid){btnToday.onclick=function(){cd=new Date();renderWorkDay(cid);};})(calId);
   topbar.appendChild(btnToday);
 
-  // Nav next
   var btnNext=document.createElement('button');
   btnNext.innerHTML='&#8250;';
   btnNext.style.cssText='background:none;border:0.5px solid #d1d5db;border-radius:7px;padding:4px 8px;cursor:pointer;font-size:11px;color:#4b5563';
   (function(cid){btnNext.onclick=function(){nav(1);renderWorkDay(cid);};})(calId);
   topbar.appendChild(btnNext);
 
-  // New task
   var btnNew=document.createElement('button');
   btnNew.textContent='+ Nova tarefa';
   btnNew.style.cssText='background:#111827;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;font-size:10px;font-weight:500;color:white;font-family:Montserrat,sans-serif';
   btnNew.onclick=function(){openWNew();};
   topbar.appendChild(btnNew);
 
-  wrap.appendChild(topbar);
+  // Insert topbar BEFORE wc-right
+  var wRight=document.getElementById('workRight');
+  wrap.insertBefore(topbar,wRight);
 
+  // ── BODY (flex row: main + right) ──
+  var body=document.createElement('div');
+  body.style.cssText='flex:1;overflow:hidden;display:flex;flex-direction:row';
+  wrap.insertBefore(body,wRight);
+
+  // ── MAIN CONTENT ──
   var main=document.createElement('div');
+  main.id='workMain';
   main.style.cssText='flex:1;overflow-y:auto;padding:20px 24px;background:#f7f8fa';
+
   var ds=tds(cd);
   var today=new Date();
   var isT=cd.toDateString()===today.toDateString();
@@ -2442,9 +2454,14 @@ function renderWorkDay(calId){
     all.forEach(function(ev){grid.appendChild(wEvCard(ev,calId));});
     main.appendChild(grid);
   }
-  wrap.appendChild(main);
+  body.appendChild(main);
+
+  // ── RIGHT PANEL ──
+  renderWorkRight(calId);
+  if(wRight){wRight.style.display='flex';body.appendChild(wRight);}
+
+  // ── TOPBAR ALREADY INSERTED ──
 }
-// ── WORK CALENDAR REPEAT HELPERS ──
 function setWRepeat(v,el){
   setWSeg('weRepeat',el);
   document.getElementById('weWeekDaysPicker').style.display=v==='weekly'?'block':'none';
@@ -2648,6 +2665,126 @@ function wkNavDay(el){
   if(ds)cd=new Date(ds+'T12:00:00');
   renderWorkDay(calId||activeCal);
 }
+function renderWorkRight(calId){
+  var rp=document.getElementById('workRight');
+  if(!rp)return;
+  rp.innerHTML='';
+  rp.style.cssText='width:220px;background:#f0f2f5;display:flex;flex-direction:column;overflow-y:auto;border-left:0.5px solid #d1d5db;flex-shrink:0';
+
+  // ── AMANHÃ ──
+  var tomorrow=new Date(cd);tomorrow.setDate(tomorrow.getDate()+1);
+  var tmrDs=tds(tomorrow);
+  var tmrEvs=getWEvs(calId,tmrDs).sort(function(a,b){return(a.startTime||'').localeCompare(b.startTime||'');}).slice(0,5);
+  var dayNames=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  var tmrLabel=dayNames[tomorrow.getDay()]+' '+tomorrow.getDate();
+
+  var secTmr=document.createElement('div');
+  secTmr.className='wc-right-sec';
+  var lblTmr=document.createElement('div');
+  lblTmr.className='wc-right-lbl';
+  lblTmr.textContent='Amanhã · '+tmrLabel;
+  secTmr.appendChild(lblTmr);
+
+  if(!tmrEvs.length){
+    var noTmr=document.createElement('div');
+    noTmr.style.cssText='font-size:11px;color:#9ca3af;font-family:Montserrat,sans-serif;padding:4px 0';
+    noTmr.textContent='Nenhuma tarefa';
+    secTmr.appendChild(noTmr);
+  } else {
+    tmrEvs.forEach(function(ev){
+      var col=ev.color||'#4a5568';
+      var card=document.createElement('div');
+      card.className='wc-tmr';
+      card.style.borderLeftColor=col;
+      card.style.cursor='pointer';
+      var tm=ev.allDay?'Dia todo':(ev.startTime||'')+(ev.endTime?' – '+ev.endTime:'');
+      card.innerHTML='<div class="wc-tmr-title">'+eh(ev.title)+'</div>'
+        +'<div class="wc-tmr-time">'+tm+'</div>';
+      (function(cid,eid){card.onclick=function(){cd=new Date(tomorrow);renderWorkDay(cid);setTimeout(function(){openWEdit(cid,eid,tmrDs);},100);};})(calId,ev.id);
+      secTmr.appendChild(card);
+    });
+  }
+  rp.appendChild(secTmr);
+
+  // ── NOTAS ──
+  var secNotes=document.createElement('div');
+  secNotes.style.cssText='padding:12px 14px;flex:1;overflow-y:auto';
+
+  var notesHdr=document.createElement('div');
+  notesHdr.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:9px';
+  var lblNotes=document.createElement('div');
+  lblNotes.className='wc-right-lbl';
+  lblNotes.style.marginBottom='0';
+  lblNotes.textContent='Notas';
+  var btnAddNote=document.createElement('button');
+  btnAddNote.textContent='+ nova';
+  btnAddNote.style.cssText='font-size:10px;color:#111827;font-weight:500;background:none;border:none;cursor:pointer;font-family:Montserrat,sans-serif';
+  (function(cid){btnAddNote.onclick=function(){addWNote(cid);renderWorkRight(cid);};})(calId);
+  notesHdr.appendChild(lblNotes);
+  notesHdr.appendChild(btnAddNote);
+  secNotes.appendChild(notesHdr);
+
+  var calNotes=(window.stickies||[]).filter(function(s){return s.calId===calId;});
+  var NCLRS=['#fef3c7','#fce7f3','#e0f2fe','#dcfce7','#f3f4f6','#fff7ed'];
+
+  if(!calNotes.length){
+    var noNotes=document.createElement('div');
+    noNotes.style.cssText='font-size:11px;color:#9ca3af;font-family:Montserrat,sans-serif;padding:4px 0';
+    noNotes.textContent='Nenhuma nota. Clique em + nova.';
+    secNotes.appendChild(noNotes);
+  } else {
+    calNotes.forEach(function(s,i){
+      var col=s.color||'#fef3c7';
+      var card=document.createElement('div');
+      card.className='wc-note';
+      card.style.background=col;
+      // Header with color dots + delete
+      var hdr=document.createElement('div');
+      hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:4px';
+      var dots=document.createElement('div');
+      dots.style.cssText='display:flex;gap:4px';
+      NCLRS.forEach(function(clr){
+        var dot=document.createElement('div');
+        dot.style.cssText='width:10px;height:10px;border-radius:50%;background:'+clr+';cursor:pointer;border:1.5px solid '+(clr===col?'rgba(0,0,0,.3)':'transparent');
+        (function(noteId,color,dotEl){
+          dot.onclick=function(){
+            var ns=(window.stickies||[]).find(function(x){return x.id===noteId;});
+            if(ns){ns.color=color;if(window.fbSaveStickies)fbSaveStickies();renderWorkRight(calId);}
+          };
+        })(s.id,clr,dot);
+        dots.appendChild(dot);
+      });
+      var delBtn=document.createElement('button');
+      delBtn.textContent='×';
+      delBtn.style.cssText='background:none;border:none;cursor:pointer;color:rgba(0,0,0,.35);font-size:14px;line-height:1;padding:0';
+      (function(noteId,cid){
+        delBtn.onclick=function(){
+          if(!confirm('Excluir nota?'))return;
+          window.stickies=(window.stickies||[]).filter(function(x){return x.id!==noteId;});
+          if(window.fbSaveStickies)fbSaveStickies();
+          renderWorkRight(cid);
+        };
+      })(s.id,calId);
+      hdr.appendChild(dots);hdr.appendChild(delBtn);
+      card.appendChild(hdr);
+      // Textarea
+      var ta=document.createElement('textarea');
+      ta.style.cssText='flex:1;background:none;border:none;outline:none;font-family:Montserrat,sans-serif;font-size:11px;color:rgba(0,0,0,.75);resize:none;min-height:48px;width:100%;display:block';
+      ta.placeholder='Escreva aqui...';
+      ta.value=s.text||'';
+      (function(noteId){
+        ta.onchange=function(){
+          var ns=(window.stickies||[]).find(function(x){return x.id===noteId;});
+          if(ns){ns.text=this.value;if(window.fbSaveStickies)fbSaveStickies();}
+        };
+      })(s.id);
+      card.appendChild(ta);
+      secNotes.appendChild(card);
+    });
+  }
+  rp.appendChild(secNotes);
+}
+
 function renderWorkWeek(calId){
   var wrap=document.getElementById('workApp');if(!wrap)return;
   var cal=(window.workCals||[]).find(function(c){return c.id===calId;});if(!cal)return;
@@ -2686,8 +2823,11 @@ function renderWorkWeek(calId){
   // Fix active button to show Semana
   var _wb=document.getElementById('wvb-week-'+calId);if(_wb){_wb.style.background='#111827';_wb.style.color='white';_wb.style.fontWeight='500';}
   var _wd=document.getElementById('wvb-day-'+calId);if(_wd){_wd.style.background='none';_wd.style.color='#6b7280';_wd.style.fontWeight='400';}
-  var main=wrap.querySelector('div:last-child');
+  var main=document.getElementById('workMain');
+  if(!main){main=wrap.querySelector('[id="workMain"]')||wrap.querySelector('.wc-body > div:first-child');}
   if(main){main.innerHTML=header+cols;main.style.cssText='flex:1;overflow:hidden;display:flex;flex-direction:column;background:#f7f8fa';}
+  // Refresh right panel for the new date context
+  renderWorkRight(calId);
 }
 
 function renderWorkNotes(calId){
@@ -2696,7 +2836,7 @@ function renderWorkNotes(calId){
   // Fix active button to show Notas
   var _wbn=document.getElementById('wvb-notes-'+calId);if(_wbn){_wbn.style.background='#111827';_wbn.style.color='white';_wbn.style.fontWeight='500';}
   var _wbd=document.getElementById('wvb-day-'+calId);if(_wbd){_wbd.style.background='none';_wbd.style.color='#6b7280';_wbd.style.fontWeight='400';}
-  var main=wrap.querySelector('div:last-child');if(!main)return;
+  var main=document.getElementById('workMain');if(!main)return;
   var notesList=window.stickies||[];
   var calNotes=notesList.filter(function(s){return s.calId===calId;});
   var SCLRS=['#fef3c7','#fce7f3','#e0f2fe','#dcfce7','#f3f4f6'];
@@ -2719,20 +2859,21 @@ function renderWorkNotes(calId){
     html+='</div>';
   }
   main.innerHTML=html;
+  renderWorkRight(calId);
 }
 
 function addWNote(calId){
-  var s={id:gid(),text:'',color:'#f0f2f5',calId:calId};
+  var s={id:gid(),text:'',color:'#fef3c7',calId:calId};
   window.stickies=window.stickies||[];
   window.stickies.push(s);
   if(window.fbSaveStickies)fbSaveStickies();
-  renderWorkNotes(calId);
+  renderWorkRight(calId);
 }
 function delWNote(calId,id){
   if(!confirm('Excluir nota?'))return;
   window.stickies=(window.stickies||[]).filter(function(s){return s.id!==id;});
   if(window.fbSaveStickies)fbSaveStickies();
-  renderWorkNotes(calId);
+  renderWorkRight(calId);
 }
 function updWNote(calId,id,val){
   var s=(window.stickies||[]).find(function(x){return x.id===id;});
