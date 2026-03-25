@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="My Calendar">
 <meta name="theme-color" content="#faf9f7">
-<title>My  Calendar</title>
+<title>My Calendar</title>
 <link rel="manifest" id="manifestLink">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;1,300&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -462,7 +462,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
   <div class="sb-tag" id="sbTag3" style="background:rgba(255,255,255,0.12)" title="Tag 4"></div>
   <div class="sb-divider"></div>
   <div id="calSwitcher" style="display:flex;flex-direction:column;align-items:center;gap:8px">
-    <div class="cal-dot main active" id="calDotMain" style="background:#f5f3ef;width:11px;height:11px" title="Calendário principal" onclick="switchCal('main')"></div>
+    <div class="cal-dot main active" id="calDotMain" style="background:#f5f3ef;width:11px;height:11px" title="Calendario principal" onclick="switchCal('main')"></div>
   </div>
   <div onclick="openNewCalModal()" title="Novo calendário" style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;opacity:.7;transition:opacity .15s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.7'">
     <div style="width:22px;height:22px;border-radius:6px;border:1.5px dashed rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center">
@@ -1980,12 +1980,12 @@ async function refreshActivityWeather(ev){
 
 // ══════════════════════════════════════════════════════════
 // WORK CALENDAR ENGINE
-// ══════════════════════════════════════════════════════════
+// ==========================================================
 let _weid=null, _wCalId=null, _weTags=[], _weColor='#4a5568';
 const WC_COLORS=['#374151','#4a5568','#6b7280','#9ca3af','#111827','#1f2937','#d1d5db','#f3f4f6'];
 let _ncColor='#4a5568';
 
-// ── Firebase helpers for work cals ──
+// -- Firebase helpers for work cals --
 function fbSaveWorkCals(){
   if(!window.auth||!window.auth.currentUser)return;
   try{
@@ -2015,7 +2015,7 @@ function fbLoadWorkData(){
   }catch(e){}
 }
 
-// ── Calendar switcher ──
+// -- Calendar switcher --
 function switchCal(calId){
   activeCal=calId;
   const mainApp=document.getElementById('mainApp');
@@ -2037,7 +2037,7 @@ function switchCal(calId){
 function renderCalSwitcher(){
   const sw=document.getElementById('calSwitcher');if(!sw)return;
   const mainActive=activeCal==='main'?'active':'';
-  let html='<div class="cal-dot main '+mainActive+'" id="calDotMain" style="background:#f5f3ef;width:11px;height:11px" title="Calendário principal" onclick="switchCal('main')"></div>';
+  let html='<div class="cal-dot main '+mainActive+'" id="calDotMain" style="background:#f5f3ef;width:11px;height:11px" title="Calendario principal" onclick="switchCal('main')"></div>';
   (window.workCals||[]).forEach(function(c){
     const isActive=activeCal===c.id?'active':'';
     const isInt=c.integrated;
@@ -2054,7 +2054,7 @@ function renderCalSwitcher(){
   sw.innerHTML=html;
 }
 
-// ── New Calendar Modal ──
+// -- New Calendar Modal --
 function openNewCalModal(){
   const m=document.getElementById('newCalModal');if(m)m.classList.add('open');
   const inp=document.getElementById('ncName');if(inp)inp.focus();
@@ -2091,10 +2091,10 @@ function saveNewCal(){
   fbSaveWorkCals();fbSaveWorkEvs(cal.id);
   renderCalSwitcher();
   closeNewCalModal();
-  showToast('Calendário "'+cal.name+'" criado!');
+  showToast('Calendario "'+cal.name+'" criado!');
 }
 
-// ── Work Event helpers ──
+// -- Work Event helpers --
 function getWEvs(calId,ds){
   const evList=window.workEvs[calId]||[];
   const res=[];
@@ -2162,7 +2162,7 @@ function wEvCard(ev,calId){
   const prio=ev.priority||'medium';
   const idate=ev._instanceDate||ev.date;
   const tags=wTagPills(ev.tags);
-  const tm=ev.allDay?'Dia todo':(ev.startTime||'')+(ev.endTime?' – '+ev.endTime:'');
+  const tm=ev.allDay?'Dia todo':(ev.startTime||'')+(ev.endTime?' - '+ev.endTime:'');
   return'<div class="wev-card" onclick="openWEdit(''+calId+'',''+ev.id+'',''+idate+'')" data-weid="'+ev.id+'">'+
     '<div class="wev-accent" style="background:'+col+'"></div>'+
     '<div class="wev-body">'+
@@ -2177,7 +2177,7 @@ function wEvCard(ev,calId){
   '</div>';
 }
 
-// ── Work View ──
+// -- Work View --
 function renderWorkView(calId){
   calId=calId||activeCal;if(calId==='main')return;
   const cal=(window.workCals||[]).find(c=>c.id===calId);if(!cal)return;
@@ -2196,9 +2196,9 @@ function renderWorkView(calId){
       '<button class="seg-btn" data-wv="week" onclick="setWView('week',this)">Semana</button>'+
       '<button class="seg-btn" data-wv="notes" onclick="setWView('notes',this)">Notas</button>'+
     '</div>'+
-    '<button onclick="nav(-1);renderWorkView(''+calId+'')" style="background:none;border:0.5px solid #d1d5db;border-radius:7px;padding:4px 8px;cursor:pointer;font-size:11px;color:#4b5563">‹</button>'+
+    '<button onclick="nav(-1);renderWorkView(''+calId+'')" style="background:none;border:0.5px solid #d1d5db;border-radius:7px;padding:4px 8px;cursor:pointer;font-size:11px;color:#4b5563">&lsaquo;</button>'+
     '<button onclick="goToday();renderWorkView(''+calId+'')" style="background:#111827;border:none;border-radius:7px;padding:5px 12px;cursor:pointer;font-size:10px;font-weight:500;color:white">Hoje</button>'+
-    '<button onclick="nav(1);renderWorkView(''+calId+'')" style="background:none;border:0.5px solid #d1d5db;border-radius:7px;padding:4px 8px;cursor:pointer;font-size:11px;color:#4b5563">›</button>'+
+    '<button onclick="nav(1);renderWorkView(''+calId+'')" style="background:none;border:0.5px solid #d1d5db;border-radius:7px;padding:4px 8px;cursor:pointer;font-size:11px;color:#4b5563">&rsaquo;</button>'+
     '<button onclick="openWNew(''+calId+'')" style="background:#111827;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;font-size:10px;font-weight:500;color:white;display:flex;align-items:center;gap:4px">'+
       '<svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Nova tarefa</button>';
   wrap.appendChild(tb);
@@ -2206,15 +2206,15 @@ function renderWorkView(calId){
   // main area
   const main=document.createElement('div');
   main.style.cssText='flex:1;overflow-y:auto;padding:20px 24px';
-  const days=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
-  const months=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const days=['Domingo','Segunda','Terca','Quarta','Quinta','Sexta','Sabado'];
+  const months=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   const today=new Date();const isT=cd.toDateString()===today.toDateString();
 
   // date header
   main.innerHTML='<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:18px;padding-bottom:14px;border-bottom:0.5px solid #d1d5db">'+
-    '<div style="font-size:9px;font-weight:500;color:#9ca3af;letter-spacing:1.5px;text-transform:uppercase;margin-right:4px">'+days[cd.getDay()]+(isT?' · Hoje':'')+'</div>'+
+    '<div style="font-size:9px;font-weight:500;color:#9ca3af;letter-spacing:1.5px;text-transform:uppercase;margin-right:4px">'+days[cd.getDay()]+(isT?' - Hoje':'')+'</div>'+
     '<div style="font-size:48px;font-weight:300;color:#111827;line-height:1;font-family:Montserrat,sans-serif">'+cd.getDate()+'</div>'+
-    '<div style="font-size:13px;color:#9ca3af;font-weight:300">'+months[cd.getMonth()]+' · '+cd.getFullYear()+'</div>'+
+    '<div style="font-size:13px;color:#9ca3af;font-weight:300">'+months[cd.getMonth()]+' - '+cd.getFullYear()+'</div>'+
   '</div>';
 
   // tasks
@@ -2233,7 +2233,7 @@ function renderWorkView(calId){
   wrap.appendChild(main);
 }
 
-// ── Work Event Modal ──
+// -- Work Event Modal --
 function openWNew(calId){
   _weid=null;_wCalId=calId;_weTags=[];_weColor='#4a5568';
   const m=document.getElementById('wEvModal');if(!m)return;
@@ -2311,14 +2311,14 @@ function renderWTags(){
   _weTags.forEach((t,i)=>{
     const chip=document.createElement('div');
     chip.className='tch';chip.style.background='#374151';
-    chip.innerHTML=t+'<button class="tcr" onclick="_weTags.splice('+i+',1);renderWTags()">×</button>';
+    chip.innerHTML=t+'<button class="tcr" onclick="_weTags.splice('+i+',1);renderWTags()">x</button>';
     tw.appendChild(chip);
   });
   if(inp)tw.appendChild(inp);
 }
 function saveWEv(){
   const title=(document.getElementById('wetitle')||{}).value||'';
-  if(!title.trim()){showToast('Digite um título!');return;}
+  if(!title.trim()){showToast('Digite um titulo!');return;}
   const ev={
     id:_weid||gid(),
     title:title.trim(),
@@ -2353,7 +2353,7 @@ function delWEv(){
   window.workEvs[_wCalId]=list.filter(e=>e.id!==_weid);
   fbSaveWorkEvs(_wCalId);
   closeWEvModal();renderWorkView(_wCalId);
-  showToast('Excluída.');
+  showToast('Excluida.');
 }
 function setWView(v,btn){
   setWSeg('wViewSw',btn);
@@ -2370,7 +2370,7 @@ function toggleCalIntegration(calId){
   showToast(cal.integrated?'"'+cal.name+'" integrado ao principal':'"'+cal.name+'" removido do principal.');
 }
 
-// ── Integrate work events into main calendar ──
+// -- Integrate work events into main calendar --
 // Patch getEvs to include integrated work events AFTER original definition
 function getWEvsForMain(ds){
   const extra=[];
