@@ -1103,13 +1103,13 @@ function updTop(){
   if(nn)nn.style.display=isPl?'none':'flex';
   if(tod)tod.style.display=isPl?'none':'flex';
   const tdEl=document.getElementById('tdate');
-  if(tdEl){
+  if(tdEl){tdEl.style.display=(view==='day')?'none':'block';
     const days=['Domingo','Segunda','Terca','Quarta','Quinta','Sexta','Sabado'];
     const months=['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
     const today=new Date();let label='';
     if(view==='sticky')label='Notas Rapidas';
     else if(isPl)label='Planner';
-    else if(view==='day'){const isT=cd.toDateString()===today.toDateString();label=days[cd.getDay()]+', '+cd.getDate()+' de '+months[cd.getMonth()];if(isT)label+='<span class="sub">Hoje</span>';}
+    else if(view==='day'){label='';}
     else if(view==='week'){const{start,end}=wkR(cd);label=start.getDate()+' - '+end.getDate()+' de '+months[end.getMonth()];}
     else label=months[cd.getMonth()]+' '+cd.getFullYear();
     tdEl.innerHTML=label;
@@ -1182,44 +1182,37 @@ function rDay(c){
     timed=hideDone?timedNotDone:[...timedNotDone,...timedDone];
   const today=new Date(),isT=cd.toDateString()===today.toDateString();
   const fer=getFeriado(ds);
-  const days=['Domingo','Segunda','Terca','Quarta','Quinta','Sexta','Sabado'];
-  const months=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-  // ── DATE HEADER ──
-  const dayLabel=days[cd.getDay()]+(isT?' · Hoje':'');
-  const weatherEl=document.getElementById('weatherWidget');
-  const weatherHtml=weatherEl&&weatherEl.innerHTML?'<div style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:var(--bg3);border:0.5px solid var(--border);border-radius:20px;font-size:11px;color:var(--text2);margin-left:8px">'+weatherEl.innerHTML+'</div>':'';
-  let hdr='<div style="padding:18px 22px 14px;border-bottom:0.5px solid var(--border);flex-shrink:0">';
+  const dayNames=['Domingo','Segunda','Terca','Quarta','Quinta','Sexta','Sabado'];
+  const monthNames=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const dayLabel=dayNames[cd.getDay()].toUpperCase()+(isT?' · HOJE':'');
+  const wEl=document.getElementById('weatherWidget');
+  const wHtml=(wEl&&wEl.innerHTML.trim())?'<div style="padding:4px 10px;background:var(--bg3);border-radius:20px;font-size:10px;color:var(--text2);border:0.5px solid var(--border);display:inline-flex;align-items:center;gap:4px">'+wEl.innerHTML+'</div>':'';
+  // DATE HEADER
+  let hdr='<div style="padding:18px 22px 14px;border-bottom:0.5px solid var(--border);flex-shrink:0;display:flex;align-items:flex-start;justify-content:space-between">';
+  hdr+='<div>';
   hdr+='<div style="font-size:9px;font-weight:500;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px">'+dayLabel+'</div>';
-  hdr+='<div style="display:flex;align-items:baseline;gap:0">';
+  hdr+='<div style="display:flex;align-items:baseline">';
   hdr+='<div style="font-size:52px;font-weight:300;color:var(--text);line-height:1">'+cd.getDate()+'</div>';
-  hdr+='<div style="font-size:13px;color:var(--text3);font-weight:300;margin-left:10px">'+months[cd.getMonth()]+' · '+cd.getFullYear()+'</div>';
-  hdr+=weatherHtml;
+  hdr+='<div style="font-size:13px;color:var(--text3);font-weight:300;margin-left:10px">'+monthNames[cd.getMonth()]+' · '+cd.getFullYear()+'</div>';
   hdr+='</div>';
   if(fer)hdr+='<div style="margin-top:6px;display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;background:rgba(251,146,60,.15);color:var(--orange);font-weight:500">🇧🇷 '+fer+'</div>';
   hdr+='</div>';
-  // ── MINI CAL ──
-  const mcMonths=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  let mc='<div style="padding:14px 22px 10px;border-bottom:0.5px solid var(--border);flex-shrink:0">';
-  mc+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
-  mc+='<span style="font-size:9px;font-weight:600;color:var(--text3);letter-spacing:1.2px;text-transform:uppercase" id="mcTitle">'+mcMonths[mcd.getMonth()]+' '+mcd.getFullYear()+'</span>';
-  mc+='<div style="display:flex;gap:2px"><button class="mcn" onclick="mcPrev()">&#8249;</button><button class="mcn" onclick="mcNext()">&#8250;</button></div>';
-  mc+='</div>';
-  mc+='<div class="mcg" id="mcGrid"></div>';
-  mc+='</div>';
-  // ── ALL DAY ──
+  hdr+=wHtml?'<div style="margin-top:4px">'+wHtml+'</div>':'';
+  hdr+='</div>';
+  // ALL DAY strip
   let adz='';
   if(allday.length||fer){
     adz='<div class="adz"><div class="adl">Dia todo</div><div class="ade">';
     allday.forEach(ev=>{adz+=adHTML(ev);});
     adz+='</div></div>';
   }
-  // ── TASKS ──
+  // TASKS
   const doneCount=timed.filter(e=>e.done).length;
   let tasks='<div style="flex:1;overflow-y:auto;padding:14px 22px">';
   tasks+='<div class="tasks-header"><div style="display:flex;align-items:center"><span class="tasks-title">Tarefas</span>';
   if(timed.length)tasks+='<span class="tasks-cnt">'+timed.length+'</span>';
   tasks+='</div>';
-  if(doneCount)tasks+='<span class="tasks-toggle" onclick="toggleHideDone()">'+doneCount+' concluída'+(doneCount!==1?'s':'')+'</span>';
+  if(doneCount&&!hideDone)tasks+='<span class="tasks-toggle" onclick="toggleHideDone()">'+doneCount+' concluída'+(doneCount!==1?'s':'')+'</span>';
   tasks+='</div>';
   if(!timed.length&&!allday.length&&!fer){
     tasks+='<div style="text-align:center;color:var(--text3);padding:32px 0;font-size:13px">Nenhum evento.<br><span style="font-size:11px">Clique em Novo para adicionar.</span></div>';
@@ -1233,10 +1226,8 @@ function rDay(c){
     }
   }
   tasks+='</div>';
-  wrap.innerHTML=hdr+mc+adz+tasks;
+  wrap.innerHTML=hdr+adz+tasks;
   c.appendChild(wrap);
-  // populate mini-cal after DOM insert
-  renderMC();
   if(bulkMode)bindBulk(wrap);else{bindEL(wrap);initDayDrag(wrap);}
 }
 function ecHTML(ev){
