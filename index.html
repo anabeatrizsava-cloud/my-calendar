@@ -2357,13 +2357,23 @@ function renderWorkDay(calId){
   if(!cal)return;
   var wrap=document.getElementById('workApp');
   if(!wrap)return;
-  // Clear all children EXCEPT wc-right (to preserve it between view switches)
-  Array.from(wrap.children).forEach(function(ch){
-    if(!ch.classList.contains('wc-right'))ch.remove();
-  });
   _wCalId=calId;
 
-  // ── TOPBAR (DOM-based, no innerHTML escaping issues) ──
+  // ── LAYOUT: wrap = flex ROW [leftCol] + [wRight] ──
+  // wRight is always a direct child of wrap - never moved
+  var wRight=document.getElementById('workRight');
+
+  // Remove everything except wRight
+  Array.from(wrap.children).forEach(function(ch){
+    if(ch.id!=='workRight')ch.remove();
+  });
+
+  // Left column: topbar + main (flex column)
+  var leftCol=document.createElement('div');
+  leftCol.id='workLeftCol';
+  leftCol.style.cssText='flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0';
+
+  // ── TOPBAR ──
   var topbar=document.createElement('div');
   topbar.className='topbar';
   topbar.style.cssText='background:#f0f2f5;border-bottom:0.5px solid #d1d5db';
@@ -2412,14 +2422,7 @@ function renderWorkDay(calId){
   btnNew.onclick=function(){openWNew();};
   topbar.appendChild(btnNew);
 
-  // Insert topbar BEFORE wc-right
-  var wRight=document.getElementById('workRight');
-  wrap.insertBefore(topbar,wRight);
-
-  // ── BODY (flex row: main + right) ──
-  var body=document.createElement('div');
-  body.style.cssText='flex:1;overflow:hidden;display:flex;flex-direction:row';
-  wrap.insertBefore(body,wRight);
+  leftCol.appendChild(topbar);
 
   // ── MAIN CONTENT ──
   var main=document.createElement('div');
@@ -2438,7 +2441,7 @@ function renderWorkDay(calId){
     +'<div style="font-size:13px;color:#9ca3af;font-weight:300;font-family:Montserrat,sans-serif">'+monthNames[cd.getMonth()]+' - '+cd.getFullYear()+'</div>'
     +'</div>';
 
-  var wevs=getWEvs(calId,ds).sort(function(a,b){return (a.startTime||'').localeCompare(b.startTime||'');});
+  var wevs=getWEvs(calId,ds).sort(function(a,b){return(a.startTime||'').localeCompare(b.startTime||'');});
   var notDone=wevs.filter(function(e){return e.progress!=='done';});
   var done=wevs.filter(function(e){return e.progress==='done';});
   var all=notDone.concat(done);
@@ -2454,13 +2457,20 @@ function renderWorkDay(calId){
     all.forEach(function(ev){grid.appendChild(wEvCard(ev,calId));});
     main.appendChild(grid);
   }
-  body.appendChild(main);
+  leftCol.appendChild(main);
 
-  // ── RIGHT PANEL ──
-  renderWorkRight(calId);
-  if(wRight){wRight.style.display='flex';body.appendChild(wRight);}
+  // Insert leftCol BEFORE wRight (or append if wRight not present)
+  if(wRight&&wRight.parentNode===wrap){
+    wrap.insertBefore(leftCol,wRight);
+  } else {
+    wrap.appendChild(leftCol);
+  }
 
-  // ── TOPBAR ALREADY INSERTED ──
+  // Ensure wRight is visible and refreshed
+  if(wRight){
+    wRight.style.display='flex';
+    renderWorkRight(calId);
+  }
 }
 function setWRepeat(v,el){
   setWSeg('weRepeat',el);
