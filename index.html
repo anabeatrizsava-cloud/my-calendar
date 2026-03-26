@@ -879,7 +879,10 @@ onAuthStateChanged(auth,user=>{
     if(eu)eu();eu=onSnapshot(collection(db,'users',uid,'events'),snap=>{const fresh=snap.docs.map(d=>({id:d.id,...d.data()}));if(window.evs&&window.evs.length){  fresh.forEach(fe=>{    const local=window.evs.find(e=>e.id===fe.id);    if(local){
       // Always preserve local exception maps — they're updated optimistically
       // and Firebase may return stale snapshot before write propagates
-      if(local.doneExceptions&&Object.keys(local.doneExceptions).length){
+      // If a lock exists for this event, always use locked doneExceptions
+      if(window._doneExLock&&window._doneExLock[fe.id]){
+        fe.doneExceptions=Object.assign({},fe.doneExceptions||{},window._doneExLock[fe.id]);
+      } else if(local.doneExceptions&&Object.keys(local.doneExceptions).length){
         fe.doneExceptions=Object.assign({},fe.doneExceptions||{},local.doneExceptions);
       }
       if(local.deletedExceptions&&local.deletedExceptions.length){
@@ -1307,6 +1310,7 @@ function ecHTML(ev){
       '<div class="ecb" style="flex:1;min-width:0">'+
         '<div class="ect" style="font-size:12px;font-weight:500;color:'+(ev.done?'#a09880':'#1a1510')+(ev.done?';text-decoration:line-through':'')+'">'+ emojiStr+eh(ev.title)+'</div>'+
         '<div class="ectm" style="font-size:10px;color:#b0a080;margin-top:2px;font-family:var(--font-mono)">'+tm+(tagName?(' · '+tagName):'')+'</div>'+
+        (ev.isExternal&&ev.weatherData?'<div style="display:inline-flex;align-items:center;gap:4px;margin-top:3px;padding:2px 7px;background:rgba(26,26,26,0.05);border:0.5px solid rgba(26,26,26,0.1);border-radius:20px;font-size:10px;color:var(--text2);font-family:var(--font-mono)">'+ev.weatherData.icon+' '+ev.weatherData.temp+'°C'+(ev.weatherData.precip>50?' 🌂 '+ev.weatherData.precip+'%':'')+(ev.weatherData.geo?' · '+ev.weatherData.geo.split(',')[0]:'')+'</div>':'')+
         tg+sc+
       '</div>'+
       '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">'+
@@ -1731,15 +1735,16 @@ function qDup(id){const o=evs.find(e=>e.id===id);if(!o)return;const cp=JSON.pars
 function qDel(id,idate){const ev=evs.find(e=>e.id===id);if(!ev)return;if(ev.repeat&&ev.repeat!=='none'&&idate&&idate!==ev.date){const all=confirm('Excluir TODAS as ocorrencias?\n\nOK = todas   Cancelar = so '+idate);if(all){if(window.fbDelEv)fbDelEv(id);showToast('Todas excluidas.');}else{if(!ev.deletedExceptions)ev.deletedExceptions=[];if(!ev.deletedExceptions.includes(idate))ev.deletedExceptions.push(idate);if(window.fbSaveEv)fbSaveEv(ev);showToast('Dia excluido.');}}else{if(!confirm('Excluir?'))return;if(window.fbDelEv)fbDelEv(id);showToast('Excluido.');}renderView();}
 function togDone(id,idate){
   if(id&&id.startsWith('wk_'))return;
-  // Find the original event in window.evs
   const ev=window.evs?window.evs.find(e=>e.id===id):evs.find(e=>e.id===id);
   if(!ev)return;
   const isRepeated=ev.repeat&&ev.repeat!=='none';
   if(isRepeated&&idate){
-    // Use doneExceptions to toggle only this specific instance
     if(!ev.doneExceptions)ev.doneExceptions={};
-    const currentState=ev.doneExceptions[idate]===true;
-    ev.doneExceptions[idate]=!currentState;
+    ev.doneExceptions[idate]=!ev.doneExceptions[idate];
+    // Lock this event's doneExceptions for 5s to prevent onSnapshot from reverting
+    if(!window._doneExLock)window._doneExLock={};
+    window._doneExLock[id]=Object.assign({},ev.doneExceptions);
+    setTimeout(function(){if(window._doneExLock)delete window._doneExLock[id];},5000);
     if(window.fbSaveEv)window.fbSaveEv(ev);
   } else {
     ev.done=!ev.done;
