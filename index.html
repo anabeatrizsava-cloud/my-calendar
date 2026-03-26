@@ -1301,7 +1301,7 @@ function ecHTML(ev){
   const col=ev.color||'#c87060';
   const bg=ev.done?'#f5f2ed':getBgTint(col);
   const borderCol=ev.done?'#e8e0d4':getBorderTint(col);
-  return'<div class="ec'+(ev.done?' done':'')+'" data-eid="'+ev.id+'" style="border-radius:10px;overflow:hidden;border:0.5px solid '+borderCol+';display:flex;align-items:stretch;gap:0;cursor:pointer;transition:all .15s;margin-bottom:0">'+
+  return'<div class="ec'+(ev.done?' done':'')+'" data-eid="'+ev.id+'" data-idate="'+(ev._instanceDate||ev.date)+'" style="border-radius:10px;overflow:hidden;border:0.5px solid '+borderCol+';display:flex;align-items:stretch;gap:0;cursor:pointer;transition:all .15s;margin-bottom:0">'+
     '<div style="width:3px;background:'+(ev.done?'#d4ccc0':col)+';flex-shrink:0"></div>'+
     '<div style="flex:1;background:'+bg+';padding:9px 12px 9px 11px;display:flex;align-items:flex-start;gap:10px">'+
       '<div class="ecb" style="flex:1;min-width:0">'+
@@ -1731,18 +1731,19 @@ function qDup(id){const o=evs.find(e=>e.id===id);if(!o)return;const cp=JSON.pars
 function qDel(id,idate){const ev=evs.find(e=>e.id===id);if(!ev)return;if(ev.repeat&&ev.repeat!=='none'&&idate&&idate!==ev.date){const all=confirm('Excluir TODAS as ocorrencias?\n\nOK = todas   Cancelar = so '+idate);if(all){if(window.fbDelEv)fbDelEv(id);showToast('Todas excluidas.');}else{if(!ev.deletedExceptions)ev.deletedExceptions=[];if(!ev.deletedExceptions.includes(idate))ev.deletedExceptions.push(idate);if(window.fbSaveEv)fbSaveEv(ev);showToast('Dia excluido.');}}else{if(!confirm('Excluir?'))return;if(window.fbDelEv)fbDelEv(id);showToast('Excluido.');}renderView();}
 function togDone(id,idate){
   if(id&&id.startsWith('wk_'))return;
-  const ev=evs.find(e=>e.id===id);
+  // Find the original event in window.evs
+  const ev=window.evs?window.evs.find(e=>e.id===id):evs.find(e=>e.id===id);
   if(!ev)return;
   const isRepeated=ev.repeat&&ev.repeat!=='none';
   if(isRepeated&&idate){
-    // Always use doneExceptions for repeated events — per instance
+    // Use doneExceptions to toggle only this specific instance
     if(!ev.doneExceptions)ev.doneExceptions={};
-    ev.doneExceptions[idate]=!ev.doneExceptions[idate];
-    if(window.fbSaveEv)fbSaveEv(ev);
+    const currentState=ev.doneExceptions[idate]===true;
+    ev.doneExceptions[idate]=!currentState;
+    if(window.fbSaveEv)window.fbSaveEv(ev);
   } else {
-    // Non-repeated event — toggle global done flag
     ev.done=!ev.done;
-    if(window.fbSaveEv)fbSaveEv(ev);
+    if(window.fbSaveEv)window.fbSaveEv(ev);
   }
   updProgress();renderView();showToast('Atualizado!');
 }
