@@ -876,7 +876,20 @@ onAuthStateChanged(auth,user=>{
     document.getElementById('loginScreen').style.display='none';document.getElementById('mainApp').style.display='flex';
     const _uael=document.getElementById('userAvatar');if(_uael){_uael.src=user.photoURL||'';_uael.style.display=user.photoURL?'block':'none';}const _un=document.getElementById('userName');if(_un){_un.textContent=(user.displayName||user.email||'').split(' ')[0];_un.style.display='block';}const _ui=document.getElementById('userInitial');if(_ui)_ui.style.display=user.photoURL?'none':'block';
     const uid=user.uid;setSS('syncing');
-    if(eu)eu();eu=onSnapshot(collection(db,'users',uid,'events'),snap=>{const fresh=snap.docs.map(d=>({id:d.id,...d.data()}));if(window.evs&&window.evs.length){  fresh.forEach(fe=>{    const local=window.evs.find(e=>e.id===fe.id);    if(local&&window._pendingSaves&&window._pendingSaves.has(fe.id)){      fe.done=local.done;      fe.doneExceptions=local.doneExceptions;      fe.deletedExceptions=local.deletedExceptions;    }  });}window.evs=fresh;renderView();renderMC();renderSBTags();updProgress();setSS('ok');});
+    if(eu)eu();eu=onSnapshot(collection(db,'users',uid,'events'),snap=>{const fresh=snap.docs.map(d=>({id:d.id,...d.data()}));if(window.evs&&window.evs.length){  fresh.forEach(fe=>{    const local=window.evs.find(e=>e.id===fe.id);    if(local){
+      // Always preserve local exception maps — they're updated optimistically
+      // and Firebase may return stale snapshot before write propagates
+      if(local.doneExceptions&&Object.keys(local.doneExceptions).length){
+        fe.doneExceptions=Object.assign({},fe.doneExceptions||{},local.doneExceptions);
+      }
+      if(local.deletedExceptions&&local.deletedExceptions.length){
+        fe.deletedExceptions=local.deletedExceptions;
+      }
+      if(window._pendingSaves&&window._pendingSaves.has(fe.id)){
+        fe.done=local.done;
+      }
+    }
+  });}window.evs=fresh;renderView();renderMC();renderSBTags();updProgress();setSS('ok');});
     if(lu)lu();lu=onSnapshot(collection(db,'users',uid,'lists'),snap=>{window.lists=snap.docs.map(d=>({id:d.id,...d.data()}));if(window.view==='planner')renderView();});
     if(tu)tu();tu=onSnapshot(doc(db,'users',uid,'config','tags'),snap=>{if(snap.exists()){const d=snap.data();window.tags=d.tags||dTags();window.tclr=d.tclr||dTclr();renderSBTags();}});
     if(su)su();su=onSnapshot(doc(db,'users',uid,'config','stickies'),snap=>{if(snap.exists()){window.stickies=snap.data().stickies||[];}else{window.stickies=[];}if(window.view==='sticky')renderView();else renderStickies();});
@@ -1717,23 +1730,17 @@ function dupEv(){if(!eid)return;const o=evs.find(e=>e.id===eid);if(!o)return;con
 function qDup(id){const o=evs.find(e=>e.id===id);if(!o)return;const cp=JSON.parse(JSON.stringify(o));cp.id=gid();cp.title+=' (copia)';if(window.fbSaveEv)fbSaveEv(cp);showToast('Duplicado!');}
 function qDel(id,idate){const ev=evs.find(e=>e.id===id);if(!ev)return;if(ev.repeat&&ev.repeat!=='none'&&idate&&idate!==ev.date){const all=confirm('Excluir TODAS as ocorrencias?\n\nOK = todas   Cancelar = so '+idate);if(all){if(window.fbDelEv)fbDelEv(id);showToast('Todas excluidas.');}else{if(!ev.deletedExceptions)ev.deletedExceptions=[];if(!ev.deletedExceptions.includes(idate))ev.deletedExceptions.push(idate);if(window.fbSaveEv)fbSaveEv(ev);showToast('Dia excluido.');}}else{if(!confirm('Excluir?'))return;if(window.fbDelEv)fbDelEv(id);showToast('Excluido.');}renderView();}
 function togDone(id,idate){
-  // ignore work events shown in main — they're managed in work calendar
   if(id&&id.startsWith('wk_'))return;
   const ev=evs.find(e=>e.id===id);
   if(!ev)return;
   const isRepeated=ev.repeat&&ev.repeat!=='none';
-  const instanceDate=idate&&idate!==ev.date?idate:(isRepeated?idate:null);
-  if(instanceDate&&isRepeated){
-    // repeated event — toggle only this specific date
+  if(isRepeated&&idate){
+    // Always use doneExceptions for repeated events — per instance
     if(!ev.doneExceptions)ev.doneExceptions={};
-    ev.doneExceptions[instanceDate]=!ev.doneExceptions[instanceDate];
-    if(window.fbSaveEv)fbSaveEv(ev);
-  } else if(instanceDate===ev.date||!isRepeated){
-    // original date or non-repeated event
-    ev.done=!ev.done;
+    ev.doneExceptions[idate]=!ev.doneExceptions[idate];
     if(window.fbSaveEv)fbSaveEv(ev);
   } else {
-    // fallback
+    // Non-repeated event — toggle global done flag
     ev.done=!ev.done;
     if(window.fbSaveEv)fbSaveEv(ev);
   }
