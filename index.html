@@ -10,8 +10,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="My Calendar">
 <meta name="theme-color" content="#faf9f7">
-<title>My Calendar v20260325_160351</title>
-<!-- FIXED BUILD 20260325_160351 -->
+<title>My Calendar v20260327_finance</title>
+<!-- FIXED BUILD 20260327 — FinançasClaras integration -->
 <link rel="manifest" id="manifestLink">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;1,300&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -436,6 +436,15 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 .cal-dot.active{box-shadow:0 0 0 2px rgba(255,255,255,.6)}
 .cal-add-btn{width:18px;height:18px;border-radius:50%;border:1.5px dashed rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .1s}
 .cal-add-btn:hover{border-color:rgba(255,255,255,.6)}
+/* ─── FINANCE TASKS (FinançasClaras integration) ─── */
+.finance-task{display:flex;align-items:center;gap:10px;padding:10px 12px;margin:6px 0;border-radius:var(--rs);border-left:3px solid var(--yellow);background:rgba(177,122,58,.08);font-size:13px;cursor:default;transition:opacity .3s}
+.finance-task .ft-title{flex:1;color:var(--text);font-weight:400}
+.finance-task .ft-amount{font-weight:600;color:var(--yellow);font-size:12px;font-family:var(--font-mono)}
+.finance-task .ft-check{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--yellow);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;font-size:10px;color:transparent}
+.finance-task .ft-check:hover{background:var(--green);border-color:var(--green);color:#fff}
+.finance-task .ft-check.done{background:var(--green);border-color:var(--green);color:#fff}
+.finance-task .ft-badge{font-size:9px;padding:1px 6px;border-radius:10px;background:rgba(177,122,58,.15);color:var(--yellow);font-weight:500;letter-spacing:.3px}
+.mc-finance-dot{width:5px;height:5px;border-radius:50%;background:var(--yellow);margin:1px auto 0}
 </style>
 </head>
 <body>
@@ -843,13 +852,13 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
 import{getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,getRedirectResult,onAuthStateChanged,signOut as fbSO}from'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
-import{getFirestore,collection,doc,setDoc,deleteDoc,onSnapshot}from'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+import{getFirestore,collection,doc,setDoc,deleteDoc,onSnapshot,query,where}from'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
 const FC={apiKey:"AIzaSyAduXAqG6vRTI6STlFD3psMWkYY-DbXBr8",authDomain:"my-calendar-ccfd0.firebaseapp.com",projectId:"my-calendar-ccfd0",storageBucket:"my-calendar-ccfd0.firebasestorage.app",messagingSenderId:"124871692654",appId:"1:124871692654:web:4c8a914cbcaea6167a317f"};
 const fapp=initializeApp(FC);const auth=getAuth(fapp);const db=getFirestore(fapp);const prov=new GoogleAuthProvider();
 // Handle redirect result (for file:// environments)
 getRedirectResult(auth).catch(e=>{if(e&&e.code&&e.code!=='auth/no-current-user')console.warn('Redirect auth:',e.message);});
 // Expose to window for use by non-module scripts
-window._auth=auth;window._db=db;window._setDoc=setDoc;window._doc=doc;window._deleteDoc=deleteDoc;window._onSnapshot=onSnapshot;window._collection=collection;
+window._auth=auth;window._db=db;window._setDoc=setDoc;window._doc=doc;window._deleteDoc=deleteDoc;window._onSnapshot=onSnapshot;window._collection=collection;window._query=query;window._where=where;
 let eu=null,lu=null,tu=null,su=null;
 window.signInWithGoogle=async()=>{
   try{
@@ -899,10 +908,152 @@ onAuthStateChanged(auth,user=>{
     if(!window.appInited){window.appInited=true;window._firebaseReady=true;if(window._domReady)initApp();}
     // Always reload work calendar data on sign-in
     setTimeout(function(){if(window.fbLoadWorkData)fbLoadWorkData();},200);
+    // FinançasClaras integration
+    setTimeout(function(){if(window.initFinanceIntegration)initFinanceIntegration();},300);
   }else{document.getElementById('loginScreen').style.display='flex';document.getElementById('mainApp').style.display='none';}
 });
 function dTags(){return['Trabalho','Pessoal','Urgente','Saude'];}
 function dTclr(){return{Trabalho:'#7c6af5',Pessoal:'#4ade80',Urgente:'#f87171',Saude:'#22d3ee'};}
+</script>
+<script>
+// ─── FINANCASCLARAS INTEGRATION ──────────────────────────────
+window._financeTasks={};
+var _ftUnsub=null;
+
+window.initFinanceIntegration=function(){
+  if(_ftUnsub)_ftUnsub();
+  var ftCol=window._collection(window._db,'finance_tasks');
+  var ftQ=window._query(ftCol,window._where('source','==','FinançasClaras'));
+  _ftUnsub=window._onSnapshot(ftQ,function(snapshot){
+    snapshot.docChanges().forEach(function(change){
+      if(change.type==='removed'){delete window._financeTasks[change.doc.id];}
+      else{window._financeTasks[change.doc.id]=change.doc.data();}
+    });
+    renderFinanceOverlay();
+  },function(err){console.error('FinançasClaras sync error:',err);});
+};
+
+function renderFinanceOverlay(){
+  // Remove old finance cards
+  document.querySelectorAll('.finance-task,.mc-finance-dot').forEach(function(el){el.remove();});
+  var tasks=[];
+  Object.keys(window._financeTasks).forEach(function(k){
+    var t=window._financeTasks[k];
+    if(t.calStatus!=='concluido')tasks.push(t);
+  });
+  if(!tasks.length)return;
+
+  // DAY VIEW — insert into the tasks scroll area
+  var tasksArea=document.querySelector('#vc > div > div[style*="overflow-y:auto"]');
+  if(!tasksArea){
+    // fallback: look for tasks-area class or the scrollable div with tasks
+    var allDivs=document.querySelectorAll('#vc div');
+    for(var i=0;i<allDivs.length;i++){
+      if(allDivs[i].style.overflowY==='auto'&&allDivs[i].querySelector('.tasks-header')){tasksArea=allDivs[i];break;}
+    }
+  }
+  if(tasksArea&&window.view==='day'){
+    var ds=(typeof tds==='function'&&typeof cd!=='undefined')?tds(cd):'';
+    var dayTasks=tasks.filter(function(t){return t.date===ds;});
+    if(dayTasks.length){
+      // Add section header
+      var hdr=document.createElement('div');
+      hdr.className='finance-task';
+      hdr.style.cssText='background:transparent;border-left:none;padding:8px 0 4px;margin-top:12px;font-size:10px;font-weight:500;color:var(--text3);letter-spacing:1px;text-transform:uppercase';
+      hdr.textContent='💰 FINANÇAS · '+dayTasks.length+' pendente'+(dayTasks.length>1?'s':'');
+      tasksArea.appendChild(hdr);
+      dayTasks.forEach(function(t){tasksArea.appendChild(buildFinanceCard(t));});
+    }
+  }
+
+  // MONTH VIEW — add dots to cells
+  var monthGrid=document.querySelector('.mg');
+  if(monthGrid&&window.view==='month'){
+    var cells=monthGrid.querySelectorAll('.mc');
+    var yr=(typeof cd!=='undefined')?cd.getFullYear():new Date().getFullYear();
+    var mo=(typeof cd!=='undefined')?cd.getMonth():new Date().getMonth();
+    var first=new Date(yr,mo,1);
+    var offset=first.getDay();
+    tasks.forEach(function(t){
+      var parts=t.date.split('-');
+      var ty=parseInt(parts[0]),tm=parseInt(parts[1]),td=parseInt(parts[2]);
+      if(ty===yr&&tm===mo+1){
+        var idx=offset+td-1;
+        if(cells[idx]){
+          var dot=document.createElement('div');
+          dot.className='mc-finance-dot';
+          dot.title=t.title+' — '+fmtFinBRL(t.amount);
+          cells[idx].appendChild(dot);
+        }
+      }
+    });
+  }
+}
+
+function fmtFinBRL(v){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);}
+
+function buildFinanceCard(task){
+  var card=document.createElement('div');
+  card.className='finance-task';
+  if(task.accent){card.style.borderLeftColor=task.accent;card.style.background=(typeof hr==='function')?hr(task.accent,.08):'rgba(177,122,58,.08)';}
+
+  var check=document.createElement('div');
+  check.className='ft-check';
+  check.title='Marcar como pago';
+
+  var badge=document.createElement('span');
+  badge.className='ft-badge';
+  badge.textContent='FINANÇAS';
+
+  var title=document.createElement('span');
+  title.className='ft-title';
+  title.textContent=task.title.replace('💰 Pagar: ','');
+
+  var amount=document.createElement('span');
+  amount.className='ft-amount';
+  amount.textContent=fmtFinBRL(task.amount);
+
+  check.addEventListener('click',function(e){
+    e.stopPropagation();
+    check.classList.add('done');
+    check.textContent='✓';
+    card.style.opacity='0.4';
+    card.style.textDecoration='line-through';
+    try{
+      var ref=window._doc(window._db,'finance_tasks',task.id);
+      window._setDoc(ref,{calStatus:'concluido'},{merge:true}).then(function(){
+        setTimeout(function(){card.remove();},500);
+      });
+    }catch(err){
+      console.error('Erro ao marcar pago:',err);
+      check.classList.remove('done');check.textContent='';
+      card.style.opacity='1';card.style.textDecoration='none';
+    }
+  });
+
+  card.appendChild(check);
+  card.appendChild(badge);
+  card.appendChild(title);
+  card.appendChild(amount);
+  return card;
+}
+
+// Hook renderView to refresh finance overlay after each render
+var _origRV=null;
+function hookRenderView(){
+  if(typeof renderView==='function'&&!_origRV){
+    _origRV=renderView;
+    window.renderView=function(){
+      _origRV.apply(this,arguments);
+      setTimeout(renderFinanceOverlay,80);
+    };
+  }
+}
+// Hook after all scripts loaded and app initialized
+document.addEventListener('DOMContentLoaded',function(){setTimeout(hookRenderView,1500);});
+// Fallback: also try on first renderView call via interval
+var _hookInt=setInterval(function(){if(typeof renderView==='function'&&!_origRV){hookRenderView();clearInterval(_hookInt);}},200);
+setTimeout(function(){clearInterval(_hookInt);},10000);
 </script>
 <script>
 
