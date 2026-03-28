@@ -947,7 +947,8 @@ function renderFinanceOverlay(){
   var tasksArea=null;
   var th=document.querySelector('.tasks-header');
   if(th)tasksArea=th.parentElement;
-  if(tasksArea&&window.view==='day'){
+  var currentView=(typeof view!=='undefined')?view:'';
+  if(tasksArea&&currentView==='day'){
     var ds=(typeof tds==='function'&&typeof cd!=='undefined')?tds(cd):'';
     var dayTasks=tasks.filter(function(t){return t.date===ds;});
     if(dayTasks.length){
@@ -963,7 +964,7 @@ function renderFinanceOverlay(){
 
   // MONTH VIEW — add dots to cells
   var monthGrid=document.querySelector('.mg');
-  if(monthGrid&&window.view==='month'){
+  if(monthGrid&&currentView==='month'){
     var cells=monthGrid.querySelectorAll('.mc');
     var yr=(typeof cd!=='undefined')?cd.getFullYear():new Date().getFullYear();
     var mo=(typeof cd!=='undefined')?cd.getMonth():new Date().getMonth();
