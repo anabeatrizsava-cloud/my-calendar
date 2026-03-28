@@ -944,14 +944,9 @@ function renderFinanceOverlay(){
   if(!tasks.length)return;
 
   // DAY VIEW — insert into the tasks scroll area
-  var tasksArea=document.querySelector('#vc > div > div[style*="overflow-y:auto"]');
-  if(!tasksArea){
-    // fallback: look for tasks-area class or the scrollable div with tasks
-    var allDivs=document.querySelectorAll('#vc div');
-    for(var i=0;i<allDivs.length;i++){
-      if(allDivs[i].style.overflowY==='auto'&&allDivs[i].querySelector('.tasks-header')){tasksArea=allDivs[i];break;}
-    }
-  }
+  var tasksArea=null;
+  var th=document.querySelector('.tasks-header');
+  if(th)tasksArea=th.parentElement;
   if(tasksArea&&window.view==='day'){
     var ds=(typeof tds==='function'&&typeof cd!=='undefined')?tds(cd):'';
     var dayTasks=tasks.filter(function(t){return t.date===ds;});
