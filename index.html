@@ -67,7 +67,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 .center-col{flex:2.2;display:flex;flex-direction:column;background:var(--bg);border-right:0.5px solid var(--border)}
 
 /* TOPBAR */
-.topbar{display:flex;align-items:center;gap:8px;padding:9px 16px;border-bottom:0.5px solid var(--border);background:var(--bg2);flex-shrink:0;flex-wrap:wrap}
+.topbar{display:flex;align-items:center;gap:8px;padding:9px 16px;border-bottom:0.5px solid var(--border);background:var(--bg3);flex-shrink:0;flex-wrap:wrap}
 .logo-text{font-size:11px;font-weight:600;color:var(--text);letter-spacing:1.4px;text-transform:uppercase}
 .vsw{display:flex;background:var(--bg4);border:0.5px solid var(--border2);border-radius:9px;overflow:hidden}
 .vb{background:none;border:none;padding:4px 11px;font-family:var(--font);font-size:10px;color:var(--text3);cursor:pointer;transition:all .1s;font-weight:400}
@@ -534,7 +534,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
       <button class="vb" id="vb-planner" onclick="sw('planner',null)">Planner</button>
       <button class="vb" id="vb-sticky" onclick="sw('sticky',null)">Notas</button>
     </div>
-    <button class="hide-done-btn" id="hideDoneBtn" onclick="toggleHideDone()">👁 Ocultar</button>
+    <button class="hide-done-btn" id="hideDoneBtn" onclick="toggleHideDone()" style="background:#1a1510;color:#d4c8a8">👁 Mostrar concluídas</button>
     <button class="notif-btn" onclick="requestPushPermission()" title="Notificações">🔔</button>
     <button class="bulk-sel-btn" id="bulkBtn" onclick="toggleBulkMode()">⊡ Sel.</button>
     <button class="addb" id="addBtn" onclick="handleAdd()">
@@ -956,7 +956,7 @@ function renderDayLoad(ds) {
 // ── BULK SELECT ───────────────────────────────────────────
 let bulkMode = false;
 let editingInstanceDate = null;
-let hideDone = false;
+let hideDone = true;
 // ── WORK CALENDARS ──
 
 function toggleHideDone(){
@@ -2332,7 +2332,7 @@ function renderWorkDay(calId){
 
   var topbar=document.createElement('div');
   topbar.className='topbar';
-  topbar.style.cssText='background:#f0f2f5;border-bottom:0.5px solid #d1d5db';
+  topbar.style.cssText='background:var(--bg3);border-bottom:0.5px solid var(--border)';
   topbar.innerHTML='<div style="font-size:11px;font-weight:600;color:#111827;letter-spacing:1px;text-transform:uppercase;font-family:Montserrat,sans-serif">'+cal.name+'</div>'
     +'<div style="flex:1"></div>'
     +'<button onclick="nav(-1);renderWorkDay(\''+calId+'\')" style="background:none;border:0.5px solid #d1d5db;border-radius:7px;padding:4px 8px;cursor:pointer;font-size:11px;color:#4b5563">&#8249;</button>'
@@ -2354,7 +2354,7 @@ function renderWorkDay(calId){
   // Hide done toggle
   var hideBtn=document.createElement('button');
   hideBtn.style.cssText='background:none;border:0.5px solid #d1d5db;border-radius:7px;padding:4px 10px;cursor:pointer;font-size:10px;color:#6b7280;font-family:Montserrat,sans-serif;margin-left:6px';
-  hideBtn.textContent=window._wkHideDone?'Mostrar concluidas':'Ocultar concluidas';
+  hideBtn.textContent=window._wkHideDone?'Mostrar concluidas':'Ocultar concluidas';if(window._wkHideDone){hideBtn.style.background='#111827';hideBtn.style.color='white';hideBtn.style.borderColor='#111827';}
   hideBtn.addEventListener('click',function(){window._wkHideDone=!window._wkHideDone;renderWorkDay(calId);});
   topbar.appendChild(hideBtn);
   wrap.appendChild(topbar);
@@ -2720,7 +2720,7 @@ function renderStudyView(){
   // topbar
   var tb=document.createElement('div');
   tb.className='topbar';
-  tb.style.cssText='background:#faf9f7;border-bottom:0.5px solid #e8e4de';
+  tb.style.cssText='background:var(--bg3);border-bottom:0.5px solid var(--border)';
   tb.innerHTML='<div style="font-size:11px;font-weight:600;color:#1a1a1a;letter-spacing:.5px;font-family:Montserrat,sans-serif">English Study</div>'
     +'<div style="flex:1"></div>'
     +'<div style="display:flex;gap:2px;background:#f0ede8;border-radius:9px;padding:3px">'
@@ -2735,7 +2735,7 @@ function renderStudyView(){
 
   // main content
   var main=document.createElement('div');
-  main.style.cssText='flex:1;overflow-y:auto;padding:14px 20px;background:#faf9f7;display:flex;flex-direction:column;gap:10px';
+  main.style.cssText='flex:1;overflow-y:auto;padding:14px 20px;background:var(--bg);display:flex;flex-direction:column;gap:10px';
 
   // stats bar - inline compact
   var stats=document.createElement('div');
@@ -3063,7 +3063,7 @@ function setNoEmoji(){
 // ══════════════════════════════════════════════════════════
 window._weSelWeekDays=[];
 window._weSelMonthDays=[];
-window._wkHideDone=false;
+window._wkHideDone=true;
 
 function setWRepeat(val){
   setWSeg('weRepeat',val);
