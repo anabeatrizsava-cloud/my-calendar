@@ -118,6 +118,9 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 .day-header-right{display:flex;align-items:center}
 .day-header-monthyear{font-size:12px;font-weight:400;color:var(--text3);font-family:Montserrat,sans-serif}
 .day-weather-banner{display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;font-family:Montserrat,sans-serif}
+
+.ec-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.ev-weather-outside{display:flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(26,21,16,.04);border:0.5px solid var(--border);border-radius:20px;font-size:10px;color:var(--text2);font-family:var(--font-mono);white-space:nowrap;flex-shrink:0}
 .dv{padding:0 16px 16px 16px;flex:1;overflow-y:auto}
 
 /* DATE HEADER */
@@ -1212,7 +1215,7 @@ function rDay(c){
   const fer=getFeriado(ds);
   const _dayNamesShort=['DOMINGO','SEGUNDA','TERCA','QUARTA','QUINTA','SEXTA','SABADO'];
   const _monthNamesLow=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-  let html='<div class="day-header"><div class="day-header-left"><span class="day-header-weekday">'+_dayNamesShort[cd.getDay()]+(isT?' - HOJE':'')+'</span></div><div class="day-header-num">'+cd.getDate()+'</div><div class="day-header-right"><span class="day-header-monthyear">'+_monthNamesLow[cd.getMonth()]+' - '+cd.getFullYear()+'</span></div><div style="flex:1"></div><div id="dayWeatherBanner" class="day-weather-banner"></div></div>';
+  let html='<div class="day-header"><div class="day-header-left"><span class="day-header-weekday">'+_dayNamesShort[cd.getDay()]+(isT?' - HOJE':'')+'</span></div><div class="day-header-num">'+cd.getDate()+'</div><div class="day-header-right"><span class="day-header-monthyear">'+_monthNamesLow[cd.getMonth()]+' - '+cd.getFullYear()+'</span></div></div>';
   html+='<div class="adz"><div class="adl">Dia todo</div><div class="ade">';
   if(fer)html+='<div style="padding:2px 8px;border-radius:12px;font-size:11px;background:rgba(251,146,60,.15);color:var(--orange);font-weight:500">🇧🇷 '+fer+'</div>';
   allday.forEach(ev=>{html+=adHTML(ev);});
@@ -1258,12 +1261,13 @@ function ecHTML(ev){
   const col=ev.color||'#c87060';
   const bg=ev.done?'#f5f2ed':getBgTint(col);
   const borderCol=ev.done?'#e8e0d4':getBorderTint(col);
-  return'<div class="ec'+(ev.done?' done':'')+'" data-eid="'+ev.id+'" style="border-radius:10px;overflow:hidden;border:0.5px solid '+borderCol+';display:flex;align-items:stretch;gap:0;cursor:pointer;transition:all .15s;margin-bottom:0">'+
+  const _wPill=ev.isExternal&&ev.weatherData?'<div class="ev-weather-outside">'+ev.weatherData.icon+' '+ev.weatherData.temp+'°C</div>':'';
+  return'<div class="ec-row">'+'<div class="ec'+(ev.done?' done':'')+'" data-eid="'+ev.id+'" style="border-radius:10px;overflow:hidden;border:0.5px solid '+borderCol+';display:flex;align-items:stretch;gap:0;cursor:pointer;transition:all .15s;margin-bottom:0;flex:1">'+
     '<div style="width:3px;background:'+(ev.done?'#d4ccc0':col)+';flex-shrink:0"></div>'+
     '<div style="flex:1;background:'+bg+';padding:9px 12px 9px 11px;display:flex;align-items:flex-start;gap:10px">'+
       '<div class="ecb" style="flex:1;min-width:0">'+
         '<div class="ect" style="font-size:12px;font-weight:500;color:'+(ev.done?'#a09880':'#1a1510')+(ev.done?';text-decoration:line-through':'')+'">'+ emojiStr+eh(ev.title)+'</div>'+
-        '<div class="ectm" style="font-size:10px;color:#b0a080;margin-top:2px;font-family:var(--font-mono)">'+tm+(tagName?(' · '+tagName):'')+(ev.isExternal&&ev.weatherData?'<span class="ev-weather-pill">'+ev.weatherData.icon+' '+ev.weatherData.temp+'°C'+(ev.weatherData.precip>50?' 🌂'+ev.weatherData.precip+'%':'')+'</span>':'')+'</div>'+
+        '<div class="ectm" style="font-size:10px;color:#b0a080;margin-top:2px;font-family:var(--font-mono)">'+tm+(tagName?(' · '+tagName):'')+'</div>'+
         tg+sc+
       '</div>'+
       '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">'+
@@ -1274,7 +1278,7 @@ function ecHTML(ev){
         '</div>'+
       '</div>'+
     '</div>'+
-  '</div>';
+  '</div>'+_wPill+'</div>';
 }
 
 function getBgTint(hex){
