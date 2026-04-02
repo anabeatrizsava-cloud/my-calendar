@@ -3232,7 +3232,7 @@ function renderFinanceOverlay(){
   var tasks=allTasks.filter(function(t){return t.calStatus!=='concluido';});
 
   // DAY VIEW — insert cards into the day view container
-  if(window.view==='day'){
+  if(view==='day'){
     var ds=tds(cd);
     var dayTasks=tasks.filter(function(t){return t.date===ds;});
     if(dayTasks.length>0){
@@ -3248,7 +3248,7 @@ function renderFinanceOverlay(){
   }
 
   // MONTH VIEW — add dots to cells with pending finance tasks
-  if(window.view==='month'){
+  if(view==='month'){
     var monthGrid=document.querySelector('.mg');
     if(monthGrid){
       var cells=monthGrid.querySelectorAll('.mc');
