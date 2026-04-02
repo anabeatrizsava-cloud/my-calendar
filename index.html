@@ -3238,11 +3238,12 @@ function renderFinanceOverlay(){
     if(dayTasks.length>0){
       var vc=document.getElementById('vc');
       if(!vc)return;
+      var dv=vc.querySelector('.dv')||vc;
       var hdr=document.createElement('div');
       hdr.className='finance-section-hdr';
       hdr.innerHTML='&#x1F4B0; FINANCAS <span style="font-weight:400;color:#b0a080;font-size:9px">'+dayTasks.length+' pendente'+(dayTasks.length>1?'s':'')+'</span>';
-      vc.appendChild(hdr);
-      dayTasks.forEach(function(t){vc.appendChild(buildFinanceCard(t));});
+      dv.appendChild(hdr);
+      dayTasks.forEach(function(t){dv.appendChild(buildFinanceCard(t));});
     }
   }
 
