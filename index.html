@@ -2489,7 +2489,7 @@ function renderWorkWeek(calId){
   days.forEach(function(d){
     var ds=tds(d);
     var evs=getWEvs(calId,ds).sort(function(a,b){return(a.startTime||'').localeCompare(b.startTime||'');});
-    cols+='<div style="border-right:0.5px solid #d1d5db;padding:6px 4px;min-height:200px;cursor:pointer" onclick="cd=new Date(''+ds+'T12:00:00');renderWorkDay(''+calId+'')">';
+    cols+='<div style="border-right:0.5px solid #d1d5db;padding:6px 4px;min-height:200px;cursor:pointer" data-wkday="'+ds+'" data-wkcal="'+calId+'">';
     evs.forEach(function(ev){
       var col=ev.color||'#4a5568';
       cols+='<div style="font-size:10px;padding:3px 5px;border-radius:4px;margin-bottom:3px;border-left:2px solid '+col+';background:rgba(255,255,255,.8);color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+eh(ev.title)+'</div>';
@@ -2500,7 +2500,14 @@ function renderWorkWeek(calId){
   // Rebuild wrap with topbar + week grid
   renderWorkDay(calId); // reuse topbar
   var main=wrap.querySelector('div:last-child');
-  if(main){main.innerHTML=header+cols;main.style.cssText='flex:1;overflow:hidden;display:flex;flex-direction:column;background:#f7f8fa';}
+  if(main){main.innerHTML=header+cols;main.style.cssText='flex:1;overflow:hidden;display:flex;flex-direction:column;background:#f7f8fa';
+    main.querySelectorAll('[data-wkday]').forEach(function(el){
+      el.addEventListener('click',function(){
+        cd=new Date(el.dataset.wkday+'T12:00:00');
+        renderWorkDay(el.dataset.wkcal);
+      });
+    });
+  }
 }
 
 function renderWorkNotes(calId){
