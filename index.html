@@ -117,10 +117,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 .day-header-num{font-size:36px;font-weight:300;color:var(--text);line-height:1;font-family:Montserrat,sans-serif}
 .day-header-right{display:flex;align-items:center}
 .day-header-monthyear{font-size:12px;font-weight:400;color:var(--text3);font-family:Montserrat,sans-serif}
-.day-weather-banner{display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;font-family:Montserrat,sans-serif}
 
-.ec-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-.ev-weather-outside{display:flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(26,21,16,.04);border:0.5px solid var(--border);border-radius:20px;font-size:10px;color:var(--text2);font-family:var(--font-mono);white-space:nowrap;flex-shrink:0}
 .dv{padding:0 16px 16px 16px;flex:1;overflow-y:auto}
 
 /* DATE HEADER */
@@ -520,7 +517,6 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
     <div class="logo-text">My Calendar</div>
     <div id="tdate" style="font-size:11px;font-weight:500;color:var(--text2);font-family:Montserrat,sans-serif;margin-left:8px"></div>
     <div style="flex:1"></div>
-    <div id="weatherWidget" style="display:none;align-items:center;gap:4px;padding:3px 8px;background:var(--bg3);border:0.5px solid var(--border);border-radius:20px;font-size:10px;color:var(--text2)"></div>
     <div class="search-wrap">
       <svg class="search-icon" width="11" height="11" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="4" stroke="currentColor" stroke-width="1.2"/><path d="M9 9l2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
       <input class="search-inp" id="searchInp" placeholder="Buscar..." oninput="doSearch(this.value)" onblur="setTimeout(()=>closeSearch(),200)"/>
@@ -905,13 +901,8 @@ async function fetchWeather(ds) {
 }
 
 async function renderWeather(ds) {
-  var wb=document.getElementById('dayWeatherBanner');
   var wt=document.getElementById('weatherWidget');
   var w=await fetchWeather(ds);
-  if(wb){
-    if(!w){wb.style.display='none';}
-    else{wb.style.display='flex';wb.innerHTML='<span style="font-size:22px">'+w.icon+'</span><span style="font-size:14px;font-weight:600;color:var(--text)">'+w.max+'°</span><span style="font-size:12px;color:var(--text3)">'+w.min+'°</span>';}
-  }
   if(wt){
     if(!w){wt.style.display='none';}
     else{wt.style.display='flex';wt.innerHTML='<span style="font-size:18px">'+w.icon+'</span><span style="font-size:12px;color:var(--text2)">'+w.max+'° <span style="color:var(--text3)">'+w.min+'°</span></span>';}
@@ -1148,7 +1139,7 @@ function updTop(){
   updProgress();
   const sab=document.getElementById('stickyAddBtn');
   if(sab)sab.style.display=view==='sticky'?'block':'none';
-  if(view==='day'){renderWeather(tds(cd));renderDayLoad(tds(cd));}
+  if(view==='day'){renderDayLoad(tds(cd));}
 }
 
 function updProgress(){
@@ -1168,7 +1159,7 @@ function updProgress(){
 function nav(d){if(view==='day')cd.setDate(cd.getDate()+d);else if(view==='week')cd.setDate(cd.getDate()+d*7);else cd.setMonth(cd.getMonth()+d);updTop();renderView();renderMC();}
 function goToday(){cd=new Date();updTop();renderView();renderMC();}
 function sw(v,el){view=v;document.querySelectorAll('.sbi').forEach(e=>e.classList.remove('act'));if(el&&el.classList)el.classList.add('act');document.querySelectorAll('.vb').forEach(e=>e.classList.remove('act'));const vb=document.getElementById('vb-'+v);if(vb)vb.classList.add('act');updTop();renderView();renderMC();}
-function renderView(){const c=document.getElementById('vc');c.innerHTML='';if(view==='day')rDay(c);else if(view==='week')rWeek(c);else if(view==='month')rMonth(c);else if(view==='planner')rPlanner(c);else rStickyView(c);if(view==='day'){renderDayLoad(tds(cd));renderWeather(tds(cd));}renderRightPanel();}
+function renderView(){const c=document.getElementById('vc');c.innerHTML='';if(view==='day')rDay(c);else if(view==='week')rWeek(c);else if(view==='month')rMonth(c);else if(view==='planner')rPlanner(c);else rStickyView(c);if(view==='day'){renderDayLoad(tds(cd));}renderRightPanel();}
 
 function getEvs(ds){
   const res=[];
@@ -1215,9 +1206,9 @@ function rDay(c){
   const fer=getFeriado(ds);
   const _dayNamesShort=['DOMINGO','SEGUNDA','TERCA','QUARTA','QUINTA','SEXTA','SABADO'];
   const _monthNamesLow=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-  let html='<div class="day-header"><div class="day-header-left"><span class="day-header-weekday">'+_dayNamesShort[cd.getDay()]+(isT?' - HOJE':'')+'</span></div><div class="day-header-num">'+cd.getDate()+'</div><div class="day-header-right"><span class="day-header-monthyear">'+_monthNamesLow[cd.getMonth()]+' - '+cd.getFullYear()+'</span></div></div>';
+  let html='<div class="day-header"><div class="day-header-left"><span class="day-header-weekday">'+_dayNamesShort[cd.getDay()]+(isT?' - HOJE':'')+'</span></div><div class="day-header-num">'+cd.getDate()+'</div><div class="day-header-right"><span class="day-header-monthyear">'+_monthNamesLow[cd.getMonth()]+' - '+cd.getFullYear()+'</span></div>'+(fer?'<div style="margin-left:12px;padding:3px 10px;border-radius:12px;font-size:10px;background:rgba(251,146,60,.12);color:#b17a3a;font-weight:500;font-family:Montserrat,sans-serif">🇧🇷 '+fer+'</div>':'')+'</div>';
   html+='<div class="adz"><div class="adl">Dia todo</div><div class="ade">';
-  if(fer)html+='<div style="padding:2px 8px;border-radius:12px;font-size:11px;background:rgba(251,146,60,.15);color:var(--orange);font-weight:500">🇧🇷 '+fer+'</div>';
+
   allday.forEach(ev=>{html+=adHTML(ev);});
   html+='</div></div><div class="del">';
   if(!timed.length&&!allday.length&&!fer)html+='<div style="text-align:center;color:var(--text3);padding:32px 0;font-size:13px">Nenhum evento.<br><span style="font-size:11px">Clique em Novo para adicionar.</span></div>';
@@ -1261,13 +1252,12 @@ function ecHTML(ev){
   const col=ev.color||'#c87060';
   const bg=ev.done?'#f5f2ed':getBgTint(col);
   const borderCol=ev.done?'#e8e0d4':getBorderTint(col);
-  const _wPill=ev.isExternal&&ev.weatherData?'<div class="ev-weather-outside">'+ev.weatherData.icon+' '+ev.weatherData.temp+'°C</div>':'';
-  return'<div class="ec-row">'+'<div class="ec'+(ev.done?' done':'')+'" data-eid="'+ev.id+'" style="border-radius:10px;overflow:hidden;border:0.5px solid '+borderCol+';display:flex;align-items:stretch;gap:0;cursor:pointer;transition:all .15s;margin-bottom:0;flex:1">'+
+  return'<div class="ec'+(ev.done?' done':'')+'" data-eid="'+ev.id+'" style="border-radius:10px;overflow:hidden;border:0.5px solid '+borderCol+';display:flex;align-items:stretch;gap:0;cursor:pointer;transition:all .15s;margin-bottom:0">'+
     '<div style="width:3px;background:'+(ev.done?'#d4ccc0':col)+';flex-shrink:0"></div>'+
     '<div style="flex:1;background:'+bg+';padding:9px 12px 9px 11px;display:flex;align-items:flex-start;gap:10px">'+
       '<div class="ecb" style="flex:1;min-width:0">'+
         '<div class="ect" style="font-size:12px;font-weight:500;color:'+(ev.done?'#a09880':'#1a1510')+(ev.done?';text-decoration:line-through':'')+'">'+ emojiStr+eh(ev.title)+'</div>'+
-        '<div class="ectm" style="font-size:10px;color:#b0a080;margin-top:2px;font-family:var(--font-mono)">'+tm+(tagName?(' · '+tagName):'')+'</div>'+
+        '<div class="ectm" style="font-size:10px;color:#b0a080;margin-top:2px;font-family:var(--font-mono)">'+tm+(tagName?(' · '+tagName):'')+(ev.isExternal&&ev.weatherData?' <span class="ev-weather-pill">'+ev.weatherData.icon+' '+ev.weatherData.temp+'°C</span>':'')+'</div>'+
         tg+sc+
       '</div>'+
       '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">'+
@@ -1278,7 +1268,7 @@ function ecHTML(ev){
         '</div>'+
       '</div>'+
     '</div>'+
-  '</div>'+_wPill+'</div>';
+  '</div>';
 }
 
 function getBgTint(hex){
