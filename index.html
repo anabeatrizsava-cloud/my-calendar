@@ -110,6 +110,12 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 
 /* CENTER CONTENT */
 .vc{flex:1;overflow:hidden;display:flex;flex-direction:column}
+
+.day-header{display:flex;align-items:center;justify-content:space-between;padding:18px 0 12px 0;border-bottom:0.5px solid var(--border);margin-bottom:12px}
+.day-header-info{display:flex;flex-direction:column;gap:2px}
+.day-header-date{font-size:16px;font-weight:600;color:var(--text);font-family:Montserrat,sans-serif}
+.day-header-today{font-size:11px;font-weight:500;color:var(--accent);margin-left:6px}
+.day-weather-banner{display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;font-family:Montserrat,sans-serif}
 .dv{padding:0 16px 16px 16px;flex:1;overflow-y:auto}
 
 /* DATE HEADER */
@@ -894,13 +900,17 @@ async function fetchWeather(ds) {
 }
 
 async function renderWeather(ds) {
-  const el = document.getElementById('weatherWidget');
-  if (!el) return;
-  el.textContent = '...';
-  const w = await fetchWeather(ds);
-  if (!w) { el.style.display='none'; return; }
-  el.style.display='flex';
-  el.innerHTML = `<span style="font-size:18px">${w.icon}</span><span style="font-size:12px;color:var(--text2)">${w.max}° <span style="color:var(--text3)">${w.min}°</span></span>`;
+  var wb=document.getElementById('dayWeatherBanner');
+  var wt=document.getElementById('weatherWidget');
+  var w=await fetchWeather(ds);
+  if(wb){
+    if(!w){wb.style.display='none';}
+    else{wb.style.display='flex';wb.innerHTML='<span style="font-size:22px">'+w.icon+'</span><span style="font-size:14px;font-weight:600;color:var(--text)">'+w.max+'°</span><span style="font-size:12px;color:var(--text3)">'+w.min+'°</span>';}
+  }
+  if(wt){
+    if(!w){wt.style.display='none';}
+    else{wt.style.display='flex';wt.innerHTML='<span style="font-size:18px">'+w.icon+'</span><span style="font-size:12px;color:var(--text2)">'+w.max+'° <span style="color:var(--text3)">'+w.min+'°</span></span>';}
+  }
 }
 
 // ── DAY LOAD INDICATOR ────────────────────────────────────
@@ -1119,6 +1129,7 @@ function updTop(){
   if(tod)tod.style.display=isPl?'none':'flex';
   const tdEl=document.getElementById('tdate');
   if(tdEl){
+    tdEl.style.display=view==='day'?'none':'inline';
     const days=['Domingo','Segunda','Terca','Quarta','Quinta','Sexta','Sabado'];
     const months=['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
     const today=new Date();let label='';
@@ -1197,7 +1208,11 @@ function rDay(c){
     timed=hideDone?timedNotDone:[...timedNotDone,...timedDone];
   const today=new Date(),isT=cd.toDateString()===today.toDateString();
   const fer=getFeriado(ds);
-  let html='<div class="adz"><div class="adl">Dia todo</div><div class="ade">';
+  const _dayNames=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+  const _monthNames=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const dayLabel=_dayNames[cd.getDay()]+', '+cd.getDate()+' de '+_monthNames[cd.getMonth()]+' de '+cd.getFullYear();
+  let html='<div class="day-header"><div class="day-header-info"><div class="day-header-date">'+dayLabel+(isT?' <span class="day-header-today">Hoje</span>':'')+'</div></div><div id="dayWeatherBanner" class="day-weather-banner"></div></div>';
+  html+='<div class="adz"><div class="adl">Dia todo</div><div class="ade">';
   if(fer)html+='<div style="padding:2px 8px;border-radius:12px;font-size:11px;background:rgba(251,146,60,.15);color:var(--orange);font-weight:500">🇧🇷 '+fer+'</div>';
   allday.forEach(ev=>{html+=adHTML(ev);});
   html+='</div></div><div class="del">';
