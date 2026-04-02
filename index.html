@@ -760,15 +760,16 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="wfield"><label>Prioridade</label>
           <div class="seg-ctrl" id="wePriority">
-            <button class="seg-btn" data-v="low" onclick="setWSeg('wePriority',this)">Baixa</button>
-            <button class="seg-btn act" data-v="medium" onclick="setWSeg('wePriority',this)">Média</button>
-            <button class="seg-btn" data-v="high" onclick="setWSeg('wePriority',this)">Alta</button>
+            <button class="seg-btn" data-v="low" onclick="setWSeg('wePriority',this.dataset.v)">Baixa</button>
+            <button class="seg-btn act" data-v="medium" onclick="setWSeg('wePriority',this.dataset.v)">Média</button>
+            <button class="seg-btn" data-v="high" onclick="setWSeg('wePriority',this.dataset.v)">Alta</button>
           </div>
         </div>
         <div class="wfield"><label>Progresso</label>
           <div class="seg-ctrl" id="weProgress">
-            <button class="seg-btn act" data-v="not-started" onclick="setWSeg('weProgress',this)">—</button>
-            <button class="seg-btn" data-v="in-progress" onclick="setWSeg('weProgress',this)">Em and.</button>
+            <button class="seg-btn act" data-v="not-started" onclick="setWSeg('weProgress',this.dataset.v)">—</button>
+            <button class="seg-btn" data-v="in-progress" onclick="setWSeg('weProgress',this.dataset.v)">Em and.</button>
+            <button class="seg-btn" data-v="done" onclick="setWSeg('weProgress',this.dataset.v)">Concluido</button>
           </div>
         </div>
       </div>
@@ -787,10 +788,10 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
       <div class="wfield"><label>Descrição</label><textarea id="wedesc" placeholder="Notas..." style="min-height:50px;resize:vertical"></textarea></div>
       <div class="wfield"><label>Repetir</label>
         <div class="seg-ctrl" id="weRepeat" style="flex-wrap:wrap">
-          <button class="seg-btn act" data-v="none" onclick="setWSeg('weRepeat',this)">Nunca</button>
-          <button class="seg-btn" data-v="daily" onclick="setWSeg('weRepeat',this)">Diário</button>
-          <button class="seg-btn" data-v="weekly" onclick="setWSeg('weRepeat',this)">Semanal</button>
-          <button class="seg-btn" data-v="monthly" onclick="setWSeg('weRepeat',this)">Mensal</button>
+          <button class="seg-btn act" data-v="none" onclick="setWSeg('weRepeat',this.dataset.v)">Nunca</button>
+          <button class="seg-btn" data-v="daily" onclick="setWSeg('weRepeat',this.dataset.v)">Diário</button>
+          <button class="seg-btn" data-v="weekly" onclick="setWSeg('weRepeat',this.dataset.v)">Semanal</button>
+          <button class="seg-btn" data-v="monthly" onclick="setWSeg('weRepeat',this.dataset.v)">Mensal</button>
         </div>
       </div>
     </div>
@@ -2214,18 +2215,7 @@ function getWEvsForMain(ds){
 function progIcon(p,evId,idate,calId){
   var cls=p==='done'?'done':p==='in-progress'?'in-progress':'not-started';
   var inner=p==='done'?'<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>':'';
-  var el=document.createElement('div');
-  el.className='prog-icon '+cls;
-  el.title='Progresso';
-  el.innerHTML=inner;
-  el.dataset.calid=calId;
-  el.dataset.evid=evId;
-  el.dataset.idate=idate;
-  el.onclick=function(e){
-    e.stopPropagation();
-    cycleWProg(this.dataset.calid,this.dataset.evid,this.dataset.idate,this);
-  };
-  return el.outerHTML;
+  return '<div class="prog-icon '+cls+'" title="Progresso" data-prog="1" data-calid="'+calId+'" data-evid="'+evId+'" data-idate="'+idate+'">'+inner+'</div>';
 }
 
 // Priority icon
@@ -2329,6 +2319,24 @@ function renderWorkDay(calId){
     +'<button onclick="cd=new Date();renderWorkDay(\''+calId+'\')" style="background:#111827;border:none;border-radius:7px;padding:5px 12px;cursor:pointer;font-size:10px;font-weight:500;color:white;font-family:Montserrat,sans-serif">Hoje</button>'
     +'<button onclick="nav(1);renderWorkDay(\''+calId+'\')" style="background:none;border:0.5px solid #d1d5db;border-radius:7px;padding:4px 8px;cursor:pointer;font-size:11px;color:#4b5563">&#8250;</button>'
     +'<button onclick="openWNew()" style="background:#111827;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;font-size:10px;font-weight:500;color:white;font-family:Montserrat,sans-serif">+ Nova tarefa</button>';
+  // View switcher
+  var vsw=document.createElement('div');
+  vsw.style.cssText='display:flex;gap:2px;background:#e5e7eb;border-radius:8px;padding:2px;margin-left:8px';
+  ['Dia','Sem.','Notas'].forEach(function(label,i){
+    var views=['day','week','notes'];
+    var btn=document.createElement('button');
+    btn.textContent=label;
+    btn.style.cssText='padding:4px 12px;border:none;border-radius:6px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;background:'+(i===0?'white':'transparent')+';color:'+(i===0?'#111827':'#6b7280');
+    btn.addEventListener('click',function(){setWView(views[i],calId);});
+    vsw.appendChild(btn);
+  });
+  topbar.appendChild(vsw);
+  // Hide done toggle
+  var hideBtn=document.createElement('button');
+  hideBtn.style.cssText='background:none;border:0.5px solid #d1d5db;border-radius:7px;padding:4px 10px;cursor:pointer;font-size:10px;color:#6b7280;font-family:Montserrat,sans-serif;margin-left:6px';
+  hideBtn.textContent=window._wkHideDone?'Mostrar concluidas':'Ocultar concluidas';
+  hideBtn.addEventListener('click',function(){window._wkHideDone=!window._wkHideDone;renderWorkDay(calId);});
+  topbar.appendChild(hideBtn);
   wrap.appendChild(topbar);
 
   var main=document.createElement('div');
@@ -2348,7 +2356,7 @@ function renderWorkDay(calId){
   var wevs=getWEvs(calId,ds).sort(function(a,b){return (a.startTime||'').localeCompare(b.startTime||'');});
   var notDone=wevs.filter(function(e){return e.progress!=='done';});
   var done=wevs.filter(function(e){return e.progress==='done';});
-  var all=notDone.concat(done);
+  var all=window._wkHideDone?notDone:notDone.concat(done);
 
   if(!all.length){
     var empty=document.createElement('div');
@@ -2359,6 +2367,12 @@ function renderWorkDay(calId){
     var grid=document.createElement('div');
     grid.style.cssText='display:flex;flex-direction:column;gap:7px';
     all.forEach(function(ev){grid.appendChild(wEvCard(ev,calId));});
+    grid.querySelectorAll('[data-prog]').forEach(function(el){
+      el.addEventListener('click',function(e){
+        e.stopPropagation();
+        cycleWProg(el.dataset.calid,el.dataset.evid,el.dataset.idate,el);
+      });
+    });
     main.appendChild(grid);
   }
   wrap.appendChild(main);
