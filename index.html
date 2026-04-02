@@ -2750,7 +2750,74 @@ function renderStudyView(){
   } else {
     renderNotesList(main);
   }
-  wrap.appendChild(main);
+
+  // Layout: main + right panel
+  var layout=document.createElement('div');
+  layout.style.cssText='display:flex;flex:1;overflow:hidden';
+  main.style.flex='2.2';
+  layout.appendChild(main);
+
+  // Right panel - False Friends
+  var rp=document.createElement('div');
+  rp.style.cssText='flex:1;border-left:0.5px solid #e8e4de;background:#faf9f7;overflow-y:auto;display:flex;flex-direction:column';
+
+  // False friends section
+  var ffSection=document.createElement('div');
+  ffSection.style.cssText='padding:14px';
+
+  var ffHeader=document.createElement('div');
+  ffHeader.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:10px';
+  var ffTitle=document.createElement('div');
+  ffTitle.style.cssText='font-size:9px;font-weight:600;color:#aaa89e;letter-spacing:1px;text-transform:uppercase;font-family:Montserrat,sans-serif';
+  ffTitle.textContent='False friends';
+  ffHeader.appendChild(ffTitle);
+
+  var ffAddBtn=document.createElement('button');
+  ffAddBtn.style.cssText='background:none;border:0.5px solid #e8e4de;border-radius:6px;padding:2px 8px;cursor:pointer;font-size:10px;color:#aaa89e;font-family:Montserrat,sans-serif';
+  ffAddBtn.textContent='+ Novo';
+  ffAddBtn.addEventListener('click',function(){addFalseFriend();});
+  ffHeader.appendChild(ffAddBtn);
+  ffSection.appendChild(ffHeader);
+
+  // Load false friends
+  if(!window._falseFriends){
+    window._falseFriends=[
+      {id:'ff1',word:'actually',meaning:'na verdade (nao "atualmente")'},
+      {id:'ff2',word:'parents',meaning:'pais (nao "parentes")'},
+      {id:'ff3',word:'gentle',meaning:'gentil, suave (nao "gente")'},
+      {id:'ff4',word:'college',meaning:'faculdade (nao "colegio")'},
+      {id:'ff5',word:'currently',meaning:'atualmente (nao "correntemente")'},
+      {id:'ff6',word:'remains',meaning:'restos / permanece (nao "remanescentes")'}
+    ];
+    // Try to load from Firestore
+    loadFalseFriends();
+  }
+
+  var ffList=document.createElement('div');
+  ffList.style.cssText='display:flex;flex-direction:column;gap:0';
+  (window._falseFriends||[]).forEach(function(ff){
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:0.5px solid #f0ede8';
+    var wordEl=document.createElement('span');
+    wordEl.style.cssText='font-size:12px;font-weight:500;color:#1a1a1a;font-family:Montserrat,sans-serif;min-width:70px';
+    wordEl.textContent=ff.word;
+    var meaningEl=document.createElement('span');
+    meaningEl.style.cssText='font-size:11px;color:#aaa89e;font-family:Montserrat,sans-serif;flex:1';
+    meaningEl.textContent=ff.meaning;
+    var delEl=document.createElement('span');
+    delEl.style.cssText='cursor:pointer;color:#d1d5db;font-size:12px;flex-shrink:0';
+    delEl.textContent='x';
+    delEl.title='Remover';
+    delEl.addEventListener('click',function(){removeFalseFriend(ff.id);});
+    row.appendChild(wordEl);
+    row.appendChild(meaningEl);
+    row.appendChild(delEl);
+    ffList.appendChild(row);
+  });
+  ffSection.appendChild(ffList);
+  rp.appendChild(ffSection);
+  layout.appendChild(rp);
+  wrap.appendChild(layout);
 }
 
 function renderVocabList(parent){
@@ -2762,13 +2829,36 @@ function renderVocabList(parent){
     parent.appendChild(empty);
     return;
   }
+  // Search bar
+  var searchWrap=document.createElement('div');
+  searchWrap.style.cssText='margin-bottom:8px';
+  var searchInp=document.createElement('input');
+  searchInp.type='text';
+  searchInp.placeholder='Buscar palavra...';
+  searchInp.style.cssText='width:100%;padding:6px 10px 6px 30px;background:white;border:0.5px solid #e8e4de;border-radius:8px;font-size:11px;font-family:Montserrat,sans-serif;outline:none;color:#1a1a1a';
+  searchInp.id='studySearchInp';
+  searchInp.oninput=function(){renderStudyView();var el=document.getElementById('studySearchInp');if(el)el.focus();};
+  var sIcon=document.createElement('div');
+  sIcon.style.cssText='position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none';
+  sIcon.innerHTML='<svg width="12" height="12" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="4" stroke="#aaa89e" stroke-width="1.2"/><path d="M9 9l2.5 2.5" stroke="#aaa89e" stroke-width="1.2" stroke-linecap="round"/></svg>';
+  searchWrap.style.position='relative';
+  searchWrap.appendChild(sIcon);
+  searchWrap.appendChild(searchInp);
+  parent.appendChild(searchWrap);
+
+  // Filter by search
+  var searchVal=window._studySearchVal||'';
+  searchInp.value=searchVal;
+  var filtered=searchVal?list.filter(function(v){return (v.word||'').toLowerCase().indexOf(searchVal.toLowerCase())>=0||(v.translation||'').toLowerCase().indexOf(searchVal.toLowerCase())>=0;}):list;
+  searchInp.oninput=function(){window._studySearchVal=this.value;renderStudyView();var el=document.getElementById('studySearchInp');if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}};
+
   var label=document.createElement('div');
   label.style.cssText='font-size:9px;font-weight:600;color:#aaa89e;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:6px;font-family:Montserrat,sans-serif';
-  label.textContent='Vocabulario — '+list.length+' palavras';
+  label.textContent='Vocabulario — '+filtered.length+(searchVal?' de '+list.length:'')+' palavras';
   parent.appendChild(label);
   var grid=document.createElement('div');
   grid.style.cssText='display:flex;flex-direction:column;gap:4px';
-  list.forEach(function(v){
+  filtered.forEach(function(v){
     var card=document.createElement('div');
     card.style.cssText='background:white;border:0.5px solid #e8e4de;border-radius:8px;padding:8px 12px;cursor:pointer;transition:background .1s';
     card.onmouseenter=function(){card.style.background='#f5f3ef';};
@@ -2920,6 +3010,42 @@ function setStudyTab(tab){
   _studyTab=tab;
   renderStudyView();
 }
+function addFalseFriend(){
+  var word=prompt('Palavra em ingles:');
+  if(!word||!word.trim())return;
+  var meaning=prompt('Significado correto (e o erro comum):');
+  if(!meaning||!meaning.trim())return;
+  if(!window._falseFriends)window._falseFriends=[];
+  window._falseFriends.push({id:gid(),word:word.trim(),meaning:meaning.trim()});
+  saveFalseFriends();
+  renderStudyView();
+}
+function removeFalseFriend(id){
+  if(!window._falseFriends)return;
+  window._falseFriends=window._falseFriends.filter(function(f){return f.id!==id;});
+  saveFalseFriends();
+  renderStudyView();
+}
+function saveFalseFriends(){
+  if(!window.auth||!window.auth.currentUser)return;
+  try{
+    var uid=window.auth.currentUser.uid;
+    window.firestore.setDoc(window.firestore.doc(window.db,'users',uid,'study','falsefriends'),{list:window._falseFriends});
+  }catch(e){}
+}
+function loadFalseFriends(){
+  if(!window.auth||!window.auth.currentUser)return;
+  try{
+    var uid=window.auth.currentUser.uid;
+    window.firestore.onSnapshot(window.firestore.doc(window.db,'users',uid,'study','falsefriends'),function(snap){
+      if(snap.exists()&&snap.data().list){
+        window._falseFriends=snap.data().list;
+        if(activeCal==='study')renderStudyView();
+      }
+    });
+  }catch(e){}
+}
+
 function initStudyModule(){
   fbLoadStudy();
 }
