@@ -2629,16 +2629,18 @@ function addWNote(calId){
   window.stickies.push(s);
   if(window.fbSaveStickies)fbSaveStickies();
   renderWorkNotes(calId);
+  renderWorkRightPanel(calId);
 }
 function delWNote(calId,id){
   if(!confirm('Excluir nota?'))return;
   window.stickies=(window.stickies||[]).filter(function(s){return s.id!==id;});
   if(window.fbSaveStickies)fbSaveStickies();
   renderWorkNotes(calId);
+  renderWorkRightPanel(calId);
 }
 function updWNote(calId,id,val){
   var s=(window.stickies||[]).find(function(x){return x.id===id;});
-  if(s){s.text=val;if(window.fbSaveStickies)fbSaveStickies();}
+  if(s){s.text=val;if(window.fbSaveStickies)fbSaveStickies();renderWorkRightPanel(s.calId);}
 }
 
 function delWEv(){
@@ -3044,12 +3046,23 @@ function renderWorkRightPanel(calId){
   tmrHtml+='</div>';
 
   // Notes
-  var calNotes=(window.workEvs[calId+'_notes']||[]);
+  var calNotes=(window.stickies||[]).filter(function(s){return s.calId===calId;});
   var notesHtml='<div style="padding:14px;flex:1">';
   notesHtml+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
   notesHtml+='<div style="font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1px;text-transform:uppercase;font-family:Montserrat,sans-serif">NOTAS</div>';
   notesHtml+='</div>';
-  notesHtml+='<div style="font-size:11px;color:#9ca3af;font-style:italic;font-family:Montserrat,sans-serif">Use a aba Notas para gerenciar</div>';
+  if(!calNotes.length){
+    notesHtml+='<div style="font-size:11px;color:#9ca3af;font-style:italic;font-family:Montserrat,sans-serif">Nenhuma nota</div>';
+  } else {
+    calNotes.slice(0,4).forEach(function(n){
+      var txt=(n.text||'').substring(0,60);
+      if((n.text||'').length>60)txt+='...';
+      notesHtml+='<div style="padding:6px 8px;margin-bottom:4px;border-radius:6px;background:'+(n.color||'#f0f2f5')+';font-size:11px;color:#374151;font-family:Montserrat,sans-serif">'+(txt||'<span style=color:#9ca3af>Nota vazia</span>')+'</div>';
+    });
+    if(calNotes.length>4){
+      notesHtml+='<div style="font-size:10px;color:#9ca3af;margin-top:4px;font-family:Montserrat,sans-serif">+ '+(calNotes.length-4)+' mais</div>';
+    }
+  }
   notesHtml+='</div>';
 
   rp.innerHTML=calHtml+sumHtml+tmrHtml+notesHtml;
