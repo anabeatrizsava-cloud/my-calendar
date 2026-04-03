@@ -2,13 +2,12 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<!-- BUILD v20260402 — Finance integration added -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="My Calendar">
 <meta name="theme-color" content="#faf9f7">
-<title>My Calendar v20260402</title>
+<title>My Calendar</title>
 <link rel="manifest" id="manifestLink">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;1,300&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -67,7 +66,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 .center-col{flex:2.2;display:flex;flex-direction:column;background:var(--bg);border-right:0.5px solid var(--border)}
 
 /* TOPBAR */
-.topbar{display:flex;align-items:center;gap:8px;padding:9px 16px;border-bottom:0.5px solid var(--border);background:var(--bg3);flex-shrink:0;flex-wrap:wrap}
+.topbar{display:flex;align-items:center;gap:8px;padding:9px 16px;border-bottom:0.5px solid var(--border);background:var(--bg2);flex-shrink:0;flex-wrap:wrap}
 .logo-text{font-size:11px;font-weight:600;color:var(--text);letter-spacing:1.4px;text-transform:uppercase}
 .vsw{display:flex;background:var(--bg4);border:0.5px solid var(--border2);border-radius:9px;overflow:hidden}
 .vb{background:none;border:none;padding:4px 11px;font-family:var(--font);font-size:10px;color:var(--text3);cursor:pointer;transition:all .1s;font-weight:400}
@@ -110,15 +109,6 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 
 /* CENTER CONTENT */
 .vc{flex:1;overflow:hidden;display:flex;flex-direction:column}
-
-.day-header{display:flex;align-items:center;gap:12px;padding:18px 0 14px 0;border-bottom:0.5px solid var(--border);margin-bottom:12px}
-.day-header-left{display:flex;align-items:center}
-.day-header-weekday{font-size:9px;font-weight:600;color:var(--text3);letter-spacing:1.5px;font-family:Montserrat,sans-serif}
-.day-header-num{font-size:36px;font-weight:300;color:var(--text);line-height:1;font-family:Montserrat,sans-serif}
-.day-header-right{display:flex;align-items:center}
-.day-header-monthyear{font-size:12px;font-weight:400;color:var(--text3);font-family:Montserrat,sans-serif}
-
-.dv{padding:0 16px 16px 16px;flex:1;overflow-y:auto}
 
 /* DATE HEADER */
 .date-header{padding:18px 22px 14px;border-bottom:0.5px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0}
@@ -433,18 +423,6 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 .cal-dot.active{box-shadow:0 0 0 2px rgba(255,255,255,.6)}
 .cal-add-btn{width:18px;height:18px;border-radius:50%;border:1.5px dashed rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .1s}
 .cal-add-btn:hover{border-color:rgba(255,255,255,.6)}
-
-/* ── FINANCE INTEGRATION ── */
-.finance-section-hdr{font-size:10px;font-weight:600;color:#b17a3a;letter-spacing:.5px;text-transform:uppercase;font-family:Montserrat,sans-serif;margin:16px 0 8px 0;display:flex;align-items:center;gap:6px;}
-.finance-task{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:0.5px solid #e8dcc8;border-left:3px solid #b17a3a;background:rgba(177,122,58,.06);margin-bottom:6px;cursor:default;transition:all .2s;}
-.finance-task:hover{background:rgba(177,122,58,.12);}
-.ft-check{width:18px;height:18px;border-radius:5px;border:1.5px solid #b17a3a;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:10px;color:white;transition:all .15s;}
-.ft-check:hover{background:#b17a3a;color:white;}
-.ft-check.done{background:#b17a3a;color:white;}
-.ft-badge{font-size:8px;font-weight:600;color:#b17a3a;background:rgba(177,122,58,.12);padding:2px 7px;border-radius:4px;letter-spacing:.3px;text-transform:uppercase;font-family:Montserrat,sans-serif;}
-.ft-title{flex:1;font-size:12px;font-weight:500;color:#1a1510;font-family:Montserrat,sans-serif;}
-.ft-amount{font-size:12px;font-weight:600;color:#b17a3a;font-family:'SF Mono',monospace;white-space:nowrap;}
-.mc-finance-dot{width:5px;height:5px;border-radius:50%;background:#b17a3a;position:absolute;bottom:2px;right:2px;}
 </style>
 </head>
 <body>
@@ -515,8 +493,8 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
   <!-- TOPBAR -->
   <div class="topbar">
     <div class="logo-text">My Calendar</div>
-    <div id="tdate" style="font-size:11px;font-weight:500;color:var(--text2);font-family:Montserrat,sans-serif;margin-left:8px"></div>
     <div style="flex:1"></div>
+    <div id="weatherWidget" style="display:none;align-items:center;gap:4px;padding:3px 8px;background:var(--bg3);border:0.5px solid var(--border);border-radius:20px;font-size:10px;color:var(--text2)"></div>
     <div class="search-wrap">
       <svg class="search-icon" width="11" height="11" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="4" stroke="currentColor" stroke-width="1.2"/><path d="M9 9l2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
       <input class="search-inp" id="searchInp" placeholder="Buscar..." oninput="doSearch(this.value)" onblur="setTimeout(()=>closeSearch(),200)"/>
@@ -534,7 +512,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
       <button class="vb" id="vb-planner" onclick="sw('planner',null)">Planner</button>
       <button class="vb" id="vb-sticky" onclick="sw('sticky',null)">Notas</button>
     </div>
-    <button class="hide-done-btn" id="hideDoneBtn" onclick="toggleHideDone()" style="background:#1a1510;color:#d4c8a8">👁 Mostrar concluídas</button>
+    <button class="hide-done-btn" id="hideDoneBtn" onclick="toggleHideDone()">👁 Ocultar</button>
     <button class="notif-btn" onclick="requestPushPermission()" title="Notificações">🔔</button>
     <button class="bulk-sel-btn" id="bulkBtn" onclick="toggleBulkMode()">⊡ Sel.</button>
     <button class="addb" id="addBtn" onclick="handleAdd()">
@@ -568,9 +546,6 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 
 <!-- WORK VIEW (replaces center+right when work cal active) -->
 <div id="workApp" style="display:none;flex:1;overflow:hidden;flex-direction:column" class="wc-app"></div>
-
-<!-- STUDY VIEW CONTAINER -->
-<div id="studyApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
 
 </div><!-- main-layout -->
 </div><!-- app -->
@@ -760,16 +735,15 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="wfield"><label>Prioridade</label>
           <div class="seg-ctrl" id="wePriority">
-            <button class="seg-btn" data-v="low" onclick="setWSeg('wePriority',this.dataset.v)">Baixa</button>
-            <button class="seg-btn act" data-v="medium" onclick="setWSeg('wePriority',this.dataset.v)">Média</button>
-            <button class="seg-btn" data-v="high" onclick="setWSeg('wePriority',this.dataset.v)">Alta</button>
+            <button class="seg-btn" data-v="low" onclick="setWSeg('wePriority',this)">Baixa</button>
+            <button class="seg-btn act" data-v="medium" onclick="setWSeg('wePriority',this)">Média</button>
+            <button class="seg-btn" data-v="high" onclick="setWSeg('wePriority',this)">Alta</button>
           </div>
         </div>
         <div class="wfield"><label>Progresso</label>
           <div class="seg-ctrl" id="weProgress">
-            <button class="seg-btn act" data-v="not-started" onclick="setWSeg('weProgress',this.dataset.v)">—</button>
-            <button class="seg-btn" data-v="in-progress" onclick="setWSeg('weProgress',this.dataset.v)">Em and.</button>
-            <button class="seg-btn" data-v="done" onclick="setWSeg('weProgress',this.dataset.v)">Concluido</button>
+            <button class="seg-btn act" data-v="not-started" onclick="setWSeg('weProgress',this)">—</button>
+            <button class="seg-btn" data-v="in-progress" onclick="setWSeg('weProgress',this)">Em and.</button>
           </div>
         </div>
       </div>
@@ -788,18 +762,10 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
       <div class="wfield"><label>Descrição</label><textarea id="wedesc" placeholder="Notas..." style="min-height:50px;resize:vertical"></textarea></div>
       <div class="wfield"><label>Repetir</label>
         <div class="seg-ctrl" id="weRepeat" style="flex-wrap:wrap">
-          <button class="seg-btn act" data-v="none" onclick="setWRepeat('none')">Nunca</button>
-          <button class="seg-btn" data-v="daily" onclick="setWRepeat('daily')">Diario</button>
-          <button class="seg-btn" data-v="weekly" onclick="setWRepeat('weekly')">Semanal</button>
-          <button class="seg-btn" data-v="monthly" onclick="setWRepeat('monthly')">Mensal</button>
-        </div>
-        <div id="weWeekPicker" style="display:none;margin-top:8px">
-          <div style="font-size:9px;color:#9ca3af;margin-bottom:4px;font-family:Montserrat,sans-serif">Dias da semana:</div>
-          <div style="display:flex;gap:4px" id="weWeekDays"></div>
-        </div>
-        <div id="weMonthPicker" style="display:none;margin-top:8px">
-          <div style="font-size:9px;color:#9ca3af;margin-bottom:4px;font-family:Montserrat,sans-serif">Dias do mes:</div>
-          <div style="display:flex;flex-wrap:wrap;gap:3px" id="weMonthDays"></div>
+          <button class="seg-btn act" data-v="none" onclick="setWSeg('weRepeat',this)">Nunca</button>
+          <button class="seg-btn" data-v="daily" onclick="setWSeg('weRepeat',this)">Diário</button>
+          <button class="seg-btn" data-v="weekly" onclick="setWSeg('weRepeat',this)">Semanal</button>
+          <button class="seg-btn" data-v="monthly" onclick="setWSeg('weRepeat',this)">Mensal</button>
         </div>
       </div>
     </div>
@@ -823,7 +789,6 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
       </div>
       <div id="smf-vocab" style="display:flex;flex-direction:column;gap:10px">
         <div class="wfield"><label>Palavra em ingles</label><input class="inp" id="sm-word" placeholder="Ex: straightforward"/></div>
-        <div class="wfield"><label>Pronuncia</label><input class="inp" id="sm-pron" placeholder="Ex: streit-FOR-ward"/></div>
         <div class="wfield"><label>Traducao / significado</label><input class="inp" id="sm-trans" placeholder="Ex: direto ao ponto"/></div>
         <div class="wfield"><label>Exemplo ou contexto (opcional)</label><input class="inp" id="sm-example" placeholder="Ex: She is very straightforward."/></div>
       </div>
@@ -839,6 +804,8 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
   </div>
 </div>
 
+<!-- STUDY VIEW CONTAINER -->
+<div id="studyApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
 
 <!-- POPUP -->
 <div class="pop-ov" id="popOv">
@@ -854,11 +821,9 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
 import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut as fbSO}from'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
-import{getFirestore,collection,doc,setDoc,deleteDoc,onSnapshot,query,where}from'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+import{getFirestore,collection,doc,setDoc,deleteDoc,onSnapshot}from'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
 const FC={apiKey:"AIzaSyAduXAqG6vRTI6STlFD3psMWkYY-DbXBr8",authDomain:"my-calendar-ccfd0.firebaseapp.com",projectId:"my-calendar-ccfd0",storageBucket:"my-calendar-ccfd0.firebasestorage.app",messagingSenderId:"124871692654",appId:"1:124871692654:web:4c8a914cbcaea6167a317f"};
 const fapp=initializeApp(FC);const auth=getAuth(fapp);const db=getFirestore(fapp);const prov=new GoogleAuthProvider();
-window._query=query;window._where=where;window._doc=doc;window._setDoc=setDoc;window._db=db;
-window.auth=auth;window.db=db;window.firestore={doc,setDoc,deleteDoc,onSnapshot,collection,query,where};
 let eu=null,lu=null,tu=null,su=null;
 window.signInWithGoogle=async()=>{try{await signInWithPopup(auth,prov);}catch(e){if(e.code!=='auth/popup-closed-by-user')showToast('Erro: '+e.message);}};
 window.doSignOut=async()=>{if(!confirm('Sair?'))return;[eu,lu,tu,su].forEach(u=>u&&u());await fbSO(auth);document.getElementById('mainApp').style.display='none';document.getElementById('loginScreen').style.display='flex';window.evs=[];window.lists=[];window.stickies=[];};
@@ -911,12 +876,13 @@ async function fetchWeather(ds) {
 }
 
 async function renderWeather(ds) {
-  var wt=document.getElementById('weatherWidget');
-  var w=await fetchWeather(ds);
-  if(wt){
-    if(!w){wt.style.display='none';}
-    else{wt.style.display='flex';wt.innerHTML='<span style="font-size:18px">'+w.icon+'</span><span style="font-size:12px;color:var(--text2)">'+w.max+'° <span style="color:var(--text3)">'+w.min+'°</span></span>';}
-  }
+  const el = document.getElementById('weatherWidget');
+  if (!el) return;
+  el.textContent = '...';
+  const w = await fetchWeather(ds);
+  if (!w) { el.style.display='none'; return; }
+  el.style.display='flex';
+  el.innerHTML = `<span style="font-size:18px">${w.icon}</span><span style="font-size:12px;color:var(--text2)">${w.max}° <span style="color:var(--text3)">${w.min}°</span></span>`;
 }
 
 // ── DAY LOAD INDICATOR ────────────────────────────────────
@@ -956,7 +922,7 @@ function renderDayLoad(ds) {
 // ── BULK SELECT ───────────────────────────────────────────
 let bulkMode = false;
 let editingInstanceDate = null;
-let hideDone = true;
+let hideDone = false;
 // ── WORK CALENDARS ──
 
 function toggleHideDone(){
@@ -1135,7 +1101,6 @@ function updTop(){
   if(tod)tod.style.display=isPl?'none':'flex';
   const tdEl=document.getElementById('tdate');
   if(tdEl){
-    tdEl.style.display=view==='day'?'none':'inline';
     const days=['Domingo','Segunda','Terca','Quarta','Quinta','Sexta','Sabado'];
     const months=['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
     const today=new Date();let label='';
@@ -1149,7 +1114,7 @@ function updTop(){
   updProgress();
   const sab=document.getElementById('stickyAddBtn');
   if(sab)sab.style.display=view==='sticky'?'block':'none';
-  if(view==='day'){renderDayLoad(tds(cd));}
+  if(view==='day'){renderWeather(tds(cd));renderDayLoad(tds(cd));}
 }
 
 function updProgress(){
@@ -1169,7 +1134,7 @@ function updProgress(){
 function nav(d){if(view==='day')cd.setDate(cd.getDate()+d);else if(view==='week')cd.setDate(cd.getDate()+d*7);else cd.setMonth(cd.getMonth()+d);updTop();renderView();renderMC();}
 function goToday(){cd=new Date();updTop();renderView();renderMC();}
 function sw(v,el){view=v;document.querySelectorAll('.sbi').forEach(e=>e.classList.remove('act'));if(el&&el.classList)el.classList.add('act');document.querySelectorAll('.vb').forEach(e=>e.classList.remove('act'));const vb=document.getElementById('vb-'+v);if(vb)vb.classList.add('act');updTop();renderView();renderMC();}
-function renderView(){const c=document.getElementById('vc');c.innerHTML='';if(view==='day')rDay(c);else if(view==='week')rWeek(c);else if(view==='month')rMonth(c);else if(view==='planner')rPlanner(c);else rStickyView(c);if(view==='day'){renderDayLoad(tds(cd));}renderRightPanel();try{if(typeof renderFinanceOverlay==='function'){clearTimeout(window._finOvTimer);window._finOvTimer=setTimeout(renderFinanceOverlay,150);}}catch(e){}}
+function renderView(){const c=document.getElementById('vc');c.innerHTML='';if(view==='day')rDay(c);else if(view==='week')rWeek(c);else if(view==='month')rMonth(c);else if(view==='planner')rPlanner(c);else rStickyView(c);if(view==='day'){renderDayLoad(tds(cd));}renderRightPanel();}
 
 function getEvs(ds){
   const res=[];
@@ -1214,28 +1179,20 @@ function rDay(c){
     timed=hideDone?timedNotDone:[...timedNotDone,...timedDone];
   const today=new Date(),isT=cd.toDateString()===today.toDateString();
   const fer=getFeriado(ds);
-  const _dayNamesShort=['DOMINGO','SEGUNDA','TERCA','QUARTA','QUINTA','SEXTA','SABADO'];
-  const _monthNamesLow=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-  let html='<div class="day-header"><div class="day-header-left"><span class="day-header-weekday">'+_dayNamesShort[cd.getDay()]+(isT?' - HOJE':'')+'</span></div><div class="day-header-num">'+cd.getDate()+'</div><div class="day-header-right"><span class="day-header-monthyear">'+_monthNamesLow[cd.getMonth()]+' - '+cd.getFullYear()+'</span></div>'+(fer?'<div style="margin-left:12px;padding:3px 10px;border-radius:12px;font-size:10px;background:rgba(251,146,60,.12);color:#b17a3a;font-weight:500;font-family:Montserrat,sans-serif">🇧🇷 '+fer+'</div>':'')+'</div>';
-  html+='<div class="adz"><div class="adl">Dia todo</div><div class="ade">';
-
+  let html='<div class="adz"><div class="adl">Dia todo</div><div class="ade">';
+  if(fer)html+='<div style="padding:2px 8px;border-radius:12px;font-size:11px;background:rgba(251,146,60,.15);color:var(--orange);font-weight:500">🇧🇷 '+fer+'</div>';
   allday.forEach(ev=>{html+=adHTML(ev);});
   html+='</div></div><div class="del">';
   if(!timed.length&&!allday.length&&!fer)html+='<div style="text-align:center;color:var(--text3);padding:32px 0;font-size:13px">Nenhum evento.<br><span style="font-size:11px">Clique em Novo para adicionar.</span></div>';
   else{
-    const grpsActive={};timedNotDone.forEach(ev=>{const h=ev.startTime.split(':')[0];if(!grpsActive[h])grpsActive[h]=[];grpsActive[h].push(ev);});
+    const grps={};timed.forEach(ev=>{const h=ev.startTime.split(':')[0];if(!grps[h])grps[h]=[];grps[h].push(ev);});
     const nowM=today.getHours()*60+today.getMinutes();let ni=false;
-    Object.keys(grpsActive).sort().forEach((h,idx)=>{
+    Object.keys(grps).sort().forEach((h,idx)=>{
       if(isT&&!ni&&parseInt(h)*60>nowM){html+='<div class="now-ind"></div>';ni=true;}
       html+='<div><div class="tgl '+(idx===0?'f':'')+'">'+h.padStart(2,'0')+':00</div>';
-      grpsActive[h].forEach(ev=>{html+=ecHTML(ev);});html+='</div>';
+      grps[h].forEach(ev=>{html+=ecHTML(ev);});html+='</div>';
     });
     if(isT&&!ni)html+='<div class="now-ind"></div>';
-    if(!hideDone&&timedDone.length){
-      html+='<div style="margin-top:20px;padding-top:12px;border-top:0.5px solid var(--border)"><div style="font-size:9px;font-weight:600;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-family:Montserrat,sans-serif">Concluídas</div>';
-      timedDone.forEach(ev=>{html+=ecHTML(ev);});
-      html+='</div>';
-    }
   }
   html+='</div>';wrap.innerHTML=html;c.appendChild(wrap);if(bulkMode)bindBulk(wrap);else{bindEL(wrap);initDayDrag(wrap);}
 }
@@ -1262,12 +1219,12 @@ function ecHTML(ev){
   const col=ev.color||'#c87060';
   const bg=ev.done?'#f5f2ed':getBgTint(col);
   const borderCol=ev.done?'#e8e0d4':getBorderTint(col);
-  return'<div class="ec'+(ev.done?' done':'')+'" data-eid="'+ev.id+'" style="border-radius:10px;overflow:hidden;border:0.5px solid '+borderCol+';display:flex;align-items:stretch;gap:0;cursor:pointer;transition:all .15s;margin-bottom:0">'+
+  return'<div class="ec'+(ev.done?' done':'')+'" data-eid="'+ev.id+'" data-idate="'+(ev._instanceDate||ev.date)+'" style="border-radius:10px;overflow:hidden;border:0.5px solid '+borderCol+';display:flex;align-items:stretch;gap:0;cursor:pointer;transition:all .15s;margin-bottom:0">'+
     '<div style="width:3px;background:'+(ev.done?'#d4ccc0':col)+';flex-shrink:0"></div>'+
     '<div style="flex:1;background:'+bg+';padding:9px 12px 9px 11px;display:flex;align-items:flex-start;gap:10px">'+
       '<div class="ecb" style="flex:1;min-width:0">'+
         '<div class="ect" style="font-size:12px;font-weight:500;color:'+(ev.done?'#a09880':'#1a1510')+(ev.done?';text-decoration:line-through':'')+'">'+ emojiStr+eh(ev.title)+'</div>'+
-        '<div class="ectm" style="font-size:10px;color:#b0a080;margin-top:2px;font-family:var(--font-mono)">'+tm+(tagName?(' · '+tagName):'')+(ev.isExternal&&ev.weatherData?' <span class="ev-weather-pill">'+ev.weatherData.icon+' '+ev.weatherData.temp+'°C</span>':'')+'</div>'+
+        '<div class="ectm" style="font-size:10px;color:#b0a080;margin-top:2px;font-family:var(--font-mono)">'+tm+(tagName?(' · '+tagName):'')+'</div>'+
         tg+sc+
       '</div>'+
       '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">'+
@@ -2098,7 +2055,6 @@ function switchCal(calId){
     if(rightPanel)rightPanel.style.display='flex';
     if(workDiv)workDiv.style.display='none';
     if(studyDiv)studyDiv.style.display='none';
-    renderView();
   } else {
     if(centerCol)centerCol.style.display='none';
     if(rightPanel)rightPanel.style.display='none';
@@ -2203,16 +2159,8 @@ function getWEvs(calId,ds){
     if(cd2<=ed)return;
     var diff=Math.round((cd2-ed)/86400000),dow=cd2.getDay();
     if(ev.repeat==='daily')res.push(Object.assign({},ev,{date:ds,_instanceDate:ds}));
-    else if(ev.repeat==='weekly'){
-      var wDays=ev.repeatDays&&ev.repeatDays.length?ev.repeatDays:null;
-      if(wDays){if(wDays.indexOf(dow)>=0)res.push(Object.assign({},ev,{date:ds,_instanceDate:ds}));}
-      else if(diff%7===0)res.push(Object.assign({},ev,{date:ds,_instanceDate:ds}));
-    }
-    else if(ev.repeat==='monthly'){
-      var mDays=ev.repeatMonthDays&&ev.repeatMonthDays.length?ev.repeatMonthDays:null;
-      if(mDays){if(mDays.indexOf(cd2.getDate())>=0)res.push(Object.assign({},ev,{date:ds,_instanceDate:ds}));}
-      else if(cd2.getDate()===ed.getDate())res.push(Object.assign({},ev,{date:ds,_instanceDate:ds}));
-    }
+    else if(ev.repeat==='weekly'&&diff%7===0)res.push(Object.assign({},ev,{date:ds,_instanceDate:ds}));
+    else if(ev.repeat==='monthly'&&cd2.getDate()===ed.getDate())res.push(Object.assign({},ev,{date:ds,_instanceDate:ds}));
   });
   return res;
 }
@@ -2233,7 +2181,18 @@ function getWEvsForMain(ds){
 function progIcon(p,evId,idate,calId){
   var cls=p==='done'?'done':p==='in-progress'?'in-progress':'not-started';
   var inner=p==='done'?'<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>':'';
-  return '<div class="prog-icon '+cls+'" title="Progresso" data-prog="1" data-calid="'+calId+'" data-evid="'+evId+'" data-idate="'+idate+'">'+inner+'</div>';
+  var el=document.createElement('div');
+  el.className='prog-icon '+cls;
+  el.title='Progresso';
+  el.innerHTML=inner;
+  el.dataset.calid=calId;
+  el.dataset.evid=evId;
+  el.dataset.idate=idate;
+  el.onclick=function(e){
+    e.stopPropagation();
+    cycleWProg(this.dataset.calid,this.dataset.evid,this.dataset.idate,this);
+  };
+  return el.outerHTML;
 }
 
 // Priority icon
@@ -2326,42 +2285,21 @@ function renderWorkDay(calId){
   var wrap=document.getElementById('workApp');
   if(!wrap)return;
   wrap.innerHTML='';
-  wrap.style.cssText='display:flex;flex-direction:column;flex:1;overflow:hidden';
   _wCalId=calId;
-  var innerWrap=document.createElement('div');
-  innerWrap.style.cssText='display:flex;flex:1;overflow:hidden';
 
   var topbar=document.createElement('div');
   topbar.className='topbar';
-  topbar.style.cssText='background:var(--bg3);border-bottom:0.5px solid var(--border)';
+  topbar.style.cssText='background:#f0f2f5;border-bottom:0.5px solid #d1d5db';
   topbar.innerHTML='<div style="font-size:11px;font-weight:600;color:#111827;letter-spacing:1px;text-transform:uppercase;font-family:Montserrat,sans-serif">'+cal.name+'</div>'
     +'<div style="flex:1"></div>'
     +'<button onclick="nav(-1);renderWorkDay(\''+calId+'\')" style="background:none;border:0.5px solid #d1d5db;border-radius:7px;padding:4px 8px;cursor:pointer;font-size:11px;color:#4b5563">&#8249;</button>'
     +'<button onclick="cd=new Date();renderWorkDay(\''+calId+'\')" style="background:#111827;border:none;border-radius:7px;padding:5px 12px;cursor:pointer;font-size:10px;font-weight:500;color:white;font-family:Montserrat,sans-serif">Hoje</button>'
     +'<button onclick="nav(1);renderWorkDay(\''+calId+'\')" style="background:none;border:0.5px solid #d1d5db;border-radius:7px;padding:4px 8px;cursor:pointer;font-size:11px;color:#4b5563">&#8250;</button>'
     +'<button onclick="openWNew()" style="background:#111827;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;font-size:10px;font-weight:500;color:white;font-family:Montserrat,sans-serif">+ Nova tarefa</button>';
-  // View switcher
-  var vsw=document.createElement('div');
-  vsw.style.cssText='display:flex;gap:2px;background:#e5e7eb;border-radius:8px;padding:2px;margin-left:8px';
-  ['Dia','Sem.','Notas'].forEach(function(label,i){
-    var views=['day','week','notes'];
-    var btn=document.createElement('button');
-    btn.textContent=label;
-    btn.style.cssText='padding:4px 12px;border:none;border-radius:6px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;background:'+(i===0?'white':'transparent')+';color:'+(i===0?'#111827':'#6b7280');
-    btn.addEventListener('click',function(){setWView(views[i],calId);});
-    vsw.appendChild(btn);
-  });
-  topbar.appendChild(vsw);
-  // Hide done toggle
-  var hideBtn=document.createElement('button');
-  hideBtn.style.cssText='background:none;border:0.5px solid #d1d5db;border-radius:7px;padding:4px 10px;cursor:pointer;font-size:10px;color:#6b7280;font-family:Montserrat,sans-serif;margin-left:6px';
-  hideBtn.textContent=window._wkHideDone?'Mostrar concluidas':'Ocultar concluidas';if(window._wkHideDone){hideBtn.style.background='#111827';hideBtn.style.color='white';hideBtn.style.borderColor='#111827';}
-  hideBtn.addEventListener('click',function(){window._wkHideDone=!window._wkHideDone;renderWorkDay(calId);});
-  topbar.appendChild(hideBtn);
   wrap.appendChild(topbar);
 
   var main=document.createElement('div');
-  main.style.cssText='flex:2.2;overflow-y:auto;padding:20px 24px;background:#f7f8fa';
+  main.style.cssText='flex:1;overflow-y:auto;padding:20px 24px;background:#f7f8fa';
   var ds=tds(cd);
   var today=new Date();
   var isT=cd.toDateString()===today.toDateString();
@@ -2377,7 +2315,7 @@ function renderWorkDay(calId){
   var wevs=getWEvs(calId,ds).sort(function(a,b){return (a.startTime||'').localeCompare(b.startTime||'');});
   var notDone=wevs.filter(function(e){return e.progress!=='done';});
   var done=wevs.filter(function(e){return e.progress==='done';});
-  var all=window._wkHideDone?notDone:notDone.concat(done);
+  var all=notDone.concat(done);
 
   if(!all.length){
     var empty=document.createElement('div');
@@ -2388,18 +2326,9 @@ function renderWorkDay(calId){
     var grid=document.createElement('div');
     grid.style.cssText='display:flex;flex-direction:column;gap:7px';
     all.forEach(function(ev){grid.appendChild(wEvCard(ev,calId));});
-    grid.querySelectorAll('[data-prog]').forEach(function(el){
-      el.addEventListener('click',function(e){
-        e.stopPropagation();
-        cycleWProg(el.dataset.calid,el.dataset.evid,el.dataset.idate,el);
-      });
-    });
     main.appendChild(grid);
   }
-  innerWrap.appendChild(main);
-  wrap.appendChild(innerWrap);
-  // Build right panel in innerWrap
-  renderWorkRightPanel(calId);
+  wrap.appendChild(main);
 }
 
 // Work event modal
@@ -2415,9 +2344,7 @@ function openWNew(){
   var dbEl=document.getElementById('weDbtn');if(dbEl)dbEl.style.display='none';
   setWSeg('wePriority','medium');
   setWSeg('weProgress','not-started');
-  window._weSelWeekDays=[];
-  window._weSelMonthDays=[];
-  setWRepeat('none');
+  setWSeg('weRepeat','none');
   renderWTags();
   document.querySelectorAll('#weColorRow .csw').forEach(function(e){e.classList.remove('sel2');});
   var first=document.querySelector('#weColorRow .csw');if(first)first.classList.add('sel2');
@@ -2436,9 +2363,7 @@ function openWEdit(calId,evId,idate){
   var dbEl=document.getElementById('weDbtn');if(dbEl)dbEl.style.display='block';
   setWSeg('wePriority',ev.priority||'medium');
   setWSeg('weProgress',ev.progress||'not-started');
-  window._weSelWeekDays=ev.repeatDays?ev.repeatDays.slice():[];
-  window._weSelMonthDays=ev.repeatMonthDays?ev.repeatMonthDays.slice():[];
-  setWRepeat(ev.repeat||'none');
+  setWSeg('weRepeat',ev.repeat||'none');
   renderWTags();
   var m=document.getElementById('wEvModal');if(m)m.classList.add('open');
 }
@@ -2502,8 +2427,6 @@ function saveWEv(){
     priority:getWSeg('wePriority')||'medium',
     progress:getWSeg('weProgress')||'not-started',
     repeat:getWSeg('weRepeat')||'none',
-    repeatDays:window._weSelWeekDays.slice(),
-    repeatMonthDays:window._weSelMonthDays.slice(),
     color:_weColor,
     tags:_weTags.slice(),
     calId:_wCalId
@@ -2551,7 +2474,7 @@ function renderWorkWeek(calId){
   days.forEach(function(d){
     var ds=tds(d);
     var evs=getWEvs(calId,ds).sort(function(a,b){return(a.startTime||'').localeCompare(b.startTime||'');});
-    cols+='<div style="border-right:0.5px solid #d1d5db;padding:6px 4px;min-height:200px;cursor:pointer" data-wkday="'+ds+'" data-wkcal="'+calId+'">';
+    cols+='<div style="border-right:0.5px solid #d1d5db;padding:6px 4px;min-height:200px;cursor:pointer" onclick="cd=new Date(''+ds+'T12:00:00');renderWorkDay(''+calId+'')">';
     evs.forEach(function(ev){
       var col=ev.color||'#4a5568';
       cols+='<div style="font-size:10px;padding:3px 5px;border-radius:4px;margin-bottom:3px;border-left:2px solid '+col+';background:rgba(255,255,255,.8);color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+eh(ev.title)+'</div>';
@@ -2562,14 +2485,7 @@ function renderWorkWeek(calId){
   // Rebuild wrap with topbar + week grid
   renderWorkDay(calId); // reuse topbar
   var main=wrap.querySelector('div:last-child');
-  if(main){main.innerHTML=header+cols;main.style.cssText='flex:1;overflow:hidden;display:flex;flex-direction:column;background:#f7f8fa';
-    main.querySelectorAll('[data-wkday]').forEach(function(el){
-      el.addEventListener('click',function(){
-        cd=new Date(el.dataset.wkday+'T12:00:00');
-        renderWorkDay(el.dataset.wkcal);
-      });
-    });
-  }
+  if(main){main.innerHTML=header+cols;main.style.cssText='flex:1;overflow:hidden;display:flex;flex-direction:column;background:#f7f8fa';}
 }
 
 function renderWorkNotes(calId){
@@ -2580,49 +2496,24 @@ function renderWorkNotes(calId){
   var calNotes=notesList.filter(function(s){return s.calId===calId;});
   var SCLRS=['#fef3c7','#fce7f3','#e0f2fe','#dcfce7','#f3f4f6'];
   main.style.cssText='flex:1;overflow-y:auto;padding:20px 24px;background:#f7f8fa';
-  var container=document.createElement('div');
-  // Header with add button
-  var hdr=document.createElement('div');
-  hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:16px';
-  var hdrTitle=document.createElement('div');
-  hdrTitle.style.cssText='font-size:14px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif';
-  hdrTitle.textContent='Notas';
-  var addBtn=document.createElement('button');
-  addBtn.style.cssText='background:#111827;border:none;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:10px;font-weight:500;color:white;font-family:Montserrat,sans-serif';
-  addBtn.textContent='+ Nova nota';
-  addBtn.addEventListener('click',function(){addWNote(calId);});
-  hdr.appendChild(hdrTitle);hdr.appendChild(addBtn);
-  container.appendChild(hdr);
+  var html='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
+    +'<div style="font-size:14px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">Notas</div>'
+    +'<button onclick="addWNote(''+calId+'')" style="background:#111827;border:none;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:10px;font-weight:500;color:white;font-family:Montserrat,sans-serif">+ Nova nota</button>'
+    +'</div>';
   if(!calNotes.length){
-    var empty=document.createElement('div');
-    empty.style.cssText='text-align:center;color:#9ca3af;padding:40px 0;font-size:12px;font-family:Montserrat,sans-serif';
-    empty.textContent='Nenhuma nota. Clique em Nova nota.';
-    container.appendChild(empty);
+    html+='<div style="text-align:center;color:#9ca3af;padding:40px 0;font-size:12px;font-family:Montserrat,sans-serif">Nenhuma nota. Clique em Nova nota.</div>';
   } else {
-    var grid=document.createElement('div');
-    grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px';
+    html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">';
     calNotes.forEach(function(s,i){
       var col=s.color||'#f0f2f5';
-      var card=document.createElement('div');
-      card.style.cssText='background:'+col+';border-radius:12px;padding:12px;min-height:120px;display:flex;flex-direction:column';
-      var delRow=document.createElement('div');
-      delRow.style.cssText='display:flex;justify-content:flex-end';
-      var delBtn=document.createElement('button');
-      delBtn.style.cssText='background:none;border:none;cursor:pointer;color:rgba(0,0,0,.3);font-size:14px';
-      delBtn.textContent='x';
-      delBtn.addEventListener('click',function(){delWNote(calId,s.id);});
-      delRow.appendChild(delBtn);
-      var ta=document.createElement('textarea');
-      ta.style.cssText='flex:1;background:none;border:none;outline:none;font-family:Montserrat,sans-serif;font-size:12px;color:rgba(0,0,0,.75);resize:none;min-height:60px';
-      ta.placeholder='Escreva aqui...';
-      ta.value=s.text||'';
-      ta.addEventListener('change',function(){updWNote(calId,s.id,ta.value);});
-      card.appendChild(delRow);card.appendChild(ta);
-      grid.appendChild(card);
+      html+='<div style="background:'+col+';border-radius:12px;padding:12px;min-height:120px;display:flex;flex-direction:column">'
+        +'<div style="display:flex;justify-content:flex-end"><button onclick="delWNote(''+calId+'',''+s.id+'')" style="background:none;border:none;cursor:pointer;color:rgba(0,0,0,.3);font-size:14px">x</button></div>'
+        +'<textarea style="flex:1;background:none;border:none;outline:none;font-family:Montserrat,sans-serif;font-size:12px;color:rgba(0,0,0,.75);resize:none;min-height:60px" placeholder="Escreva aqui..." onchange="updWNote(''+calId+'',''+s.id+'',this.value)">'+eh(s.text||'')+'</textarea>'
+        +'</div>';
     });
-    container.appendChild(grid);
+    html+='</div>';
   }
-  main.innerHTML='';main.appendChild(container);
+  main.innerHTML=html;
 }
 
 function addWNote(calId){
@@ -2631,18 +2522,16 @@ function addWNote(calId){
   window.stickies.push(s);
   if(window.fbSaveStickies)fbSaveStickies();
   renderWorkNotes(calId);
-  renderWorkRightPanel(calId);
 }
 function delWNote(calId,id){
   if(!confirm('Excluir nota?'))return;
   window.stickies=(window.stickies||[]).filter(function(s){return s.id!==id;});
   if(window.fbSaveStickies)fbSaveStickies();
   renderWorkNotes(calId);
-  renderWorkRightPanel(calId);
 }
 function updWNote(calId,id,val){
   var s=(window.stickies||[]).find(function(x){return x.id===id;});
-  if(s){s.text=val;if(window.fbSaveStickies)fbSaveStickies();renderWorkRightPanel(s.calId);}
+  if(s){s.text=val;if(window.fbSaveStickies)fbSaveStickies();}
 }
 
 function delWEv(){
@@ -2721,7 +2610,7 @@ function renderStudyView(){
   // topbar
   var tb=document.createElement('div');
   tb.className='topbar';
-  tb.style.cssText='background:var(--bg3);border-bottom:0.5px solid var(--border)';
+  tb.style.cssText='background:#faf9f7;border-bottom:0.5px solid #e8e4de';
   tb.innerHTML='<div style="font-size:11px;font-weight:600;color:#1a1a1a;letter-spacing:.5px;font-family:Montserrat,sans-serif">English Study</div>'
     +'<div style="flex:1"></div>'
     +'<div style="display:flex;gap:2px;background:#f0ede8;border-radius:9px;padding:3px">'
@@ -2736,14 +2625,19 @@ function renderStudyView(){
 
   // main content
   var main=document.createElement('div');
-  main.style.cssText='flex:1;overflow-y:auto;padding:14px 20px;background:var(--bg);display:flex;flex-direction:column;gap:10px';
+  main.style.cssText='flex:1;overflow-y:auto;padding:20px 24px;background:#faf9f7;display:flex;flex-direction:column;gap:16px';
 
-  // stats bar - inline compact
+  // stats
   var stats=document.createElement('div');
-  stats.style.cssText='display:flex;align-items:center;gap:16px;padding:8px 0;border-bottom:0.5px solid #e8e4de;margin-bottom:4px';
-  stats.innerHTML='<div style="display:flex;align-items:baseline;gap:4px"><span style="font-size:18px;font-weight:500;color:#1a1a1a;font-family:Montserrat,sans-serif">'+(window.studyVocab.length)+'</span><span style="font-size:10px;color:#aaa89e;font-family:Montserrat,sans-serif">palavras</span></div>'
-    +'<div style="width:0.5px;height:16px;background:#e8e4de"></div>'
-    +'<div style="display:flex;align-items:baseline;gap:4px"><span style="font-size:18px;font-weight:500;color:#1a1a1a;font-family:Montserrat,sans-serif">'+(window.studyNotes.length)+'</span><span style="font-size:10px;color:#aaa89e;font-family:Montserrat,sans-serif">sessoes</span></div>';
+  stats.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px';
+  stats.innerHTML='<div style="background:#f0ede8;border-radius:10px;padding:10px 14px">'
+    +'<div style="font-size:24px;font-weight:300;color:#1a1a1a;font-family:Montserrat,sans-serif">'+(window.studyVocab.length)+'</div>'
+    +'<div style="font-size:9px;color:#aaa89e;font-weight:500;margin-top:2px;letter-spacing:.3px;text-transform:uppercase;font-family:Montserrat,sans-serif">palavras salvas</div>'
+    +'</div>'
+    +'<div style="background:#f0ede8;border-radius:10px;padding:10px 14px">'
+    +'<div style="font-size:24px;font-weight:300;color:#1a1a1a;font-family:Montserrat,sans-serif">'+(window.studyNotes.length)+'</div>'
+    +'<div style="font-size:9px;color:#aaa89e;font-weight:500;margin-top:2px;letter-spacing:.3px;text-transform:uppercase;font-family:Montserrat,sans-serif">sessoes de notas</div>'
+    +'</div>';
   main.appendChild(stats);
 
   if(_studyTab==='vocab'){
@@ -2751,74 +2645,7 @@ function renderStudyView(){
   } else {
     renderNotesList(main);
   }
-
-  // Layout: main + right panel
-  var layout=document.createElement('div');
-  layout.style.cssText='display:flex;flex:1;overflow:hidden';
-  main.style.flex='2.2';
-  layout.appendChild(main);
-
-  // Right panel - False Friends
-  var rp=document.createElement('div');
-  rp.style.cssText='flex:1;border-left:0.5px solid var(--border);background:var(--bg3);overflow-y:auto;display:flex;flex-direction:column';
-
-  // False friends section
-  var ffSection=document.createElement('div');
-  ffSection.style.cssText='padding:14px';
-
-  var ffHeader=document.createElement('div');
-  ffHeader.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:10px';
-  var ffTitle=document.createElement('div');
-  ffTitle.style.cssText='font-size:9px;font-weight:600;color:#aaa89e;letter-spacing:1px;text-transform:uppercase;font-family:Montserrat,sans-serif';
-  ffTitle.textContent='False friends';
-  ffHeader.appendChild(ffTitle);
-
-  var ffAddBtn=document.createElement('button');
-  ffAddBtn.style.cssText='background:none;border:0.5px solid #e8e4de;border-radius:6px;padding:2px 8px;cursor:pointer;font-size:10px;color:#aaa89e;font-family:Montserrat,sans-serif';
-  ffAddBtn.textContent='+ Novo';
-  ffAddBtn.addEventListener('click',function(){addFalseFriend();});
-  ffHeader.appendChild(ffAddBtn);
-  ffSection.appendChild(ffHeader);
-
-  // Load false friends
-  if(!window._falseFriends){
-    window._falseFriends=[
-      {id:'ff1',word:'actually',meaning:'na verdade (nao "atualmente")'},
-      {id:'ff2',word:'parents',meaning:'pais (nao "parentes")'},
-      {id:'ff3',word:'gentle',meaning:'gentil, suave (nao "gente")'},
-      {id:'ff4',word:'college',meaning:'faculdade (nao "colegio")'},
-      {id:'ff5',word:'currently',meaning:'atualmente (nao "correntemente")'},
-      {id:'ff6',word:'remains',meaning:'restos / permanece (nao "remanescentes")'}
-    ];
-    // Try to load from Firestore
-    loadFalseFriends();
-  }
-
-  var ffList=document.createElement('div');
-  ffList.style.cssText='display:flex;flex-direction:column;gap:0';
-  (window._falseFriends||[]).forEach(function(ff){
-    var row=document.createElement('div');
-    row.style.cssText='display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:0.5px solid #f0ede8';
-    var wordEl=document.createElement('span');
-    wordEl.style.cssText='font-size:12px;font-weight:500;color:#1a1a1a;font-family:Montserrat,sans-serif;min-width:70px';
-    wordEl.textContent=ff.word;
-    var meaningEl=document.createElement('span');
-    meaningEl.style.cssText='font-size:11px;color:#aaa89e;font-family:Montserrat,sans-serif;flex:1';
-    meaningEl.textContent=ff.meaning;
-    var delEl=document.createElement('span');
-    delEl.style.cssText='cursor:pointer;color:#d1d5db;font-size:12px;flex-shrink:0';
-    delEl.textContent='x';
-    delEl.title='Remover';
-    delEl.addEventListener('click',function(){removeFalseFriend(ff.id);});
-    row.appendChild(wordEl);
-    row.appendChild(meaningEl);
-    row.appendChild(delEl);
-    ffList.appendChild(row);
-  });
-  ffSection.appendChild(ffList);
-  rp.appendChild(ffSection);
-  layout.appendChild(rp);
-  wrap.appendChild(layout);
+  wrap.appendChild(main);
 }
 
 function renderVocabList(parent){
@@ -2830,49 +2657,20 @@ function renderVocabList(parent){
     parent.appendChild(empty);
     return;
   }
-  // Search bar
-  var searchWrap=document.createElement('div');
-  searchWrap.style.cssText='margin-bottom:8px';
-  var searchInp=document.createElement('input');
-  searchInp.type='text';
-  searchInp.placeholder='Buscar palavra...';
-  searchInp.style.cssText='width:100%;padding:6px 10px 6px 30px;background:white;border:0.5px solid #e8e4de;border-radius:8px;font-size:11px;font-family:Montserrat,sans-serif;outline:none;color:#1a1a1a';
-  searchInp.id='studySearchInp';
-  searchInp.oninput=function(){renderStudyView();var el=document.getElementById('studySearchInp');if(el)el.focus();};
-  var sIcon=document.createElement('div');
-  sIcon.style.cssText='position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none';
-  sIcon.innerHTML='<svg width="12" height="12" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="4" stroke="#aaa89e" stroke-width="1.2"/><path d="M9 9l2.5 2.5" stroke="#aaa89e" stroke-width="1.2" stroke-linecap="round"/></svg>';
-  searchWrap.style.position='relative';
-  searchWrap.appendChild(sIcon);
-  searchWrap.appendChild(searchInp);
-  parent.appendChild(searchWrap);
-
-  // Filter by search
-  var searchVal=window._studySearchVal||'';
-  searchInp.value=searchVal;
-  var filtered=searchVal?list.filter(function(v){return (v.word||'').toLowerCase().indexOf(searchVal.toLowerCase())>=0||(v.translation||'').toLowerCase().indexOf(searchVal.toLowerCase())>=0;}):list;
-  searchInp.oninput=function(){window._studySearchVal=this.value;renderStudyView();var el=document.getElementById('studySearchInp');if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}};
-
   var label=document.createElement('div');
-  label.style.cssText='font-size:9px;font-weight:600;color:#aaa89e;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:6px;font-family:Montserrat,sans-serif';
-  label.textContent='Vocabulario — '+filtered.length+(searchVal?' de '+list.length:'')+' palavras';
+  label.style.cssText='font-size:9px;font-weight:600;color:#aaa89e;letter-spacing:1.2px;text-transform:uppercase;font-family:Montserrat,sans-serif';
+  label.textContent='Vocabulario';
   parent.appendChild(label);
   var grid=document.createElement('div');
-  grid.style.cssText='display:flex;flex-direction:column;gap:4px';
-  filtered.forEach(function(v){
+  grid.style.cssText='display:flex;flex-direction:column;gap:6px';
+  list.forEach(function(v){
     var card=document.createElement('div');
-    card.style.cssText='background:white;border:0.5px solid #e8e4de;border-radius:8px;padding:8px 12px;cursor:pointer;transition:background .1s';
-    card.onmouseenter=function(){card.style.background='#f5f3ef';};
-    card.onmouseleave=function(){card.style.background='white';};
+    card.style.cssText='background:white;border:0.5px solid #e8e4de;border-radius:12px;padding:11px 14px;display:flex;align-items:center;gap:12px;cursor:pointer';
     card.onclick=function(){openStudyEdit('vocab',v.id);};
-    var pronHtml=v.pronunciation?'<span style="font-size:10px;color:#aaa89e;font-style:italic;font-family:Montserrat,sans-serif;margin-left:6px">/'+eh(v.pronunciation)+'/</span>':'';
-    var exHtml=v.example?'<div style="font-size:10px;color:#aaa89e;font-style:italic;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:Montserrat,sans-serif">'+eh(v.example)+'</div>':'';
-    card.innerHTML='<div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap">'
-      +'<span style="font-size:12px;font-weight:500;color:#1a1a1a;font-family:Montserrat,sans-serif">'+eh(v.word)+'</span>'
-      +pronHtml
-      +'<span style="font-size:11px;color:#6b6860;font-family:Montserrat,sans-serif">— '+eh(v.translation)+'</span>'
-      +'</div>'
-      +exHtml;
+    card.innerHTML='<div style="font-size:13px;font-weight:500;color:#1a1a1a;min-width:140px;font-family:Montserrat,sans-serif">'+eh(v.word)+'</div>'
+      +'<div style="width:0.5px;height:28px;background:#e8e4de;flex-shrink:0"></div>'
+      +'<div style="font-size:12px;color:#6b6860;flex:1;font-family:Montserrat,sans-serif">'+eh(v.translation)+'</div>'
+      +(v.example?'<div style="font-size:10px;color:#aaa89e;font-style:italic;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:Montserrat,sans-serif">'+eh(v.example)+'</div>':'');
     grid.appendChild(card);
   });
   parent.appendChild(grid);
@@ -2938,9 +2736,8 @@ function showStudyModal(item){
   // fill values
   if(item){
     if(_studyModalType==='vocab'){
-      var wi=document.getElementById('sm-word');var ti=document.getElementById('sm-trans');var ei=document.getElementById('sm-example');var pi=document.getElementById('sm-pron');
+      var wi=document.getElementById('sm-word');var ti=document.getElementById('sm-trans');var ei=document.getElementById('sm-example');
       if(wi)wi.value=item.word||'';
-      if(pi)pi.value=item.pronunciation||'';
       if(ti)ti.value=item.translation||'';
       if(ei)ei.value=item.example||'';
     } else {
@@ -2950,7 +2747,7 @@ function showStudyModal(item){
     var dbtn=document.getElementById('sm-delbtn');
     if(dbtn)dbtn.style.display='block';
   } else {
-    ['sm-word','sm-pron','sm-trans','sm-example','sm-note'].forEach(function(id){
+    ['sm-word','sm-trans','sm-example','sm-note'].forEach(function(id){
       var el=document.getElementById(id);if(el)el.value='';
     });
     var dbtn=document.getElementById('sm-delbtn');
@@ -2971,7 +2768,7 @@ function saveStudyEntry(){
     var word=(document.getElementById('sm-word')||{}).value||'';
     var trans=(document.getElementById('sm-trans')||{}).value||'';
     if(!word.trim()){showToast('Digite a palavra!');return;}
-    var entry={id:_editStudyId||gid(),word:word.trim(),pronunciation:((document.getElementById('sm-pron')||{}).value||'').trim(),translation:trans.trim(),example:((document.getElementById('sm-example')||{}).value||'').trim(),date:new Date().toISOString()};
+    var entry={id:_editStudyId||gid(),word:word.trim(),translation:trans.trim(),example:((document.getElementById('sm-example')||{}).value||'').trim(),date:new Date().toISOString()};
     if(_editStudyId){
       var idx=(window.studyVocab||[]).findIndex(function(v){return v.id===_editStudyId;});
       if(idx>=0)window.studyVocab[idx]=entry;else window.studyVocab.unshift(entry);
@@ -3011,42 +2808,6 @@ function setStudyTab(tab){
   _studyTab=tab;
   renderStudyView();
 }
-function addFalseFriend(){
-  var word=prompt('Palavra em ingles:');
-  if(!word||!word.trim())return;
-  var meaning=prompt('Significado correto (e o erro comum):');
-  if(!meaning||!meaning.trim())return;
-  if(!window._falseFriends)window._falseFriends=[];
-  window._falseFriends.push({id:gid(),word:word.trim(),meaning:meaning.trim()});
-  saveFalseFriends();
-  renderStudyView();
-}
-function removeFalseFriend(id){
-  if(!window._falseFriends)return;
-  window._falseFriends=window._falseFriends.filter(function(f){return f.id!==id;});
-  saveFalseFriends();
-  renderStudyView();
-}
-function saveFalseFriends(){
-  if(!window.auth||!window.auth.currentUser)return;
-  try{
-    var uid=window.auth.currentUser.uid;
-    window.firestore.setDoc(window.firestore.doc(window.db,'users',uid,'study','falsefriends'),{list:window._falseFriends});
-  }catch(e){}
-}
-function loadFalseFriends(){
-  if(!window.auth||!window.auth.currentUser)return;
-  try{
-    var uid=window.auth.currentUser.uid;
-    window.firestore.onSnapshot(window.firestore.doc(window.db,'users',uid,'study','falsefriends'),function(snap){
-      if(snap.exists()&&snap.data().list){
-        window._falseFriends=snap.data().list;
-        if(activeCal==='study')renderStudyView();
-      }
-    });
-  }catch(e){}
-}
-
 function initStudyModule(){
   fbLoadStudy();
 }
@@ -3057,294 +2818,6 @@ function setNoEmoji(){
   if(btn){btn.textContent='-';btn.classList.add('no-emoji');}
   var ep=document.getElementById('epick');if(ep)ep.classList.remove('open');
 }
-
-
-// ══════════════════════════════════════════════════════════
-// ── WORK CALENDAR REPEAT PICKERS + RIGHT PANEL ──────────
-// ══════════════════════════════════════════════════════════
-window._weSelWeekDays=[];
-window._weSelMonthDays=[];
-window._wkHideDone=true;
-
-function setWRepeat(val){
-  setWSeg('weRepeat',val);
-  var wp=document.getElementById('weWeekPicker');
-  var mp=document.getElementById('weMonthPicker');
-  if(wp)wp.style.display=val==='weekly'?'block':'none';
-  if(mp)mp.style.display=val==='monthly'?'block':'none';
-  if(val==='weekly')buildWeWeekDays();
-  if(val==='monthly')buildWeMonthDays();
-}
-
-function buildWeWeekDays(){
-  var wrap=document.getElementById('weWeekDays');if(!wrap)return;
-  wrap.innerHTML='';
-  var labels=['D','S','T','Q','Q','S','S'];
-  labels.forEach(function(l,i){
-    var btn=document.createElement('div');
-    btn.style.cssText='width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;cursor:pointer;font-family:Montserrat,sans-serif;border:0.5px solid #d1d5db;'+(window._weSelWeekDays.indexOf(i)>=0?'background:#111827;color:white':'background:white;color:#6b7280');
-    btn.textContent=l;
-    btn.addEventListener('click',function(){
-      var idx=window._weSelWeekDays.indexOf(i);
-      if(idx>=0)window._weSelWeekDays.splice(idx,1);
-      else window._weSelWeekDays.push(i);
-      buildWeWeekDays();
-    });
-    wrap.appendChild(btn);
-  });
-}
-
-function buildWeMonthDays(){
-  var wrap=document.getElementById('weMonthDays');if(!wrap)return;
-  wrap.innerHTML='';
-  for(var d=1;d<=31;d++){
-    (function(day){
-      var btn=document.createElement('div');
-      btn.style.cssText='width:24px;height:24px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;border:0.5px solid #d1d5db;'+(window._weSelMonthDays.indexOf(day)>=0?'background:#111827;color:white':'background:white;color:#6b7280');
-      btn.textContent=day;
-      btn.addEventListener('click',function(){
-        var idx=window._weSelMonthDays.indexOf(day);
-        if(idx>=0)window._weSelMonthDays.splice(idx,1);
-        else window._weSelMonthDays.push(day);
-        buildWeMonthDays();
-      });
-      wrap.appendChild(btn);
-    })(d);
-  }
-}
-
-// ── WORK CALENDAR RIGHT PANEL ──
-function renderWorkRightPanel(calId){
-  var wrap=document.getElementById('workApp');if(!wrap)return;
-  var existing=document.getElementById('wkRightPanel');
-  if(existing)existing.remove();
-  var innerWrap=wrap.querySelector('div:last-child');
-  if(!innerWrap||innerWrap.tagName!=='DIV')innerWrap=wrap;
-
-  var rp=document.createElement('div');
-  rp.id='wkRightPanel';
-  rp.style.cssText='flex:1;border-left:0.5px solid var(--border);background:var(--bg3);overflow-y:auto;padding:0;display:flex;flex-direction:column';
-
-  var ds=tds(cd);
-  var wevs=getWEvs(calId,ds);
-  var total=wevs.length;
-  var done=wevs.filter(function(e){return e.progress==='done';}).length;
-
-  // Mini calendar
-  var today=new Date();
-  var f=new Date(cd.getFullYear(),cd.getMonth(),1);
-  var l=new Date(cd.getFullYear(),cd.getMonth()+1,0);
-  var mNames=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
-  var calHtml='<div style="padding:14px;border-bottom:0.5px solid #e5e7eb">';
-  calHtml+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
-  calHtml+='<span style="font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1px;font-family:Montserrat,sans-serif">'+mNames[cd.getMonth()]+' '+cd.getFullYear()+'</span>';
-  calHtml+='</div>';
-  calHtml+='<div style="display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:9px;color:#9ca3af;margin-bottom:4px;font-family:Montserrat,sans-serif">';
-  ['D','S','T','Q','Q','S','S'].forEach(function(d){calHtml+='<div>'+d+'</div>';});
-  calHtml+='</div>';
-  calHtml+='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;text-align:center;font-size:10px;font-family:Montserrat,sans-serif">';
-  for(var i=0;i<f.getDay();i++)calHtml+='<div style="padding:3px;color:#d1d5db"></div>';
-  for(var d=1;d<=l.getDate();d++){
-    var isToday=d===today.getDate()&&cd.getMonth()===today.getMonth()&&cd.getFullYear()===today.getFullYear();
-    var isSel=d===cd.getDate();
-    calHtml+='<div style="padding:3px;border-radius:50%;'+(isToday?'background:#111827;color:white;font-weight:600':isSel?'background:#e5e7eb;font-weight:500':'color:#374151')+'">'+d+'</div>';
-  }
-  calHtml+='</div></div>';
-
-  // Summary
-  var sumHtml='<div style="padding:14px;border-bottom:0.5px solid #e5e7eb">';
-  sumHtml+='<div style="font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-family:Montserrat,sans-serif">RESUMO</div>';
-  sumHtml+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
-  sumHtml+='<div style="background:#f0f2f5;border-radius:8px;padding:10px"><div style="font-size:20px;font-weight:300;color:#111827;font-family:Montserrat,sans-serif">'+total+'</div><div style="font-size:9px;color:#9ca3af;font-family:Montserrat,sans-serif">tarefas</div></div>';
-  sumHtml+='<div style="background:#f0f2f5;border-radius:8px;padding:10px"><div style="font-size:20px;font-weight:300;color:#111827;font-family:Montserrat,sans-serif">'+done+'</div><div style="font-size:9px;color:#9ca3af;font-family:Montserrat,sans-serif">concluidas</div></div>';
-  sumHtml+='</div></div>';
-
-  // Tomorrow
-  var tmr=new Date(cd);tmr.setDate(tmr.getDate()+1);
-  var tmrDs=tds(tmr);
-  var tmrEvs=getWEvs(calId,tmrDs).filter(function(e){return e.progress!=='done';}).slice(0,3);
-  var dayN=['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
-  var tmrHtml='<div style="padding:14px;border-bottom:0.5px solid #e5e7eb">';
-  tmrHtml+='<div style="font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-family:Montserrat,sans-serif">AMANHA - '+dayN[tmr.getDay()]+' '+tmr.getDate()+'</div>';
-  if(!tmrEvs.length){
-    tmrHtml+='<div style="font-size:11px;color:#9ca3af;font-family:Montserrat,sans-serif">Nenhuma tarefa</div>';
-  } else {
-    tmrEvs.forEach(function(ev){
-      tmrHtml+='<div style="padding:6px 0;border-bottom:0.5px solid #f0f2f5"><div style="font-size:11px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+eh(ev.title)+'</div><div style="font-size:9px;color:#9ca3af;font-family:monospace">'+(ev.allDay?'Dia todo':(ev.startTime||'')+' - '+(ev.endTime||''))+'</div></div>';
-    });
-  }
-  tmrHtml+='</div>';
-
-  // Notes
-  var calNotes=(window.stickies||[]).filter(function(s){return s.calId===calId;});
-  var notesHtml='<div style="padding:14px;flex:1">';
-  notesHtml+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
-  notesHtml+='<div style="font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1px;text-transform:uppercase;font-family:Montserrat,sans-serif">NOTAS</div>';
-  notesHtml+='</div>';
-  if(!calNotes.length){
-    notesHtml+='<div style="font-size:11px;color:#9ca3af;font-style:italic;font-family:Montserrat,sans-serif">Nenhuma nota</div>';
-  } else {
-    calNotes.slice(0,4).forEach(function(n){
-      var txt=(n.text||'').substring(0,60);
-      if((n.text||'').length>60)txt+='...';
-      notesHtml+='<div style="padding:6px 8px;margin-bottom:4px;border-radius:6px;background:'+(n.color||'#f0f2f5')+';font-size:11px;color:#374151;font-family:Montserrat,sans-serif">'+(txt||'<span style=color:#9ca3af>Nota vazia</span>')+'</div>';
-    });
-    if(calNotes.length>4){
-      notesHtml+='<div style="font-size:10px;color:#9ca3af;margin-top:4px;font-family:Montserrat,sans-serif">+ '+(calNotes.length-4)+' mais</div>';
-    }
-  }
-  notesHtml+='</div>';
-
-  rp.innerHTML=calHtml+sumHtml+tmrHtml+notesHtml;
-  innerWrap.appendChild(rp);
-
-}
-
-// ══════════════════════════════════════════════════════════
-// ── FINANCASCLARAS INTEGRATION ───────────────────────────
-// ══════════════════════════════════════════════════════════
-window._financeTasks = {};
-
-function initFinanceIntegration(){
-  if(!window.auth||!window.auth.currentUser){return;}
-  try{
-    var col=window.firestore.collection(window._db,'finance_tasks');
-    window.firestore.onSnapshot(col,function(snap){
-      var tasks={};
-      snap.forEach(function(d){
-        var data=d.data();
-        data.id=d.id;
-        tasks[d.id]=data;
-      });
-      window._financeTasks=tasks;
-      clearTimeout(window._finOvTimer);
-      window._finOvTimer=setTimeout(renderFinanceOverlay,200);
-    });
-  }catch(e){
-    console.error('Finance integration error:',e);
-  }
-}
-
-function renderFinanceOverlay(){
-  // Remove previous finance elements
-  document.querySelectorAll('.finance-section-hdr,.finance-task,.mc-finance-dot').forEach(function(el){el.remove();});
-
-  var allTasks=Object.values(window._financeTasks||{});
-  var tasks=allTasks.filter(function(t){return t.calStatus!=='concluido';});
-
-  // DAY VIEW — insert cards into the day view container
-  if(view==='day'){
-    var ds=tds(cd);
-    var dayTasks=tasks.filter(function(t){return t.date===ds;});
-    if(dayTasks.length>0){
-      var vc=document.getElementById('vc');
-      if(!vc)return;
-      var dv=vc.querySelector('.dv')||vc;
-      var hdr=document.createElement('div');
-      hdr.className='finance-section-hdr';
-      hdr.innerHTML='&#x1F4B0; FINANCAS <span style="font-weight:400;color:#b0a080;font-size:9px">'+dayTasks.length+' pendente'+(dayTasks.length>1?'s':'')+'</span>';
-      dv.appendChild(hdr);
-      dayTasks.forEach(function(t){dv.appendChild(buildFinanceCard(t));});
-    }
-  }
-
-  // MONTH VIEW — add dots to cells with pending finance tasks
-  if(view==='month'){
-    var monthGrid=document.querySelector('.mg');
-    if(monthGrid){
-      var cells=monthGrid.querySelectorAll('.mc');
-      var yr=cd.getFullYear();
-      var mo=cd.getMonth();
-      var first=new Date(yr,mo,1);
-      var offset=first.getDay();
-      tasks.forEach(function(t){
-        if(!t.date)return;
-        var parts=t.date.split('-');
-        var ty=parseInt(parts[0]),tm=parseInt(parts[1]),td=parseInt(parts[2]);
-        if(ty===yr&&tm===mo+1){
-          var idx=offset+td-1;
-          if(cells[idx]){
-            var dot=document.createElement('div');
-            dot.className='mc-finance-dot';
-            dot.title=t.title+' - '+fmtFinBRL(t.amount);
-            cells[idx].style.position='relative';
-            cells[idx].appendChild(dot);
-          }
-        }
-      });
-    }
-  }
-}
-
-function fmtFinBRL(v){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);}
-
-function buildFinanceCard(task){
-  var card=document.createElement('div');
-  card.className='finance-task';
-
-  var check=document.createElement('div');
-  check.className='ft-check';
-  check.title='Marcar como pago';
-
-  var badge=document.createElement('span');
-  badge.className='ft-badge';
-  badge.textContent='FINANCAS';
-
-  var title=document.createElement('span');
-  title.className='ft-title';
-  title.textContent=(task.title||'').replace('\u{1F4B0} Pagar: ','').replace('Pagar: ','');
-
-  var amount=document.createElement('span');
-  amount.className='ft-amount';
-  amount.textContent=fmtFinBRL(task.amount);
-
-  check.addEventListener('click',function(e){
-    e.stopPropagation();
-    check.classList.add('done');
-    check.textContent='\u2713';
-    card.style.opacity='0.4';
-    card.style.textDecoration='line-through';
-    try{
-      var ref=window.firestore.doc(window._db,'finance_tasks',task.id);
-      window.firestore.setDoc(ref,{calStatus:'concluido'},{merge:true}).then(function(){
-        setTimeout(function(){card.remove();},500);
-      });
-    }catch(err){
-      console.error('Erro ao marcar pago:',err);
-      check.classList.remove('done');check.textContent='';
-      card.style.opacity='1';card.style.textDecoration='none';
-    }
-  });
-
-  card.appendChild(check);
-  card.appendChild(badge);
-  card.appendChild(title);
-  card.appendChild(amount);
-  return card;
-}
-
-// Hook renderView to refresh finance overlay after each render
-(function(){
-  var origRV=window.renderView;
-  if(origRV){
-    window.renderView=function(){
-      origRV.apply(this,arguments);
-      try{renderFinanceOverlay();}catch(e){}
-    };
-  }
-})();
-
-// Start finance integration after auth
-(function(){
-  var origAuth=window.onAuthStateChanged;
-  // Simple: just call initFinanceIntegration when app inits
-  var checkReady=setInterval(function(){
-    if(window._firebaseReady&&window.auth&&window.auth.currentUser){
-      clearInterval(checkReady);
-      initFinanceIntegration();
-    }
-  },500);
-})();
 
 </script>
 </body>
