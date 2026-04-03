@@ -108,7 +108,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 .ec.bulk-selected .bulk-chk{background:var(--text);color:#f5f3ef;border-color:var(--text)}
 
 /* CENTER CONTENT */
-.vc{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.vc{flex:1;overflow-y:auto;display:flex;flex-direction:column}
 
 /* DATE HEADER */
 .date-header{padding:18px 22px 14px;border-bottom:0.5px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0}
@@ -424,7 +424,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 .cal-add-btn{width:18px;height:18px;border-radius:50%;border:1.5px dashed rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .1s}
 .cal-add-btn:hover{border-color:rgba(255,255,255,.6)}
 
-.dv{padding:0 16px 16px 16px;}
+.dv{padding:0 16px 16px 16px;flex:1;overflow-y:auto;}
 
 .fin-card{background:white;border-radius:10px;padding:10px 12px;border-left:3px solid #f59e0b;margin-bottom:6px;display:flex;align-items:center;gap:10px;box-shadow:0 1px 2px rgba(0,0,0,.05);cursor:pointer}
 .fin-card:hover{background:#fffbeb}
@@ -1199,7 +1199,14 @@ function rDay(c){
     timed=hideDone?timedNotDone:[...timedNotDone,...timedDone];
   const today=new Date(),isT=cd.toDateString()===today.toDateString();
   const fer=getFeriado(ds);
-  let html='<div class="adz"><div class="adl">Dia todo</div><div class="ade">';
+  var dayNames=['DOMINGO','SEGUNDA','TERCA','QUARTA','QUINTA','SEXTA','SABADO'];
+  var monthNames=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  var dayHeader='<div style="display:flex;align-items:baseline;gap:10px;padding:0 0 14px;border-bottom:0.5px solid var(--border);margin-bottom:14px">'
+    +'<div style="font-size:9px;font-weight:500;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;font-family:Montserrat,sans-serif">'+dayNames[cd.getDay()]+(isT?' - HOJE':'')+'</div>'
+    +'<div style="font-size:48px;font-weight:300;color:var(--text);line-height:1;font-family:Montserrat,sans-serif">'+cd.getDate()+'</div>'
+    +'<div style="font-size:13px;color:var(--text3);font-weight:300;font-family:Montserrat,sans-serif">'+monthNames[cd.getMonth()]+' - '+cd.getFullYear()+'</div>'
+    +'</div>';
+  let html=dayHeader+'<div class="adz"><div class="adl">Dia todo</div><div class="ade">';
   if(fer)html+='<div style="padding:2px 8px;border-radius:12px;font-size:11px;background:rgba(251,146,60,.15);color:var(--orange);font-weight:500">🇧🇷 '+fer+'</div>';
   allday.forEach(ev=>{html+=adHTML(ev);});
   html+='</div></div><div class="del">';
@@ -2699,12 +2706,13 @@ function delWEv(){
 // ── FINANCASCLARAS INTEGRATION ────────────────────────────
 window._finTasks=[];
 function initFinanceIntegration(){
-  if(!window.firestore||!window.db)return;
+  if(!window.firestore||!window.db){console.log('Finance: Firestore not ready');return;}
   try{
     var col=window.firestore.collection(window.db,'finance_tasks');
     window.firestore.onSnapshot(col,function(snap){
       window._finTasks=[];
       snap.forEach(function(d){var o=d.data();o._docId=d.id;window._finTasks.push(o);});
+      console.log('Finance: '+window._finTasks.length+' tasks from Firestore');
       clearTimeout(window._finOvTimer);
       window._finOvTimer=setTimeout(renderFinanceOverlay,200);
     },function(err){console.error('Finance error:',err);});
