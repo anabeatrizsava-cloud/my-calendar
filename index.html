@@ -504,7 +504,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
     <div class="logo-text">My Calendar</div>
     <div id="tdate" style="font-size:12px;font-weight:500;color:var(--text2);margin-left:12px;font-family:Montserrat,sans-serif"></div>
     <div style="flex:1"></div>
-    <div id="weatherWidget" style="display:none;align-items:center;gap:4px;padding:3px 8px;background:var(--bg3);border:0.5px solid var(--border);border-radius:20px;font-size:10px;color:var(--text2)"></div>
+
     <div class="search-wrap">
       <svg class="search-icon" width="11" height="11" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="4" stroke="currentColor" stroke-width="1.2"/><path d="M9 9l2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
       <input class="search-inp" id="searchInp" placeholder="Buscar..." oninput="doSearch(this.value)" onblur="setTimeout(()=>closeSearch(),200)"/>
@@ -522,7 +522,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
       <button class="vb" id="vb-planner" onclick="sw('planner',null)">Planner</button>
       <button class="vb" id="vb-sticky" onclick="sw('sticky',null)">Notas</button>
     </div>
-    <button class="hide-done-btn" id="hideDoneBtn" onclick="toggleHideDone()">👁 Ocultar</button>
+    <button class="hide-done-btn" id="hideDoneBtn" onclick="toggleHideDone()">👁 Mostrar concluídas</button>
     <button class="notif-btn" onclick="requestPushPermission()" title="Notificações">🔔</button>
     <button class="bulk-sel-btn" id="bulkBtn" onclick="toggleBulkMode()">⊡ Sel.</button>
     <button class="addb" id="addBtn" onclick="handleAdd()">
@@ -556,6 +556,9 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 
 <!-- WORK VIEW (replaces center+right when work cal active) -->
 <div id="workApp" style="display:none;flex:1;overflow:hidden;flex-direction:column" class="wc-app"></div>
+
+<!-- STUDY VIEW -->
+<div id="studyApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
 
 </div><!-- main-layout -->
 </div><!-- app -->
@@ -823,9 +826,6 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
   </div>
 </div>
 
-<!-- STUDY VIEW CONTAINER -->
-<div id="studyApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
-
 <!-- POPUP -->
 <div class="pop-ov" id="popOv">
   <div class="pop-box">
@@ -942,7 +942,7 @@ function renderDayLoad(ds) {
 // ── BULK SELECT ───────────────────────────────────────────
 let bulkMode = false;
 let editingInstanceDate = null;
-let hideDone = false;
+let hideDone = true;
 // ── WORK CALENDARS ──
 
 function toggleHideDone(){
@@ -1134,7 +1134,7 @@ function updTop(){
   updProgress();
   const sab=document.getElementById('stickyAddBtn');
   if(sab)sab.style.display=view==='sticky'?'block':'none';
-  if(view==='day'){renderWeather(tds(cd));renderDayLoad(tds(cd));}
+  if(view==='day'){renderDayLoad(tds(cd));}
 }
 
 function updProgress(){
@@ -1205,6 +1205,9 @@ function rDay(c){
     +'<div style="font-size:9px;font-weight:500;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;font-family:Montserrat,sans-serif">'+dayNames[cd.getDay()]+(isT?' - HOJE':'')+'</div>'
     +'<div style="font-size:48px;font-weight:300;color:var(--text);line-height:1;font-family:Montserrat,sans-serif">'+cd.getDate()+'</div>'
     +'<div style="font-size:13px;color:var(--text3);font-weight:300;font-family:Montserrat,sans-serif">'+monthNames[cd.getMonth()]+' - '+cd.getFullYear()+'</div>'
+    +(fer?'<div style="padding:3px 10px;background:rgba(251,146,60,.12);border-radius:16px;font-size:10px;color:#c2410c;font-weight:500;font-family:Montserrat,sans-serif">\U0001f1e7\U0001f1f7 '+fer+'</div>':'')
+    +'<div style="flex:1"></div>'
+    +'<div id="dayWeatherBanner" style="display:none;padding:4px 12px;background:var(--bg3);border:0.5px solid var(--border);border-radius:20px;font-size:11px;color:var(--text2);font-family:Montserrat,sans-serif"></div>'
     +'</div>';
   let html=dayHeader+'<div class="adz"><div class="adl">Dia todo</div><div class="ade">';
   if(fer)html+='<div style="padding:2px 8px;border-radius:12px;font-size:11px;background:rgba(251,146,60,.15);color:var(--orange);font-weight:500">🇧🇷 '+fer+'</div>';
@@ -1223,6 +1226,14 @@ function rDay(c){
     if(!hideDone&&timedDone.length){html+='<div style="margin-top:12px;padding-top:8px;border-top:1px dashed var(--border)"><div class="tgl" style="color:var(--text3);font-style:italic">Concluidas</div>';timedDone.forEach(ev=>{html+=ecHTML(ev);});html+='</div>';}
   }
   html+='</div>';wrap.innerHTML=html;c.appendChild(wrap);if(bulkMode)bindBulk(wrap);else{bindEL(wrap);initDayDrag(wrap);}
+  // Fill weather banner
+  fetchWeather(ds).then(function(w){
+    var wb=document.getElementById('dayWeatherBanner');
+    if(!wb)return;
+    if(!w){wb.style.display='none';return;}
+    wb.style.display='flex';wb.style.alignItems='center';wb.style.gap='4px';
+    wb.innerHTML='<span style="font-size:16px">'+w.icon+'</span><span>'+w.max+'° / '+w.min+'°</span>';
+  });
 }
 
 function ecHTML(ev){
@@ -1252,7 +1263,7 @@ function ecHTML(ev){
     '<div style="flex:1;background:'+bg+';padding:9px 12px 9px 11px;display:flex;align-items:flex-start;gap:10px">'+
       '<div class="ecb" style="flex:1;min-width:0">'+
         '<div class="ect" style="font-size:12px;font-weight:500;color:'+(ev.done?'#a09880':'#1a1510')+(ev.done?';text-decoration:line-through':'')+'">'+ emojiStr+eh(ev.title)+'</div>'+
-        '<div class="ectm" style="font-size:10px;color:#b0a080;margin-top:2px;font-family:var(--font-mono)">'+tm+(tagName?(' · '+tagName):'')+'</div>'+
+        '<div class="ectm" style="font-size:10px;color:#b0a080;margin-top:2px;font-family:var(--font-mono);display:flex;align-items:center;gap:4px">'+tm+(tagName?(' · '+tagName):'')+(ev.isExternal&&ev.weatherData?'<span style="padding:1px 6px;background:rgba(59,130,246,.08);border:0.5px solid rgba(59,130,246,.2);border-radius:10px;font-size:9px;color:#3b82f6">'+ev.weatherData.icon+' '+ev.weatherData.temp+'°C</span>':'')+(ev.isExternal&&!ev.weatherData?'<span style="padding:1px 6px;background:rgba(0,0,0,.04);border:0.5px solid rgba(0,0,0,.1);border-radius:10px;font-size:9px;color:#9ca3af">📍 EXT</span>':'')+'</div>'+
         tg+sc+
       '</div>'+
       '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">'+
@@ -2488,9 +2499,10 @@ function togWeAD(){
 window._weSelWeekDays=[];
 window._weSelMonthDays=[];
 window._wView='day';
-window._wHideDone=false;
+window._wHideDone=true;
 
 function setWSeg(groupId,val){
+  if(val&&val.dataset)val=val.dataset.v;
   var group=document.getElementById(groupId);if(!group)return;
   group.querySelectorAll('.seg-btn').forEach(function(b){
     b.classList.toggle('act',b.dataset.v===val);
