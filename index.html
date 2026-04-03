@@ -2732,7 +2732,11 @@ function initFinanceIntegration(){
 function renderFinanceOverlay(){
   document.querySelectorAll('.fin-wrap').forEach(function(el){el.remove();});
   var ds=tds(cd);
-  var pending=window._finTasks.filter(function(t){return t.dueDate===ds&&t.calStatus!=='concluido';});
+  console.log('Finance overlay: looking for dueDate='+ds+', tasks:', window._finTasks.map(function(t){return {dueDate:t.dueDate,date:t.date,status:t.calStatus,desc:t.description||t.title};}));
+  var pending=window._finTasks.filter(function(t){
+    var taskDate=t.dueDate||t.date||'';
+    return taskDate===ds&&t.calStatus!=='concluido';
+  });
   if(!pending.length)return;
   var dv=document.querySelector('.dv .del');if(!dv)return;
   var section=document.createElement('div');section.className='fin-wrap';
