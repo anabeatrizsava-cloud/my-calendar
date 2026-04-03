@@ -2732,7 +2732,7 @@ function initFinanceIntegration(){
 function renderFinanceOverlay(){
   document.querySelectorAll('.fin-wrap').forEach(function(el){el.remove();});
   var ds=tds(cd);
-  console.log('Finance overlay: looking for dueDate='+ds+', tasks:', window._finTasks.map(function(t){return {dueDate:t.dueDate,date:t.date,status:t.calStatus,desc:t.description||t.title};}));
+
   var pending=window._finTasks.filter(function(t){
     var taskDate=t.dueDate||t.date||'';
     return taskDate===ds&&t.calStatus!=='concluido';
@@ -2745,16 +2745,16 @@ function renderFinanceOverlay(){
   pending.forEach(function(t){
     var card=document.createElement('div');card.className='fin-card';
     var val=t.amount?parseFloat(t.amount).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}):'';
-    card.innerHTML='<div style="font-size:18px">💰</div><div style="flex:1;min-width:0"><div class="fin-title">'+eh(t.description||t.title||'Despesa')+'</div><div class="fin-sub">'+(t.category||'')+'</div></div><div class="fin-val">'+val+'</div>';
+    card.innerHTML='<div style="width:28px;height:28px;border-radius:8px;background:#fef3c7;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div style="flex:1;min-width:0"><div class="fin-title">'+eh(t.description||t.title||'Despesa')+'</div><div class="fin-sub">'+(t.category||'')+'</div></div><div class="fin-val">'+val+'</div>';
     var btn=document.createElement('button');btn.className='fin-done-btn';btn.textContent='Pago';btn.dataset.docid=t._docId;
     btn.onclick=function(e){e.stopPropagation();markFinPaid(this.dataset.docid);};
     card.appendChild(btn);section.appendChild(card);
   });
-  dv.insertBefore(section,dv.firstChild);
+  dv.appendChild(section);
 }
 function markFinPaid(docId){
   if(!window.firestore||!window.db)return;
-  try{window.firestore.updateDoc(window.firestore.doc(window.db,'finance_tasks',docId),{calStatus:'concluido'}).then(function(){showToast('Despesa paga!');});}catch(e){}
+  try{window.firestore.updateDoc(window.firestore.doc(window.db,'finance_tasks',docId),{calStatus:'concluido',paidAt:new Date().toISOString(),paidFrom:'my-calendar'}).then(function(){showToast('Despesa marcada como paga!');});}catch(e){console.error('markFinPaid error:',e);}
 }
 // Init work cal
 function initWorkCal(){
