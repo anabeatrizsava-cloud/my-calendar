@@ -2732,7 +2732,6 @@ function initFinanceIntegration(){
 function renderFinanceOverlay(){
   document.querySelectorAll('.fin-wrap').forEach(function(el){el.remove();});
   var ds=tds(cd);
-
   var pending=window._finTasks.filter(function(t){
     var taskDate=t.dueDate||t.date||'';
     return taskDate===ds&&t.calStatus!=='concluido';
@@ -2740,15 +2739,34 @@ function renderFinanceOverlay(){
   if(!pending.length)return;
   var dv=document.querySelector('.dv .del');if(!dv)return;
   var section=document.createElement('div');section.className='fin-wrap';
-  section.style.cssText='margin-bottom:12px;padding-bottom:8px;border-bottom:1px dashed var(--border)';
-  var hdr=document.createElement('div');hdr.style.cssText='font-size:10px;font-weight:600;color:#d97706;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-family:Montserrat,sans-serif';hdr.textContent='Despesas pendentes';section.appendChild(hdr);
+  section.style.cssText='margin-top:20px;padding-top:14px;border-top:1px dashed var(--border)';
+  var hdr=document.createElement('div');
+  hdr.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:10px';
+  hdr.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>'
+    +'<div style="font-size:10px;font-weight:500;color:#854F0B;letter-spacing:0.8px">FINANCEIRO</div>'
+    +'<div style="margin-left:auto;padding:2px 8px;background:#FAEEDA;border-radius:10px;font-size:9px;color:#854F0B;font-weight:500">'+pending.length+' pendente'+(pending.length>1?'s':'')+'</div>';
+  section.appendChild(hdr);
   pending.forEach(function(t){
-    var card=document.createElement('div');card.className='fin-card';
-    var val=t.amount?parseFloat(t.amount).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}):'';
-    card.innerHTML='<div style="width:28px;height:28px;border-radius:8px;background:#fef3c7;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div style="flex:1;min-width:0"><div class="fin-title">'+eh(t.description||t.title||'Despesa')+'</div><div class="fin-sub">'+(t.category||'')+'</div></div><div class="fin-val">'+val+'</div>';
-    var btn=document.createElement('button');btn.className='fin-done-btn';btn.textContent='Pago';btn.dataset.docid=t._docId;
+    var card=document.createElement('div');
+    card.style.cssText='background:var(--bg2,#fff);border:0.5px solid #EF9F27;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px;margin-bottom:6px';
+    var icon=document.createElement('div');
+    icon.style.cssText='width:36px;height:36px;border-radius:10px;background:#FAEEDA;display:flex;align-items:center;justify-content:center;flex-shrink:0';
+    icon.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>';
+    card.appendChild(icon);
+    var info=document.createElement('div');
+    info.style.cssText='flex:1;min-width:0';
+    info.innerHTML='<div style="font-size:12px;font-weight:500;color:var(--text,#1a1510)">'+eh(t.description||t.title||'Despesa')+'</div><div style="font-size:10px;color:var(--text3,#9ca3af);margin-top:2px">Vence hoje</div>';
+    card.appendChild(info);
+    var valEl=document.createElement('div');
+    valEl.style.cssText='font-size:14px;font-weight:500;color:#854F0B;white-space:nowrap;flex-shrink:0';
+    valEl.textContent=t.amount?parseFloat(t.amount).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}):'';
+    card.appendChild(valEl);
+    var btn=document.createElement('button');
+    btn.style.cssText='padding:6px 14px;background:#0F6E56;border:none;border-radius:8px;font-size:11px;color:white;cursor:pointer;font-weight:500;flex-shrink:0;font-family:Montserrat,sans-serif';
+    btn.textContent='Pago';btn.dataset.docid=t._docId;
     btn.onclick=function(e){e.stopPropagation();markFinPaid(this.dataset.docid);};
-    card.appendChild(btn);section.appendChild(card);
+    card.appendChild(btn);
+    section.appendChild(card);
   });
   dv.appendChild(section);
 }
