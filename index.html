@@ -502,7 +502,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
   <!-- TOPBAR -->
   <div class="topbar">
     <div class="logo-text">My Calendar</div>
-    <div id="tdate" style="font-size:12px;font-weight:500;color:var(--text2);margin-left:12px;font-family:Montserrat,sans-serif"></div>
+    
     <div style="flex:1"></div>
 
     <div class="search-wrap">
@@ -1205,14 +1205,13 @@ function rDay(c){
     +'<div style="font-size:9px;font-weight:500;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;font-family:Montserrat,sans-serif">'+dayNames[cd.getDay()]+(isT?' - HOJE':'')+'</div>'
     +'<div style="font-size:48px;font-weight:300;color:var(--text);line-height:1;font-family:Montserrat,sans-serif">'+cd.getDate()+'</div>'
     +'<div style="font-size:13px;color:var(--text3);font-weight:300;font-family:Montserrat,sans-serif">'+monthNames[cd.getMonth()]+' - '+cd.getFullYear()+'</div>'
-    +(fer?'<div style="padding:3px 10px;background:rgba(251,146,60,.12);border-radius:16px;font-size:10px;color:#c2410c;font-weight:500;font-family:Montserrat,sans-serif">\U0001f1e7\U0001f1f7 '+fer+'</div>':'')
+    +(fer?'<div style="padding:3px 10px;background:rgba(251,146,60,.12);border-radius:16px;font-size:10px;color:#c2410c;font-weight:500;font-family:Montserrat,sans-serif">🇧🇷 '+fer+'</div>':'')
     +'<div style="flex:1"></div>'
     +'<div id="dayWeatherBanner" style="display:none;padding:4px 12px;background:var(--bg3);border:0.5px solid var(--border);border-radius:20px;font-size:11px;color:var(--text2);font-family:Montserrat,sans-serif"></div>'
     +'</div>';
-  let html=dayHeader+'<div class="adz"><div class="adl">Dia todo</div><div class="ade">';
-  if(fer)html+='<div style="padding:2px 8px;border-radius:12px;font-size:11px;background:rgba(251,146,60,.15);color:var(--orange);font-weight:500">🇧🇷 '+fer+'</div>';
-  allday.forEach(ev=>{html+=adHTML(ev);});
-  html+='</div></div><div class="del">';
+  let html=dayHeader;
+  if(allday.length){html+='<div class="adz"><div class="adl">Dia todo</div><div class="ade">';allday.forEach(ev=>{html+=adHTML(ev);});html+='</div></div>';}
+  html+='<div class="del">';
   if(!timed.length&&!allday.length&&!fer)html+='<div style="text-align:center;color:var(--text3);padding:32px 0;font-size:13px">Nenhum evento.<br><span style="font-size:11px">Clique em Novo para adicionar.</span></div>';
   else{
     const grpsND={};timedNotDone.forEach(ev=>{const h=ev.startTime.split(':')[0];if(!grpsND[h])grpsND[h]=[];grpsND[h].push(ev);});
@@ -2854,7 +2853,64 @@ function renderStudyView(){
   } else {
     renderNotesList(main);
   }
-  wrap.appendChild(main);
+  // Layout: main + right panel
+  var layout=document.createElement('div');
+  layout.style.cssText='display:flex;flex:1;overflow:hidden';
+  main.style.cssText='flex:2.2;overflow-y:auto;padding:20px 24px;background:#faf9f7;display:flex;flex-direction:column;gap:16px';
+  layout.appendChild(main);
+
+  // Right panel - False Friends + Pronunciation
+  var rp=document.createElement('div');
+  rp.style.cssText='flex:1;border-left:0.5px solid #e8e4de;background:#faf9f7;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:16px';
+
+  // False Friends section
+  var ff=document.createElement('div');
+  ff.style.cssText='background:white;border-radius:10px;padding:14px;border:0.5px solid #e8e4de';
+  var falseFriends=[
+    {en:'actually',trap:'atualmente',correct:'na verdade'},
+    {en:'parents',trap:'parentes',correct:'pais'},
+    {en:'gentle',trap:'gente',correct:'gentil/suave'},
+    {en:'college',trap:'colegio',correct:'faculdade'},
+    {en:'currently',trap:'corretamente',correct:'atualmente'},
+    {en:'remains',trap:'remanescentes',correct:'permanece/restos'}
+  ];
+  var ffh='<div style="font-size:10px;font-weight:600;color:#c2410c;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-family:Montserrat,sans-serif">⚠ False Friends</div>';
+  falseFriends.forEach(function(f){
+    ffh+='<div style="padding:6px 0;border-bottom:0.5px solid #f0ede8">'
+      +'<div style="font-size:11px;font-weight:600;color:#1a1a1a;font-family:Montserrat,sans-serif">'+f.en+'</div>'
+      +'<div style="font-size:9px;color:#c2410c;font-family:Montserrat,sans-serif">✗ nao significa: '+f.trap+'</div>'
+      +'<div style="font-size:9px;color:#16a34a;font-family:Montserrat,sans-serif">✓ significa: '+f.correct+'</div>'
+      +'</div>';
+  });
+  ff.innerHTML=ffh;
+  rp.appendChild(ff);
+
+  // Pronunciation rules section
+  var pr=document.createElement('div');
+  pr.style.cssText='background:white;border-radius:10px;padding:14px;border:0.5px solid #e8e4de';
+  pr.innerHTML='<div style="font-size:10px;font-weight:600;color:#7a9bae;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-family:Montserrat,sans-serif">Pronuncia</div>'
+    +'<div style="font-size:10px;color:#4a4845;line-height:1.8;font-family:Montserrat,sans-serif">'
+    +'-tion = <b>SHON</b><br>'
+    +'i = <b>AI</b><br>'
+    +'ea = <b>II</b><br>'
+    +'w = <b>U</b><br>'
+    +'ch = <b>TCH</b><br>'
+    +'S+consoante: sem vogal antes'
+    +'</div>';
+  rp.appendChild(pr);
+
+  // Stats summary
+  var ss=document.createElement('div');
+  ss.style.cssText='background:white;border-radius:10px;padding:14px;border:0.5px solid #e8e4de';
+  ss.innerHTML='<div style="font-size:10px;font-weight:600;color:#aaa89e;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-family:Montserrat,sans-serif">Resumo</div>'
+    +'<div style="font-size:28px;font-weight:300;color:#1a1a1a;font-family:Montserrat,sans-serif">'+(window.studyVocab.length)+'</div>'
+    +'<div style="font-size:9px;color:#aaa89e;font-family:Montserrat,sans-serif">palavras no vocabulario</div>'
+    +'<div style="font-size:28px;font-weight:300;color:#1a1a1a;margin-top:8px;font-family:Montserrat,sans-serif">'+(window.studyNotes.length)+'</div>'
+    +'<div style="font-size:9px;color:#aaa89e;font-family:Montserrat,sans-serif">sessoes registradas</div>';
+  rp.appendChild(ss);
+
+  layout.appendChild(rp);
+  wrap.appendChild(layout);
 }
 
 function renderVocabList(parent){
