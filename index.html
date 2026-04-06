@@ -811,6 +811,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
       </div>
       <div id="smf-vocab" style="display:flex;flex-direction:column;gap:10px">
         <div class="wfield"><label>Palavra em ingles</label><input class="inp" id="sm-word" placeholder="Ex: straightforward"/></div>
+        <div class="wfield"><label>Pronuncia</label><input class="inp" id="sm-pronun" placeholder="Ex: streit-FOR-uord"/></div>
         <div class="wfield"><label>Traducao / significado</label><input class="inp" id="sm-trans" placeholder="Ex: direto ao ponto"/></div>
         <div class="wfield"><label>Exemplo ou contexto (opcional)</label><input class="inp" id="sm-example" placeholder="Ex: She is very straightforward."/></div>
       </div>
@@ -2781,6 +2782,22 @@ function initWorkCal(){
 // ── ENGLISH STUDY MODULE ──────────────────────────────────
 window.studyVocab = window.studyVocab || [];
 window.studyNotes = window.studyNotes || [];
+window.studyFalseFriends = window.studyFalseFriends || [
+  {id:'ff1',en:'actually',trap:'atualmente',correct:'na verdade'},
+  {id:'ff2',en:'parents',trap:'parentes',correct:'pais'},
+  {id:'ff3',en:'gentle',trap:'gente',correct:'gentil/suave'},
+  {id:'ff4',en:'college',trap:'colegio',correct:'faculdade'},
+  {id:'ff5',en:'currently',trap:'corretamente',correct:'atualmente'},
+  {id:'ff6',en:'remains',trap:'remanescentes',correct:'permanece/restos'}
+];
+window.studyPronunRules = window.studyPronunRules || [
+  {id:'pr1',pattern:'-tion',sound:'SHON'},
+  {id:'pr2',pattern:'i',sound:'AI'},
+  {id:'pr3',pattern:'ea',sound:'II'},
+  {id:'pr4',pattern:'w',sound:'U'},
+  {id:'pr5',pattern:'ch',sound:'TCH'},
+  {id:'pr6',pattern:'S+consoante',sound:'sem vogal antes'}
+];
 
 function fbSaveStudy(){
   if(!window.auth||!window.auth.currentUser)return;
@@ -2789,7 +2806,7 @@ function fbSaveStudy(){
     window.firestore.setDoc(window.firestore.doc(window.db,'users',uid,'study','english'),{
       vocab:window.studyVocab,
       notes:window.studyNotes
-    });
+    ,falseFriends:window.studyFalseFriends||[],pronunRules:window.studyPronunRules||[]});
   }catch(e){}
 }
 
@@ -2799,8 +2816,11 @@ function fbLoadStudy(){
     var uid=window.auth.currentUser.uid;
     window.firestore.onSnapshot(window.firestore.doc(window.db,'users',uid,'study','english'),function(snap){
       if(snap.exists()){
-        window.studyVocab=snap.data().vocab||[];
-        window.studyNotes=snap.data().notes||[];
+        var sd=snap.data();
+        window.studyVocab=sd.vocab||[];
+        window.studyNotes=sd.notes||[];
+        if(sd.falseFriends)window.studyFalseFriends=sd.falseFriends;
+        if(sd.pronunRules)window.studyPronunRules=sd.pronunRules;
       }
       if(activeCal==='study')renderStudyView();
     });
@@ -2882,40 +2902,48 @@ function renderStudyView(){
   var rp=document.createElement('div');
   rp.style.cssText='flex:1;border-left:0.5px solid #e8e4de;background:#faf9f7;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:16px';
 
-  // False Friends section
+  // False Friends section (dynamic)
   var ff=document.createElement('div');
   ff.style.cssText='background:white;border-radius:10px;padding:14px;border:0.5px solid #e8e4de';
-  var falseFriends=[
-    {en:'actually',trap:'atualmente',correct:'na verdade'},
-    {en:'parents',trap:'parentes',correct:'pais'},
-    {en:'gentle',trap:'gente',correct:'gentil/suave'},
-    {en:'college',trap:'colegio',correct:'faculdade'},
-    {en:'currently',trap:'corretamente',correct:'atualmente'},
-    {en:'remains',trap:'remanescentes',correct:'permanece/restos'}
-  ];
-  var ffh='<div style="font-size:10px;font-weight:600;color:#c2410c;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-family:Montserrat,sans-serif">⚠ False Friends</div>';
-  falseFriends.forEach(function(f){
-    ffh+='<div style="padding:6px 0;border-bottom:0.5px solid #f0ede8">'
-      +'<div style="font-size:11px;font-weight:600;color:#1a1a1a;font-family:Montserrat,sans-serif">'+f.en+'</div>'
-      +'<div style="font-size:9px;color:#c2410c;font-family:Montserrat,sans-serif">✗ nao significa: '+f.trap+'</div>'
-      +'<div style="font-size:9px;color:#16a34a;font-family:Montserrat,sans-serif">✓ significa: '+f.correct+'</div>'
-      +'</div>';
+  var ffHeader=document.createElement('div');
+  ffHeader.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:10px';
+  ffHeader.innerHTML='<div style="font-size:10px;font-weight:600;color:#c2410c;letter-spacing:1px;text-transform:uppercase;font-family:Montserrat,sans-serif">False Friends</div>';
+  var ffBtn=document.createElement('button');
+  ffBtn.style.cssText='background:#c2410c;border:none;border-radius:6px;padding:3px 8px;font-size:9px;color:white;cursor:pointer;font-family:Montserrat,sans-serif;font-weight:500';
+  ffBtn.textContent='+ Novo';
+  ffBtn.onclick=function(){openFFModal();};
+  ffHeader.appendChild(ffBtn);
+  ff.appendChild(ffHeader);
+  (window.studyFalseFriends||[]).forEach(function(f){
+    var row=document.createElement('div');
+    row.style.cssText='padding:6px 0;border-bottom:0.5px solid #f0ede8;cursor:pointer';
+    row.innerHTML='<div style="font-size:11px;font-weight:600;color:#1a1a1a;font-family:Montserrat,sans-serif">'+eh(f.en)+'</div>'
+      +'<div style="font-size:9px;color:#c2410c;font-family:Montserrat,sans-serif">nao significa: '+eh(f.trap)+'</div>'
+      +'<div style="font-size:9px;color:#16a34a;font-family:Montserrat,sans-serif">significa: '+eh(f.correct)+'</div>';
+    row.onclick=(function(item){return function(){openFFModal(item);};})(f);
+    ff.appendChild(row);
   });
-  ff.innerHTML=ffh;
   rp.appendChild(ff);
 
-  // Pronunciation rules section
+  // Pronunciation rules section (dynamic)
   var pr=document.createElement('div');
   pr.style.cssText='background:white;border-radius:10px;padding:14px;border:0.5px solid #e8e4de';
-  pr.innerHTML='<div style="font-size:10px;font-weight:600;color:#7a9bae;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-family:Montserrat,sans-serif">Pronuncia</div>'
-    +'<div style="font-size:10px;color:#4a4845;line-height:1.8;font-family:Montserrat,sans-serif">'
-    +'-tion = <b>SHON</b><br>'
-    +'i = <b>AI</b><br>'
-    +'ea = <b>II</b><br>'
-    +'w = <b>U</b><br>'
-    +'ch = <b>TCH</b><br>'
-    +'S+consoante: sem vogal antes'
-    +'</div>';
+  var prHeader=document.createElement('div');
+  prHeader.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:10px';
+  prHeader.innerHTML='<div style="font-size:10px;font-weight:600;color:#7a9bae;letter-spacing:1px;text-transform:uppercase;font-family:Montserrat,sans-serif">Pronuncia</div>';
+  var prBtn=document.createElement('button');
+  prBtn.style.cssText='background:#7a9bae;border:none;border-radius:6px;padding:3px 8px;font-size:9px;color:white;cursor:pointer;font-family:Montserrat,sans-serif;font-weight:500';
+  prBtn.textContent='+ Novo';
+  prBtn.onclick=function(){openPronunModal();};
+  prHeader.appendChild(prBtn);
+  pr.appendChild(prHeader);
+  (window.studyPronunRules||[]).forEach(function(r){
+    var row=document.createElement('div');
+    row.style.cssText='padding:4px 0;border-bottom:0.5px solid #f0ede8;cursor:pointer;font-size:10px;color:#4a4845;font-family:Montserrat,sans-serif';
+    row.innerHTML='<b>'+eh(r.pattern)+'</b> = '+eh(r.sound);
+    row.onclick=(function(item){return function(){openPronunModal(item);};})(r);
+    pr.appendChild(row);
+  });
   rp.appendChild(pr);
 
   // Stats summary
@@ -2951,7 +2979,8 @@ function renderVocabList(parent){
     var card=document.createElement('div');
     card.style.cssText='background:white;border:0.5px solid #e8e4de;border-radius:12px;padding:11px 14px;display:flex;align-items:center;gap:12px;cursor:pointer';
     card.onclick=function(){openStudyEdit('vocab',v.id);};
-    card.innerHTML='<div style="font-size:13px;font-weight:500;color:#1a1a1a;min-width:140px;font-family:Montserrat,sans-serif">'+eh(v.word)+'</div>'
+    card.innerHTML='<div style="min-width:140px"><div style="font-size:13px;font-weight:500;color:#1a1a1a;font-family:Montserrat,sans-serif">'+eh(v.word)+'</div>'
+      +(v.pronunciation?'<div style="font-size:9px;color:#7a9bae;font-family:Montserrat,sans-serif;margin-top:1px">/'+eh(v.pronunciation)+'/</div>':'')+'</div>'
       +'<div style="width:0.5px;height:28px;background:#e8e4de;flex-shrink:0"></div>'
       +'<div style="font-size:12px;color:#6b6860;flex:1;font-family:Montserrat,sans-serif">'+eh(v.translation)+'</div>'
       +(v.example?'<div style="font-size:10px;color:#aaa89e;font-style:italic;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:Montserrat,sans-serif">'+eh(v.example)+'</div>':'');
@@ -3020,8 +3049,9 @@ function showStudyModal(item){
   // fill values
   if(item){
     if(_studyModalType==='vocab'){
-      var wi=document.getElementById('sm-word');var ti=document.getElementById('sm-trans');var ei=document.getElementById('sm-example');
+      var wi=document.getElementById('sm-word');var pi=document.getElementById('sm-pronun');var ti=document.getElementById('sm-trans');var ei=document.getElementById('sm-example');
       if(wi)wi.value=item.word||'';
+      if(pi)pi.value=item.pronunciation||'';
       if(ti)ti.value=item.translation||'';
       if(ei)ei.value=item.example||'';
     } else {
@@ -3031,7 +3061,7 @@ function showStudyModal(item){
     var dbtn=document.getElementById('sm-delbtn');
     if(dbtn)dbtn.style.display='block';
   } else {
-    ['sm-word','sm-trans','sm-example','sm-note'].forEach(function(id){
+    ['sm-word','sm-pronun','sm-trans','sm-example','sm-note'].forEach(function(id){
       var el=document.getElementById(id);if(el)el.value='';
     });
     var dbtn=document.getElementById('sm-delbtn');
@@ -3052,7 +3082,8 @@ function saveStudyEntry(){
     var word=(document.getElementById('sm-word')||{}).value||'';
     var trans=(document.getElementById('sm-trans')||{}).value||'';
     if(!word.trim()){showToast('Digite a palavra!');return;}
-    var entry={id:_editStudyId||gid(),word:word.trim(),translation:trans.trim(),example:((document.getElementById('sm-example')||{}).value||'').trim(),date:new Date().toISOString()};
+    var pronun=((document.getElementById('sm-pronun')||{}).value||'').trim();
+    var entry={id:_editStudyId||gid(),word:word.trim(),pronunciation:pronun,translation:trans.trim(),example:((document.getElementById('sm-example')||{}).value||'').trim(),date:new Date().toISOString()};
     if(_editStudyId){
       var idx=(window.studyVocab||[]).findIndex(function(v){return v.id===_editStudyId;});
       if(idx>=0)window.studyVocab[idx]=entry;else window.studyVocab.unshift(entry);
@@ -3092,6 +3123,38 @@ function setStudyTab(tab){
   _studyTab=tab;
   renderStudyView();
 }
+
+// False Friends modal
+function openFFModal(item){
+  var en=prompt('Palavra em ingles:',item?item.en:'');
+  if(!en)return;
+  var trap=prompt('NAO significa (falso cognato):',item?item.trap:'');
+  if(trap===null)return;
+  var correct=prompt('Significa (traducao correta):',item?item.correct:'');
+  if(correct===null)return;
+  if(item){
+    item.en=en.trim();item.trap=trap.trim();item.correct=correct.trim();
+  } else {
+    window.studyFalseFriends=window.studyFalseFriends||[];
+    window.studyFalseFriends.push({id:gid(),en:en.trim(),trap:trap.trim(),correct:correct.trim()});
+  }
+  fbSaveStudy();renderStudyView();showToast('False friend salvo!');
+}
+// Pronunciation modal
+function openPronunModal(item){
+  var pattern=prompt('Padrao (ex: -tion, ea, ch):',item?item.pattern:'');
+  if(!pattern)return;
+  var sound=prompt('Som / regra (ex: SHON, II):',item?item.sound:'');
+  if(sound===null)return;
+  if(item){
+    item.pattern=pattern.trim();item.sound=sound.trim();
+  } else {
+    window.studyPronunRules=window.studyPronunRules||[];
+    window.studyPronunRules.push({id:gid(),pattern:pattern.trim(),sound:sound.trim()});
+  }
+  fbSaveStudy();renderStudyView();showToast('Regra salva!');
+}
+
 function initStudyModule(){
   fbLoadStudy();
 }
