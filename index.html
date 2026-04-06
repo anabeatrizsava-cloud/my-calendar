@@ -2285,6 +2285,13 @@ function wEvCard(ev,calId){
     +'</div>'
     +prioIcon(prio)
     +'</div>';
+  var progEl=card.querySelector('.prog-icon');
+  if(progEl){
+    progEl.onclick=function(e){
+      e.stopPropagation();
+      cycleWProg(calId,ev.id,idate,this);
+    };
+  }
   return card;
 }
 
@@ -2300,16 +2307,6 @@ function prioIcon(p){
     +'</div>';
 }
 
-function cycleWProg(calId,evId,idate,el){
-  var list=window.workEvs[calId]||[];
-  var ev=list.find(function(e){return e.id===evId;});
-  if(!ev)return;
-  var order=['not-started','in-progress','done'];
-  var idx=order.indexOf(ev.progress||'not-started');
-  ev.progress=order[(idx+1)%3];
-  fbSaveWorkEvs(calId);
-  renderWorkDay(calId);
-}
 
 // Work event card
 
