@@ -393,7 +393,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 .wc-app .right-panel{background:var(--wbg3)}
 .wc-app .sidebar{background:#111827}
 /* progress icon */
-.prog-icon{width:18px;height:18px;border-radius:50%;flex-shrink:0;cursor:pointer;position:relative;overflow:visible}
+.prog-icon{width:18px;height:18px;border-radius:50%;flex-shrink:0;cursor:pointer;position:relative;overflow:visible;margin-top:2px}
 .prog-icon.not-started{border:2px solid #d1d5db;background:transparent}
 .prog-icon.in-progress{border:2px solid #4a5568;background:conic-gradient(#4a5568 50%,transparent 50%)}
 .prog-icon.done{background:#111827;border:2px solid #111827;display:flex;align-items:center;justify-content:center}
@@ -403,7 +403,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 /* work event card */
 .wev-card{display:flex;align-items:stretch;border-radius:10px;overflow:hidden;border:0.5px solid rgba(74,85,104,.18);margin-bottom:0;cursor:pointer;transition:transform .12s}
 .wev-card:hover{transform:translateX(2px)}
-.wev-card .wev-body{flex:1;background:rgba(255,255,255,.85);padding:9px 11px;display:flex;align-items:center;gap:9px}
+.wev-card .wev-body{flex:1;background:rgba(255,255,255,.85);padding:9px 11px;display:flex;align-items:flex-start;gap:9px}
 .wev-card .wev-accent{width:3px;flex-shrink:0}
 /* tag pill – prominent */
 .wtag-pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;margin-right:4px}
@@ -2293,7 +2293,7 @@ function wEvCard(ev,calId){
   var tm=ev.allDay?'Dia todo':(ev.startTime||'')+(ev.endTime?' - '+ev.endTime:'');
   var titleStyle='font-size:12px;font-weight:500;color:'+(p==='done'?'#9ca3af':'#111827')+(p==='done'?';text-decoration:line-through':'');
   var tint=WC_COLOR_TINTS[col]||'#F1EFE8';
-  var iconHtml=ev.icon?'<div style="width:28px;height:28px;border-radius:7px;background:'+tint+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'+getWcIconSvg(ev.icon,col)+'</div>':'';
+  var iconHtml=ev.icon?'<div style="width:28px;height:28px;border-radius:7px;background:'+tint+';display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">'+getWcIconSvg(ev.icon,col)+'</div>':'';
   var clientHtml=ev.client?'<div style="font-size:10px;color:'+(p==='done'?'#d1d5db':'#6b7280')+';margin-top:1px;font-family:Montserrat,sans-serif'+(p==='done'?';text-decoration:line-through':'')+'">'+eh(ev.client)+'</div>':'';
   card.innerHTML='<div class="wev-accent" style="background:'+col+'"></div>'
     +'<div class="wev-body">'
@@ -2315,7 +2315,11 @@ function wEvCard(ev,calId){
     subHtml+='<div style="font-size:8px;color:#9ca3af;margin-top:1px">'+subDone+' de '+ev.subtasks.length+'</div></div>';
   }
   var deadlineHtml='';
-  if(ev.deadline){deadlineHtml='<div style="display:inline-flex;align-items:center;gap:3px;padding:1px 6px;background:#FAEEDA;border-radius:8px;font-size:8px;color:#854F0B;font-weight:500;margin-top:2px"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>prazo: '+ev.deadline.substring(5)+'</div>';}
+  if(ev.deadline){
+    var dlParts=ev.deadline.split('-');
+    var dlLabel=dlParts[2]+'/'+dlParts[1];
+    deadlineHtml='<div style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:#FAEEDA;border:0.5px solid #EF9F27;border-radius:16px;font-size:10px;color:#854F0B;font-weight:500;margin-top:4px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>prazo: '+dlLabel+'</div>';
+  }
   card.innerHTML+=subHtml+deadlineHtml
     +'</div>'
     +prioIcon(prio)
@@ -2491,22 +2495,8 @@ function buildWorkRightPanel(calId,ds,wevs){
   return rp;
 }
 
-// Work event modal
-function openWNew(){
-  _weid=null;
-  _weTags=[];_weColor='#4a5568';
-  var fields=['wetitle','wedesc'];
-  fields.forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
-  var dEl=document.getElementById('wedate');if(dEl)dEl.value=tds(cd);
-  var sEl=document.getElementById('westart');if(sEl)sEl.value='09:00';
-  var eEl=document.getElementById('weend');if(eEl)eEl.value='10:00';
-  var adEl=document.getElementById('weallday');if(adEl)adEl.checked=false;
-  var dbEl=document.getElementById('weDbtn');if(dbEl)dbEl.style.display='none';
-  setWSeg('wePriority','medium');
-  setWSeg('weProgress','not-started');
-  setWSeg('weRepeat','none');
-  window._weSelWeekDays=[];window._weSelMonthDays=[];window._weIcon='';window._weSubtasks=[];
-window._weSubtasks=[];
+// Subtask functions
+window._weSubtasks=window._weSubtasks||[];
 
 function renderWeSubtasks(){
   var box=document.getElementById('weSubtasks');if(!box)return;
@@ -2532,11 +2522,31 @@ function renderWeSubtasks(){
   });
 }
 function addWeSubtask(){
-  var inp=document.getElementById('weNewSub');if(!inp||!inp.value.trim())return;
-  window._weSubtasks.push({text:inp.value.trim(),done:false});
+  var inp=document.getElementById('weNewSub');
+  if(!inp)return;
+  var val=inp.value.trim();
+  if(!val)return;
+  window._weSubtasks.push({text:val,done:false});
   inp.value='';
   renderWeSubtasks();
+  inp.focus();
 }
+
+// Work event modal
+function openWNew(){
+  _weid=null;
+  _weTags=[];_weColor='#4a5568';
+  var fields=['wetitle','wedesc'];
+  fields.forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  var dEl=document.getElementById('wedate');if(dEl)dEl.value=tds(cd);
+  var sEl=document.getElementById('westart');if(sEl)sEl.value='09:00';
+  var eEl=document.getElementById('weend');if(eEl)eEl.value='10:00';
+  var adEl=document.getElementById('weallday');if(adEl)adEl.checked=false;
+  var dbEl=document.getElementById('weDbtn');if(dbEl)dbEl.style.display='none';
+  setWSeg('wePriority','medium');
+  setWSeg('weProgress','not-started');
+  setWSeg('weRepeat','none');
+  window._weSelWeekDays=[];window._weSelMonthDays=[];window._weIcon='';window._weSubtasks=[];
   var cEl=document.getElementById('weclient');if(cEl)cEl.value='';
   buildWeIconPicker();
   renderWeSubtasks();
