@@ -807,9 +807,14 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
         </div>
       </div>
     </div>
+    <div style="display:flex;gap:6px;padding:0 16px 8px;flex-wrap:wrap">
+      <button type="button" onclick="saveAsTemplate()" style="background:none;border:0.5px dashed #d1d5db;border-radius:6px;padding:4px 10px;font-size:9px;color:#6b7280;cursor:pointer;font-family:Montserrat,sans-serif">Salvar como template</button>
+      <button type="button" onclick="showTemplatePicker()" style="background:none;border:0.5px solid #d1d5db;border-radius:6px;padding:4px 10px;font-size:9px;color:#6b7280;cursor:pointer;font-family:Montserrat,sans-serif">Usar template</button>
+    </div>
     <div class="mdiv"></div>
     <div class="mf">
       <button class="bdel" id="weDbtn" onclick="delWEv()" style="display:none">Excluir</button>
+      <button class="bg-btn" id="weDupBtn" onclick="dupWEv()" style="display:none">Duplicar</button>
       <button class="bg-btn" onclick="closeWEvModal()">Cancelar</button>
       <button class="bp" style="background:#111827" onclick="saveWEv()">Salvar</button>
     </div>
@@ -2555,6 +2560,7 @@ function openWNew(){
   var eEl=document.getElementById('weend');if(eEl)eEl.value='10:00';
   var adEl=document.getElementById('weallday');if(adEl)adEl.checked=false;
   var dbEl=document.getElementById('weDbtn');if(dbEl)dbEl.style.display='none';
+  var dupEl=document.getElementById('weDupBtn');if(dupEl)dupEl.style.display='none';
   setWSeg('wePriority','medium');
   setWSeg('weProgress','not-started');
   setWSeg('weRepeat','none');
@@ -2579,6 +2585,7 @@ function openWEdit(calId,evId,idate){
   var adEl=document.getElementById('weallday');if(adEl)adEl.checked=!!ev.allDay;
   var descEl=document.getElementById('wedesc');if(descEl)descEl.value=ev.description||'';
   var dbEl=document.getElementById('weDbtn');if(dbEl)dbEl.style.display='block';
+  var dupEl=document.getElementById('weDupBtn');if(dupEl)dupEl.style.display='block';
   setWSeg('wePriority',ev.priority||'medium');
   setWSeg('weProgress',ev.progress||'not-started');
   window._weSelWeekDays=(ev.repeatDays||[]).slice();
@@ -2727,6 +2734,77 @@ function renderWTags(){
     tw.appendChild(chip);
   });
   if(inp)tw.appendChild(inp);
+}
+
+// ── TEMPLATES ────────────────────────────────────────────
+window._weTemplates=window._weTemplates||[];
+
+function saveAsTemplate(){
+  var tEl=document.getElementById('wetitle');
+  var title=tEl?tEl.value.trim():'';
+  if(!title){showToast('Preencha o titulo primeiro!');return;}
+  var tmpl={
+    id:gid(),
+    name:title,
+    client:((document.getElementById('weclient')||{}).value||'').trim(),
+    icon:window._weIcon||'',
+    color:_weColor,
+    tags:_weTags.slice(),
+    subtasks:window._weSubtasks.map(function(s){return{text:s.text,done:false};}),
+    priority:getWSeg('wePriority')||'medium'
+  };
+  window._weTemplates.push(tmpl);
+  fbSaveWorkTemplates();
+  showToast('Template salvo: '+title);
+}
+
+function showTemplatePicker(){
+  var tmpls=window._weTemplates||[];
+  if(!tmpls.length){showToast('Nenhum template salvo.');return;}
+  var names=tmpls.map(function(t,i){return(i+1)+'. '+t.name;}).join('\n');
+  var choice=prompt('Escolha o numero do template:\n'+names);
+  if(!choice)return;
+  var idx=parseInt(choice)-1;
+  if(idx>=0&&idx<tmpls.length)applyTemplate(tmpls[idx]);
+}
+
+function applyTemplate(tmpl){
+  var tEl=document.getElementById('wetitle');if(tEl)tEl.value=tmpl.name||'';
+  var cEl=document.getElementById('weclient');if(cEl)cEl.value=tmpl.client||'';
+  window._weIcon=tmpl.icon||'';
+  buildWeIconPicker();
+  _weColor=tmpl.color||'#534AB7';
+  document.querySelectorAll('#weColorRow .csw').forEach(function(e){e.classList.remove('sel2');});
+  var colorBtns=document.querySelectorAll('#weColorRow .csw');
+  colorBtns.forEach(function(e){
+    if(e.style.background===tmpl.color||e.style.backgroundColor===tmpl.color)e.classList.add('sel2');
+  });
+  _weTags=(tmpl.tags||[]).slice();
+  renderWTags();
+  window._weSubtasks=(tmpl.subtasks||[]).map(function(s){return{text:s.text,done:false};});
+  renderWeSubtasks();
+  if(tmpl.priority)setWSeg('wePriority',tmpl.priority);
+  showToast('Template aplicado!');
+}
+
+function deleteTemplate(idx){
+  if(!confirm('Excluir este template?'))return;
+  window._weTemplates.splice(idx,1);
+  fbSaveWorkTemplates();
+  showToast('Template excluido.');
+}
+
+function fbSaveWorkTemplates(){
+  if(!window.auth||!window.auth.currentUser)return;
+  try{window.firestore.setDoc(window.firestore.doc(window.db,'users',window.auth.currentUser.uid,'config','workTemplates'),{templates:window._weTemplates||[]});}catch(e){}
+}
+
+function dupWEv(){
+  _weid=null;
+  var dbEl=document.getElementById('weDbtn');if(dbEl)dbEl.style.display='none';
+  var dupEl=document.getElementById('weDupBtn');if(dupEl)dupEl.style.display='none';
+  var dEl=document.getElementById('wedate');if(dEl)dEl.value='';
+  showToast('Copia criada! Ajuste a data e salve.');
 }
 function saveWEv(){
   var tEl=document.getElementById('wetitle');
@@ -2932,6 +3010,10 @@ function markFinPaid(docId){
 // Init work cal
 function initWorkCal(){
   fbLoadWorkData();
+  // Load templates
+  if(window.auth&&window.auth.currentUser){
+    try{window.firestore.onSnapshot(window.firestore.doc(window.db,'users',window.auth.currentUser.uid,'config','workTemplates'),function(snap){if(snap.exists&&snap.exists()){window._weTemplates=snap.data().templates||[];}});}catch(e){}
+  }
   renderCalSwitcher();
 }
 
