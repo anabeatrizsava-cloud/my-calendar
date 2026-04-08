@@ -731,6 +731,10 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
       <button class="mcl" onclick="closeWEvModal()">✕</button>
     </div>
     <div class="mb" style="gap:12px">
+      <div class="wfield"><label>Cliente</label><input class="inp" id="weclient" placeholder="Ex: Banco Safra" style="font-family:Montserrat,sans-serif"/></div>
+      <div class="wfield"><label>Icone</label>
+        <div style="display:flex;gap:4px;flex-wrap:wrap" id="weIconRow"></div>
+      </div>
       <div class="wfield"><label>Data e Horário</label>
         <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
           <input type="date" id="wedate" style="flex:1;min-width:120px"/>
@@ -763,14 +767,16 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
       </div>
       <div class="wfield"><label>Cores</label>
         <div style="display:flex;gap:5px;flex-wrap:wrap" id="weColorRow">
-          <div class="csw" style="background:#374151;width:18px;height:18px;border-radius:3px" onclick="selWEvColor(this,'#374151')"></div>
-          <div class="csw" style="background:#4a5568;width:18px;height:18px;border-radius:3px" onclick="selWEvColor(this,'#4a5568')"></div>
-          <div class="csw" style="background:#6b7280;width:18px;height:18px;border-radius:3px" onclick="selWEvColor(this,'#6b7280')"></div>
-          <div class="csw" style="background:#9ca3af;width:18px;height:18px;border-radius:3px" onclick="selWEvColor(this,'#9ca3af')"></div>
-          <div class="csw" style="background:#111827;width:18px;height:18px;border-radius:3px" onclick="selWEvColor(this,'#111827')"></div>
-          <div class="csw" style="background:#1f2937;width:18px;height:18px;border-radius:3px" onclick="selWEvColor(this,'#1f2937')"></div>
-          <div class="csw" style="background:#d1d5db;width:18px;height:18px;border-radius:3px" onclick="selWEvColor(this,'#d1d5db')"></div>
-          <div class="csw" style="background:#f3f4f6;width:18px;height:18px;border-radius:3px;border:0.5px solid #d1d5db" onclick="selWEvColor(this,'#f3f4f6')"></div>
+          <div class="csw" style="background:#534AB7;width:18px;height:18px;border-radius:4px" onclick="selWEvColor(this,'#534AB7')" title="Roxo"></div>
+          <div class="csw" style="background:#0F6E56;width:18px;height:18px;border-radius:4px" onclick="selWEvColor(this,'#0F6E56')" title="Verde"></div>
+          <div class="csw" style="background:#185FA5;width:18px;height:18px;border-radius:4px" onclick="selWEvColor(this,'#185FA5')" title="Azul"></div>
+          <div class="csw" style="background:#993556;width:18px;height:18px;border-radius:4px" onclick="selWEvColor(this,'#993556')" title="Rosa"></div>
+          <div class="csw" style="background:#854F0B;width:18px;height:18px;border-radius:4px" onclick="selWEvColor(this,'#854F0B')" title="Amber"></div>
+          <div class="csw" style="background:#993C1D;width:18px;height:18px;border-radius:4px" onclick="selWEvColor(this,'#993C1D')" title="Coral"></div>
+          <div class="csw" style="background:#5F5E5A;width:18px;height:18px;border-radius:4px" onclick="selWEvColor(this,'#5F5E5A')" title="Grafite"></div>
+          <div class="csw" style="background:#A32D2D;width:18px;height:18px;border-radius:4px" onclick="selWEvColor(this,'#A32D2D')" title="Vinho"></div>
+          <div class="csw" style="background:#111827;width:18px;height:18px;border-radius:4px" onclick="selWEvColor(this,'#111827')" title="Preto"></div>
+          <div class="csw" style="background:#3B6D11;width:18px;height:18px;border-radius:4px" onclick="selWEvColor(this,'#3B6D11')" title="Musgo"></div>
         </div>
       </div>
       <div class="wfield"><label>Descrição</label><textarea id="wedesc" placeholder="Notas..." style="min-height:50px;resize:vertical"></textarea></div>
@@ -2276,11 +2282,16 @@ function wEvCard(ev,calId){
   }
   var tm=ev.allDay?'Dia todo':(ev.startTime||'')+(ev.endTime?' - '+ev.endTime:'');
   var titleStyle='font-size:12px;font-weight:500;color:'+(p==='done'?'#9ca3af':'#111827')+(p==='done'?';text-decoration:line-through':'');
+  var tint=WC_COLOR_TINTS[col]||'#F1EFE8';
+  var iconHtml=ev.icon?'<div style="width:28px;height:28px;border-radius:7px;background:'+tint+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'+getWcIconSvg(ev.icon,col)+'</div>':'';
+  var clientHtml=ev.client?'<div style="font-size:10px;color:'+(p==='done'?'#d1d5db':'#6b7280')+';margin-top:1px;font-family:Montserrat,sans-serif'+(p==='done'?';text-decoration:line-through':'')+'">'+eh(ev.client)+'</div>':'';
   card.innerHTML='<div class="wev-accent" style="background:'+col+'"></div>'
     +'<div class="wev-body">'
     +progIcon(p,ev.id,idate,calId)
+    +iconHtml
     +'<div style="flex:1;min-width:0">'
     +'<div style="'+titleStyle+'">'+eh(ev.title)+'</div>'
+    +clientHtml
     +'<div style="font-size:10px;color:#9ca3af;font-family:monospace;margin-top:1px">'+tm+'</div>'
     +tags
     +'</div>'
@@ -2459,7 +2470,9 @@ function openWNew(){
   setWSeg('wePriority','medium');
   setWSeg('weProgress','not-started');
   setWSeg('weRepeat','none');
-  window._weSelWeekDays=[];window._weSelMonthDays=[];
+  window._weSelWeekDays=[];window._weSelMonthDays=[];window._weIcon='';
+  var cEl=document.getElementById('weclient');if(cEl)cEl.value='';
+  buildWeIconPicker();
   renderWTags();
   document.querySelectorAll('#weColorRow .csw').forEach(function(e){e.classList.remove('sel2');});
   var first=document.querySelector('#weColorRow .csw');if(first)first.classList.add('sel2');
@@ -2480,6 +2493,9 @@ function openWEdit(calId,evId,idate){
   setWSeg('weProgress',ev.progress||'not-started');
   window._weSelWeekDays=(ev.repeatDays||[]).slice();
   window._weSelMonthDays=(ev.repeatMonthDays||[]).slice();
+  window._weIcon=ev.icon||'';
+  var cEl=document.getElementById('weclient');if(cEl)cEl.value=ev.client||'';
+  buildWeIconPicker();
   setWSeg('weRepeat',ev.repeat||'none');
   renderWTags();
   var m=document.getElementById('wEvModal');if(m)m.classList.add('open');
@@ -2496,6 +2512,50 @@ function togWeAD(){
 window._weSelWeekDays=[];
 window._weSelMonthDays=[];
 window._wView='day';
+// Work calendar icons
+var WC_ICONS={
+  reuniao:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="CCC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  report:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="CCC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+  analise:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="CCC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+  acompanhar:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="CCC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+  atividade:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="CCC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+  dashboard:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="CCC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+  email:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="CCC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>',
+  prazo:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="CCC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+  apresentacao:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="CCC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
+  chat:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="CCC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  editar:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="CCC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
+  concluir:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="CCC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>'
+};
+var WC_ICON_LABELS={reuniao:'Reuniao',report:'Report',analise:'Analise',acompanhar:'Acompanhar',atividade:'Atividade',dashboard:'Dashboard',email:'Email',prazo:'Prazo',apresentacao:'Apresentacao',chat:'Chat',editar:'Editar',concluir:'Concluir'};
+var WC_COLOR_TINTS={'#534AB7':'#EEEDFE','#0F6E56':'#E1F5EE','#185FA5':'#E6F1FB','#993556':'#FBEAF0','#854F0B':'#FAEEDA','#993C1D':'#FAECE7','#5F5E5A':'#F1EFE8','#A32D2D':'#FCEBEB','#111827':'#F1EFE8','#3B6D11':'#EAF3DE'};
+window._weIcon='';
+
+function getWcIconSvg(iconKey,color){
+  var svg=WC_ICONS[iconKey]||'';
+  return svg.replace(/CCC/g,color||'#5F5E5A');
+}
+
+function buildWeIconPicker(){
+  var box=document.getElementById('weIconRow');if(!box)return;
+  box.innerHTML='';
+  var noneBtn=document.createElement('div');
+  noneBtn.style.cssText='width:30px;height:30px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1.5px solid '+(window._weIcon===''?'#111827':'#d1d5db')+';background:'+(window._weIcon===''?'#f0f2f5':'white')+';font-size:9px;color:#9ca3af';
+  noneBtn.textContent='—';
+  noneBtn.onclick=function(){window._weIcon='';buildWeIconPicker();};
+  box.appendChild(noneBtn);
+  Object.keys(WC_ICONS).forEach(function(key){
+    var btn=document.createElement('div');
+    var sel=window._weIcon===key;
+    btn.style.cssText='width:30px;height:30px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1.5px solid '+(sel?'#111827':'#d1d5db')+';background:'+(sel?'#f0f2f5':'white');
+    btn.title=WC_ICON_LABELS[key]||key;
+    btn.innerHTML=getWcIconSvg(key,'#374151');
+    btn.onclick=(function(k){return function(){window._weIcon=k;buildWeIconPicker();};})(key);
+    box.appendChild(btn);
+  });
+}
+
+
 window._wHideDone=true;
 
 function setWSeg(groupId,val){
@@ -2592,6 +2652,8 @@ function saveWEv(){
     repeat:getWSeg('weRepeat')||'none',
     repeatDays:window._weSelWeekDays.slice(),
     repeatMonthDays:window._weSelMonthDays.slice(),
+    client:((document.getElementById('weclient')||{}).value||'').trim(),
+    icon:window._weIcon||'',
     color:_weColor,
     tags:_weTags.slice(),
     calId:_wCalId
