@@ -2295,35 +2295,46 @@ function wEvCard(ev,calId){
   var tint=WC_COLOR_TINTS[col]||'#F1EFE8';
   var iconHtml=ev.icon?'<div style="width:28px;height:28px;border-radius:7px;background:'+tint+';display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">'+getWcIconSvg(ev.icon,col)+'</div>':'';
   var clientHtml=ev.client?'<div style="font-size:10px;color:'+(p==='done'?'#d1d5db':'#6b7280')+';margin-top:1px;font-family:Montserrat,sans-serif'+(p==='done'?';text-decoration:line-through':'')+'">'+eh(ev.client)+'</div>':'';
+  // Subtasks HTML
   var subHtml='';
   if(ev.subtasks&&ev.subtasks.length){
     var subDone=ev.subtasks.filter(function(s){return s.done;}).length;
-    subHtml='<div style="margin-top:4px;padding-top:4px;border-top:0.5px dashed #e5e7eb;display:flex;flex-direction:column;gap:2px">';
+    subHtml='<div style="margin-top:6px;display:flex;flex-direction:column;gap:3px">';
     ev.subtasks.slice(0,3).forEach(function(s,si){
-      subHtml+='<div data-subidx="'+si+'" style="display:flex;align-items:center;gap:4px;font-size:9px;color:'+(s.done?'#d1d5db':'#6b7280')+';font-family:Montserrat,sans-serif;cursor:pointer'+(s.done?';text-decoration:line-through':'')+'"><div style="width:10px;height:10px;border-radius:2px;border:1px solid '+(s.done?'#111827':'#d1d5db')+';background:'+(s.done?'#111827':'transparent')+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'+(s.done?'<svg width="6" height="5" viewBox="0 0 8 6" fill="none"><path d="M1 3l2 2 4-4.5" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>':'')+'</div>'+eh(s.text)+'</div>';
+      subHtml+='<div data-subidx="'+si+'" style="display:flex;align-items:center;gap:5px;cursor:pointer">'
+        +'<div style="width:11px;height:11px;border-radius:3px;border:1px solid '+(s.done?'#111827':'#d1d5db')+';background:'+(s.done?'#111827':'transparent')+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'+(s.done?'<svg width="7" height="5" viewBox="0 0 8 6" fill="none"><path d="M1 3l2 2 4-4.5" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>':'')+'</div>'
+        +'<span style="font-size:10px;color:'+(s.done?'#d1d5db':'#6b7280')+';font-family:Montserrat,sans-serif'+(s.done?';text-decoration:line-through':'')+'">'+eh(s.text)+'</span>'
+        +'</div>';
     });
-    if(ev.subtasks.length>3)subHtml+='<div style="font-size:8px;color:#9ca3af">+'+(ev.subtasks.length-3)+' mais</div>';
-    subHtml+='<div style="font-size:8px;color:#9ca3af;margin-top:1px">'+subDone+' de '+ev.subtasks.length+'</div></div>';
+    if(ev.subtasks.length>3)subHtml+='<div style="font-size:9px;color:#9ca3af;padding-left:16px">+'+(ev.subtasks.length-3)+' mais</div>';
+    subHtml+='<div style="font-size:9px;color:#9ca3af;margin-top:1px;padding-left:16px">'+subDone+' de '+ev.subtasks.length+' concluidas</div></div>';
   }
-  var deadlineHtml='';
+  // Deadline pill (inline with time)
+  var deadlinePill='';
   if(ev.deadline){
     var dlParts=ev.deadline.split('-');
     var dlLabel=dlParts[2]+'/'+dlParts[1];
-    deadlineHtml='<div style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:#FAEEDA;border:0.5px solid #EF9F27;border-radius:16px;font-size:10px;color:#854F0B;font-weight:500;margin-top:4px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>prazo: '+dlLabel+'</div>';
+    deadlinePill='<div style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:#FAEEDA;border:0.5px solid #EF9F27;border-radius:10px;font-size:9px;color:#854F0B;font-weight:500"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'+dlLabel+'</div>';
   }
+  // Time + deadline row
+  var timeRow='<div style="display:flex;align-items:center;gap:8px;margin-top:2px">'
+    +'<div style="font-size:10px;color:#9ca3af;font-family:monospace">'+tm+'</div>'
+    +deadlinePill+'</div>';
+  // Title + prioIcon row
+  var titleRow='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
+    +'<div style="'+titleStyle+'">'+eh(ev.title)+'</div>'
+    +prioIcon(prio)+'</div>';
   card.innerHTML='<div class="wev-accent" style="background:'+col+'"></div>'
     +'<div class="wev-body">'
     +progIcon(p,ev.id,idate,calId)
     +iconHtml
     +'<div style="flex:1;min-width:0">'
-    +'<div style="'+titleStyle+'">'+eh(ev.title)+'</div>'
+    +titleRow
     +clientHtml
-    +'<div style="font-size:10px;color:#9ca3af;font-family:monospace;margin-top:1px">'+tm+'</div>'
+    +timeRow
     +tags
     +subHtml
-    +deadlineHtml
     +'</div>'
-    +prioIcon(prio)
     +'</div>';
   var progEl=card.querySelector('.prog-icon');
   if(progEl){
