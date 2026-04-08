@@ -2295,15 +2295,6 @@ function wEvCard(ev,calId){
   var tint=WC_COLOR_TINTS[col]||'#F1EFE8';
   var iconHtml=ev.icon?'<div style="width:28px;height:28px;border-radius:7px;background:'+tint+';display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">'+getWcIconSvg(ev.icon,col)+'</div>':'';
   var clientHtml=ev.client?'<div style="font-size:10px;color:'+(p==='done'?'#d1d5db':'#6b7280')+';margin-top:1px;font-family:Montserrat,sans-serif'+(p==='done'?';text-decoration:line-through':'')+'">'+eh(ev.client)+'</div>':'';
-  card.innerHTML='<div class="wev-accent" style="background:'+col+'"></div>'
-    +'<div class="wev-body">'
-    +progIcon(p,ev.id,idate,calId)
-    +iconHtml
-    +'<div style="flex:1;min-width:0">'
-    +'<div style="'+titleStyle+'">'+eh(ev.title)+'</div>'
-    +clientHtml
-    +'<div style="font-size:10px;color:#9ca3af;font-family:monospace;margin-top:1px">'+tm+'</div>'
-    +tags;
   var subHtml='';
   if(ev.subtasks&&ev.subtasks.length){
     var subDone=ev.subtasks.filter(function(s){return s.done;}).length;
@@ -2320,7 +2311,17 @@ function wEvCard(ev,calId){
     var dlLabel=dlParts[2]+'/'+dlParts[1];
     deadlineHtml='<div style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:#FAEEDA;border:0.5px solid #EF9F27;border-radius:16px;font-size:10px;color:#854F0B;font-weight:500;margin-top:4px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>prazo: '+dlLabel+'</div>';
   }
-  card.innerHTML+=subHtml+deadlineHtml
+  card.innerHTML='<div class="wev-accent" style="background:'+col+'"></div>'
+    +'<div class="wev-body">'
+    +progIcon(p,ev.id,idate,calId)
+    +iconHtml
+    +'<div style="flex:1;min-width:0">'
+    +'<div style="'+titleStyle+'">'+eh(ev.title)+'</div>'
+    +clientHtml
+    +'<div style="font-size:10px;color:#9ca3af;font-family:monospace;margin-top:1px">'+tm+'</div>'
+    +tags
+    +subHtml
+    +deadlineHtml
     +'</div>'
     +prioIcon(prio)
     +'</div>';
