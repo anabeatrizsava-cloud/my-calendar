@@ -2322,25 +2322,30 @@ function wEvCard(ev,calId){
     deadlinePill='<div style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:#FAEEDA;border:0.5px solid #EF9F27;border-radius:10px;font-size:9px;color:#854F0B;font-weight:500"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'+dlLabel+'</div>';
   }
   // Time + deadline row
-  // Status pill
-  var statusPill='';
+  // Status circle (top-right)
+  var statusCircle='';
   if(p==='not-started'){
-    statusPill='<div class="wev-status" data-calid="'+calId+'" data-evid="'+ev.id+'" data-idate="'+idate+'" style="padding:2px 8px;border-radius:8px;font-size:9px;font-weight:500;background:#f3f4f6;color:#9ca3af;border:0.5px solid #e5e7eb;cursor:pointer;font-family:Montserrat,sans-serif">pendente</div>';
+    statusCircle='<div class="wev-status" data-calid="'+calId+'" data-evid="'+ev.id+'" data-idate="'+idate+'" style="width:16px;height:16px;border-radius:50%;border:1.5px solid #d1d5db;flex-shrink:0;cursor:pointer" title="pendente"></div>';
   } else if(p==='in-progress'){
-    statusPill='<div class="wev-status" data-calid="'+calId+'" data-evid="'+ev.id+'" data-idate="'+idate+'" style="padding:2px 8px;border-radius:8px;font-size:9px;font-weight:500;background:#e5e7eb;color:#6b7280;border:0.5px solid #d1d5db;cursor:pointer;font-family:Montserrat,sans-serif">em andamento</div>';
+    statusCircle='<div class="wev-status" data-calid="'+calId+'" data-evid="'+ev.id+'" data-idate="'+idate+'" style="width:16px;height:16px;border-radius:50%;border:1.5px solid #6b7280;flex-shrink:0;cursor:pointer;overflow:hidden;position:relative" title="em andamento"><div style="position:absolute;left:0;top:0;width:50%;height:100%;background:#6b7280"></div></div>';
   } else {
-    statusPill='<div class="wev-status" data-calid="'+calId+'" data-evid="'+ev.id+'" data-idate="'+idate+'" style="padding:2px 8px;border-radius:8px;font-size:9px;font-weight:500;background:#111827;color:white;border:0.5px solid #111827;cursor:pointer;font-family:Montserrat,sans-serif;display:inline-flex;align-items:center;gap:3px"><svg width=\"8\" height=\"6\" viewBox=\"0 0 10 8\" fill=\"none\"><path d=\"M1 4l3 3 5-6\" stroke=\"white\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>concluido</div>';
+    statusCircle='<div class="wev-status" data-calid="'+calId+'" data-evid="'+ev.id+'" data-idate="'+idate+'" style="width:16px;height:16px;border-radius:50%;background:#111827;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center" title="concluido"><svg width="8" height="6" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>';
   }
+  // Time row (without status pill)
   var timeRow='<div style="display:flex;align-items:center;gap:6px;margin-top:2px">'
     +'<div style="font-size:10px;color:#9ca3af;font-family:monospace">'+tm+'</div>'
-    +statusPill
     +deadlinePill+'</div>';
-  // Title + prioIcon row
+  // Title + status circle row
   var titleRow='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
     +'<div style="'+titleStyle+'">'+eh(ev.title)+'</div>'
-    +prioIcon(prio)+'</div>';
+    +statusCircle+'</div>';
+  // Priority footer
+  var prioLabel=prio==='high'?'prioridade alta':prio==='low'?'prioridade baixa':'prioridade media';
+  var prioColor=p==='done'?'#d1d5db':(prio==='high'?'#6b7280':'#9ca3af');
+  var prioFooter='<div style="margin-top:6px;padding-top:5px;border-top:0.5px solid rgba(0,0,0,.06);font-size:9px;color:'+prioColor+';font-family:Montserrat,sans-serif">'+prioLabel+'</div>';
   card.innerHTML='<div class="wev-accent" style="background:'+col+'"></div>'
-    +'<div class="wev-body">'
+    +'<div style="flex:1;display:flex;flex-direction:column">'
+    +'<div class="wev-body" style="flex:1">'
     +iconHtml
     +'<div style="flex:1;min-width:0">'
     +titleRow
@@ -2349,6 +2354,8 @@ function wEvCard(ev,calId){
     +tags
     +subHtml
     +'</div>'
+    +'</div>'
+    +prioFooter
     +'</div>';
   var statusEl=card.querySelector('.wev-status');
   if(statusEl){
