@@ -2636,6 +2636,20 @@ window._weSelWeekDays=[];
 window._weSelMonthDays=[];
 window._wView='day';
 // Work calendar icons
+var WC_ICON_COLORS={
+  reuniao:'#534AB7',
+  report:'#0F6E56',
+  analise:'#185FA5',
+  acompanhar:'#993556',
+  atividade:'#993C1D',
+  dashboard:'#854F0B',
+  email:'#5F5E5A',
+  prazo:'#A32D2D',
+  apresentacao:'#185FA5',
+  chat:'#534AB7',
+  editar:'#3B6D11',
+  concluir:'#0F6E56'
+};
 var WC_ICONS={
   reuniao:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="CCC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
   report:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="CCC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
@@ -2672,8 +2686,15 @@ function buildWeIconPicker(){
     var sel=window._weIcon===key;
     btn.style.cssText='width:30px;height:30px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1.5px solid '+(sel?'#111827':'#d1d5db')+';background:'+(sel?'#f0f2f5':'white');
     btn.title=WC_ICON_LABELS[key]||key;
-    btn.innerHTML=getWcIconSvg(key,'#374151');
-    btn.onclick=(function(k){return function(){window._weIcon=k;buildWeIconPicker();};})(key);
+    var iconCol=WC_ICON_COLORS[key]||'#374151';
+    btn.innerHTML=getWcIconSvg(key,iconCol);
+    btn.style.borderBottom=sel?'':'2px solid '+iconCol;
+    btn.onclick=(function(k){return function(){
+      window._weIcon=k;
+      var autoColor=WC_ICON_COLORS[k];
+      if(autoColor){_weColor=autoColor;document.querySelectorAll('#weColorRow .csw').forEach(function(e){e.classList.remove('sel2');});document.querySelectorAll('#weColorRow .csw').forEach(function(e){if(e.style.background===autoColor||e.style.backgroundColor===autoColor)e.classList.add('sel2');});}
+      buildWeIconPicker();
+    };})(key);
     box.appendChild(btn);
   });
 }
