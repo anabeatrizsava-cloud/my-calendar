@@ -2322,8 +2322,18 @@ function wEvCard(ev,calId){
     deadlinePill='<div style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:#FAEEDA;border:0.5px solid #EF9F27;border-radius:10px;font-size:9px;color:#854F0B;font-weight:500"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'+dlLabel+'</div>';
   }
   // Time + deadline row
-  var timeRow='<div style="display:flex;align-items:center;gap:8px;margin-top:2px">'
+  // Status pill
+  var statusPill='';
+  if(p==='not-started'){
+    statusPill='<div class="wev-status" data-calid="'+calId+'" data-evid="'+ev.id+'" data-idate="'+idate+'" style="padding:2px 8px;border-radius:8px;font-size:9px;font-weight:500;background:#f3f4f6;color:#9ca3af;border:0.5px solid #e5e7eb;cursor:pointer;font-family:Montserrat,sans-serif">pendente</div>';
+  } else if(p==='in-progress'){
+    statusPill='<div class="wev-status" data-calid="'+calId+'" data-evid="'+ev.id+'" data-idate="'+idate+'" style="padding:2px 8px;border-radius:8px;font-size:9px;font-weight:500;background:#e5e7eb;color:#6b7280;border:0.5px solid #d1d5db;cursor:pointer;font-family:Montserrat,sans-serif">em andamento</div>';
+  } else {
+    statusPill='<div class="wev-status" data-calid="'+calId+'" data-evid="'+ev.id+'" data-idate="'+idate+'" style="padding:2px 8px;border-radius:8px;font-size:9px;font-weight:500;background:#111827;color:white;border:0.5px solid #111827;cursor:pointer;font-family:Montserrat,sans-serif;display:inline-flex;align-items:center;gap:3px"><svg width=\"8\" height=\"6\" viewBox=\"0 0 10 8\" fill=\"none\"><path d=\"M1 4l3 3 5-6\" stroke=\"white\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>concluido</div>';
+  }
+  var timeRow='<div style="display:flex;align-items:center;gap:6px;margin-top:2px">'
     +'<div style="font-size:10px;color:#9ca3af;font-family:monospace">'+tm+'</div>'
+    +statusPill
     +deadlinePill+'</div>';
   // Title + prioIcon row
   var titleRow='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
@@ -2331,7 +2341,6 @@ function wEvCard(ev,calId){
     +prioIcon(prio)+'</div>';
   card.innerHTML='<div class="wev-accent" style="background:'+col+'"></div>'
     +'<div class="wev-body">'
-    +progIcon(p,ev.id,idate,calId)
     +iconHtml
     +'<div style="flex:1;min-width:0">'
     +titleRow
@@ -2341,11 +2350,11 @@ function wEvCard(ev,calId){
     +subHtml
     +'</div>'
     +'</div>';
-  var progEl=card.querySelector('.prog-icon');
-  if(progEl){
-    progEl.onclick=function(e){
+  var statusEl=card.querySelector('.wev-status');
+  if(statusEl){
+    statusEl.onclick=function(e){
       e.stopPropagation();
-      cycleWProg(calId,ev.id,idate,this);
+      cycleWProg(this.dataset.calid,this.dataset.evid,this.dataset.idate,this);
     };
   }
   card.querySelectorAll('[data-subidx]').forEach(function(el){
