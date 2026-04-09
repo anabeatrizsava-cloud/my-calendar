@@ -2341,11 +2341,10 @@ function wEvCard(ev,calId){
     +statusCircle+'</div>';
   // Priority footer
   var prioLabel=prio==='high'?'prioridade alta':prio==='low'?'prioridade baixa':'prioridade media';
-  var prioColor=p==='done'?'#d1d5db':(prio==='high'?'#6b7280':'#9ca3af');
-  var prioFooter='<div style="margin-top:6px;padding-top:5px;border-top:0.5px solid rgba(0,0,0,.06);font-size:9px;color:'+prioColor+';font-family:Montserrat,sans-serif">'+prioLabel+'</div>';
+
+
   card.innerHTML='<div class="wev-accent" style="background:'+col+'"></div>'
-    +'<div style="flex:1;display:flex;flex-direction:column">'
-    +'<div class="wev-body" style="flex:1">'
+    +'<div class="wev-body">'
     +iconHtml
     +'<div style="flex:1;min-width:0">'
     +titleRow
@@ -2353,9 +2352,8 @@ function wEvCard(ev,calId){
     +timeRow
     +tags
     +subHtml
+    +'<div style="font-size:9px;color:'+(p==='done'?'#d1d5db':(prio==='high'?'#6b7280':'#bbbab6'))+';font-family:Montserrat,sans-serif;margin-top:4px">'+prioLabel+'</div>'
     +'</div>'
-    +'</div>'
-    +prioFooter
     +'</div>';
   var statusEl=card.querySelector('.wev-status');
   if(statusEl){
