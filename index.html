@@ -3360,12 +3360,33 @@ function renderVocabList(parent){
     parent.appendChild(empty);
     return;
   }
+  // Search + label row
+  var headerRow=document.createElement('div');
+  headerRow.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:4px';
   var label=document.createElement('div');
   label.style.cssText='font-size:9px;font-weight:600;color:#aaa89e;letter-spacing:1.2px;text-transform:uppercase;font-family:Montserrat,sans-serif';
-  label.textContent='Vocabulario';
-  parent.appendChild(label);
+  label.textContent='Vocabulario ('+list.length+')';
+  headerRow.appendChild(label);
+  var searchWrap=document.createElement('div');
+  searchWrap.style.cssText='display:flex;align-items:center;gap:6px;padding:4px 10px;background:white;border:0.5px solid #e8e4de;border-radius:8px;flex:1;max-width:280px';
+  searchWrap.innerHTML='<svg width="12" height="12" viewBox="0 0 13 13" fill="none" style="flex-shrink:0"><circle cx="5.5" cy="5.5" r="4" stroke="#aaa89e" stroke-width="1.2"/><path d="M9 9l2.5 2.5" stroke="#aaa89e" stroke-width="1.2" stroke-linecap="round"/></svg>';
+  var searchInp=document.createElement('input');
+  searchInp.style.cssText='border:none;outline:none;font-size:11px;font-family:Montserrat,sans-serif;color:#1a1a1a;background:transparent;flex:1;padding:0';
+  searchInp.placeholder='Buscar palavra...';
+  searchInp.id='vocabSearch';
+  searchInp.oninput=function(){filterVocabList(this.value,grid,list);};
+  searchWrap.appendChild(searchInp);
+  headerRow.appendChild(searchWrap);
+  parent.appendChild(headerRow);
+  // Grid
   var grid=document.createElement('div');
   grid.style.cssText='display:flex;flex-direction:column;gap:6px';
+  grid.id='vocabGrid';
+  buildVocabCards(grid,list);
+  parent.appendChild(grid);
+}
+function buildVocabCards(grid,list){
+  grid.innerHTML='';
   list.forEach(function(v){
     var card=document.createElement('div');
     card.style.cssText='background:white;border:0.5px solid #e8e4de;border-radius:12px;padding:11px 14px;display:flex;align-items:center;gap:12px;cursor:pointer';
@@ -3377,7 +3398,17 @@ function renderVocabList(parent){
       +(v.example?'<div style="font-size:10px;color:#aaa89e;font-style:italic;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:Montserrat,sans-serif">'+eh(v.example)+'</div>':'');
     grid.appendChild(card);
   });
-  parent.appendChild(grid);
+}
+function filterVocabList(query,grid,fullList){
+  var q=query.toLowerCase().trim();
+  if(!q){buildVocabCards(grid,fullList);return;}
+  var filtered=fullList.filter(function(v){
+    return (v.word||'').toLowerCase().indexOf(q)>=0
+      ||(v.translation||'').toLowerCase().indexOf(q)>=0
+      ||(v.pronunciation||'').toLowerCase().indexOf(q)>=0
+      ||(v.example||'').toLowerCase().indexOf(q)>=0;
+  });
+  buildVocabCards(grid,filtered);
 }
 
 function renderNotesList(parent){
