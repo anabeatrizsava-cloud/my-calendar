@@ -2212,15 +2212,21 @@ function getWEvs(calId,ds){
   var evList=window.workEvs[calId]||[];
   var res=[];
   evList.forEach(function(ev){
-    if(ev.date===ds){res.push(ev);return;}
+    if(ev.date===ds){
+      var copy=Object.assign({},ev);
+      if(ev.progressExceptions&&ev.progressExceptions[ds])copy.progress=ev.progressExceptions[ds];
+      res.push(copy);return;
+    }
     if(!ev.repeat||ev.repeat==='none')return;
     if(ev.deletedExceptions&&ev.deletedExceptions.includes(ds))return;
     var ed=new Date(ev.date+'T00:00:00'),cd2=new Date(ds+'T00:00:00');
     if(cd2<=ed)return;
     var diff=Math.round((cd2-ed)/86400000),dow=cd2.getDay();
-    if(ev.repeat==='daily')res.push(Object.assign({},ev,{date:ds,_instanceDate:ds}));
-    else if(ev.repeat==='weekly'&&diff%7===0)res.push(Object.assign({},ev,{date:ds,_instanceDate:ds}));
-    else if(ev.repeat==='monthly'){if(ev.repeatMonthDays&&ev.repeatMonthDays.length){if(ev.repeatMonthDays.indexOf(cd2.getDate())>=0)res.push(Object.assign({},ev,{date:ds,_instanceDate:ds}));}else if(cd2.getDate()===ed.getDate())res.push(Object.assign({},ev,{date:ds,_instanceDate:ds}));}
+    var instProgress=(ev.progressExceptions&&ev.progressExceptions[ds])?ev.progressExceptions[ds]:ev.progress;
+    var inst=Object.assign({},ev,{date:ds,_instanceDate:ds,progress:instProgress||'not-started'});
+    if(ev.repeat==='daily')res.push(inst);
+    else if(ev.repeat==='weekly'){if(ev.repeatDays&&ev.repeatDays.length){if(ev.repeatDays.indexOf(dow)>=0)res.push(inst);}else if(diff%7===0)res.push(inst);}
+    else if(ev.repeat==='monthly'){if(ev.repeatMonthDays&&ev.repeatMonthDays.length){if(ev.repeatMonthDays.indexOf(cd2.getDate())>=0)res.push(inst);}else if(cd2.getDate()===ed.getDate())res.push(inst);}
   });
   return res;
 }
@@ -2270,8 +2276,17 @@ function cycleWProg(calId,evId,idate,el){
   var ev=list.find(function(e){return e.id===evId;});
   if(!ev)return;
   var order=['not-started','in-progress','done'];
-  var idx=order.indexOf(ev.progress||'not-started');
-  ev.progress=order[(idx+1)%3];
+  if(ev.repeat&&ev.repeat!=='none'&&idate){
+    // Repeating task: store progress per instance date
+    if(!ev.progressExceptions)ev.progressExceptions={};
+    var currentProg=ev.progressExceptions[idate]||ev.progress||'not-started';
+    var idx=order.indexOf(currentProg);
+    ev.progressExceptions[idate]=order[(idx+1)%3];
+  } else {
+    // Non-repeating task: change master progress
+    var idx=order.indexOf(ev.progress||'not-started');
+    ev.progress=order[(idx+1)%3];
+  }
   fbSaveWorkEvs(calId);
   renderWorkDay(calId);
 }
