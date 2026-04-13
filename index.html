@@ -731,7 +731,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
       <button class="mcl" onclick="closeWEvModal()">✕</button>
     </div>
     <div class="mb" style="gap:12px">
-      <div class="wfield"><label>Cliente</label><input class="inp" id="weclient" placeholder="Ex: Banco Safra" style="font-family:Montserrat,sans-serif"/></div>
+      <div class="wfield" id="weClientField"><label>Cliente</label><input class="inp" id="weclient" placeholder="Ex: Banco Safra" style="font-family:Montserrat,sans-serif"/></div>
       <div class="wfield"><label>Icone</label>
         <div style="display:flex;gap:4px;flex-wrap:wrap" id="weIconRow"></div>
       </div>
@@ -749,7 +749,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
           <input class="tti" id="weti" placeholder="Digitar e Enter..." onkeydown="hWTag(event)" style="font-family:Montserrat,sans-serif"/>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="wePrioProgGrid">
         <div class="wfield"><label>Prioridade</label>
           <div class="seg-ctrl" id="wePriority">
             <button class="seg-btn" data-v="low" onclick="setWSeg('wePriority',this)">Baixa</button>
@@ -790,7 +790,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
       <div class="wfield"><label>Prazo (opcional)</label>
         <input type="date" id="wedeadline" style="width:160px"/>
       </div>
-      <div class="wfield"><label>Repetir</label>
+      <div class="wfield" id="weRepeatField"><label>Repetir</label>
         <div class="seg-ctrl" id="weRepeat" style="flex-wrap:wrap">
           <button class="seg-btn act" data-v="none" onclick="setWSeg('weRepeat',this)">Nunca</button>
           <button class="seg-btn" data-v="daily" onclick="setWSeg('weRepeat',this)">Diário</button>
@@ -3069,8 +3069,11 @@ function editKanbanCard(calId,cardId){
   // Store kanban card id for saving
   window._editKanbanCardId=cardId;
   window._editKanbanCalId=calId;
-  // Hide date/time fields (kanban cards don't need them)
+  // Hide fields not needed for kanban
   var dateField=document.getElementById('wedate');if(dateField)dateField.parentElement.parentElement.style.display='none';
+  var clientField=document.getElementById('weClientField');if(clientField)clientField.style.display='none';
+  var prioProgGrid=document.getElementById('wePrioProgGrid');if(prioProgGrid)prioProgGrid.style.display='none';
+  var repeatField=document.getElementById('weRepeatField');if(repeatField)repeatField.style.display='none';
   var dbEl=document.getElementById('weDbtn');if(dbEl){dbEl.style.display='block';dbEl.onclick=function(){delKanbanCard(calId,cardId);closeWEvModal();window._editKanbanCardId=null;};}
   var dupEl=document.getElementById('weDupBtn');if(dupEl)dupEl.style.display='none';
   // Override save to update kanban card instead of work event
