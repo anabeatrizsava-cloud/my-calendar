@@ -2087,6 +2087,7 @@ window.workCals = window.workCals || [];
 window.workEvs  = window.workEvs  || {};
 window.kanbanCols = window.kanbanCols || {};
 window.kanbanCards = window.kanbanCards || {};
+window.kanbanRules = window.kanbanRules || {};
 var activeCal = 'main';
 
 // Firebase
@@ -2096,7 +2097,7 @@ function fbSaveWorkCals(){
 }
 function fbSaveKanban(calId){
   if(!window.auth||!window.auth.currentUser)return;
-  try{window.firestore.setDoc(window.firestore.doc(window.db,'users',window.auth.currentUser.uid,'kanban',calId),{cols:window.kanbanCols[calId]||[],cards:window.kanbanCards[calId]||[]});}catch(e){}
+  try{window.firestore.setDoc(window.firestore.doc(window.db,'users',window.auth.currentUser.uid,'kanban',calId),{cols:window.kanbanCols[calId]||[],cards:window.kanbanCards[calId]||[],rules:window.kanbanRules[calId]||[]});}catch(e){}
 }
 function fbSaveWorkEvs(calId){
   if(!window.auth||!window.auth.currentUser)return;
@@ -2114,7 +2115,7 @@ function fbLoadWorkData(){
       snap.docs.forEach(function(d){window.workEvs[d.id]=d.data().events||[];});
     });
     window.firestore.onSnapshot(window.firestore.collection(window.db,'users',uid,'kanban'),function(snap){
-      snap.docs.forEach(function(d){var data=d.data();window.kanbanCols[d.id]=data.cols||[];window.kanbanCards[d.id]=data.cards||[];});
+      snap.docs.forEach(function(d){var data=d.data();window.kanbanCols[d.id]=data.cols||[];window.kanbanCards[d.id]=data.cards||[];window.kanbanRules[d.id]=data.rules||[];});
     });
   }catch(e){}
 }
@@ -3135,11 +3136,189 @@ function editKanbanCard(calId,cardId){
   var m=document.getElementById('wEvModal');if(m)m.classList.add('open');
 }
 
+
+// ── KANBAN AUTOMATION ────────────────────────────────────
+function showKanbanAutomation(calId){
+  var rules=window.kanbanRules[calId]||[];
+  var cols=window.kanbanCols[calId]||[];
+
+  // Build modal overlay
+  var overlay=document.createElement('div');
+  overlay.className='mo open';
+  overlay.id='kanbanAutoModal';
+  overlay.onclick=function(e){if(e.target===this)this.remove();};
+
+  var modal=document.createElement('div');
+  modal.className='modal wc-app';
+  modal.style.cssText='width:520px;max-height:80vh;overflow-y:auto';
+  modal.onclick=function(e){e.stopPropagation();};
+
+  // Header
+  var hdr=document.createElement('div');
+  hdr.className='mhd';
+  hdr.innerHTML='<div style="font-size:14px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">Automacoes</div><button class="mcl" onclick="document.getElementById(\'kanbanAutoModal\').remove()">x</button>';
+  modal.appendChild(hdr);
+
+  var body=document.createElement('div');
+  body.className='mb';
+  body.style.cssText='gap:10px;padding:16px';
+
+  // Existing rules
+  if(!rules.length){
+    var empty=document.createElement('div');
+    empty.style.cssText='text-align:center;color:#9ca3af;padding:20px 0;font-size:11px;font-family:Montserrat,sans-serif';
+    empty.textContent='Nenhuma regra criada.';
+    body.appendChild(empty);
+  } else {
+    rules.forEach(function(rule,ri){
+      var ruleDiv=document.createElement('div');
+      ruleDiv.style.cssText='padding:12px;background:#f7f8fa;border-radius:8px;border:0.5px solid #e5e7eb';
+
+      // Top row: name + toggle + delete
+      var topRow=document.createElement('div');
+      topRow.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:6px';
+
+      var nameDiv=document.createElement('div');
+      nameDiv.style.cssText='display:flex;align-items:center;gap:6px';
+      nameDiv.innerHTML='<div style="width:6px;height:6px;border-radius:50%;background:'+(rule.enabled?'#0F6E56':'#d1d5db')+'"></div><div style="font-size:11px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+eh(rule.name)+'</div>';
+      topRow.appendChild(nameDiv);
+
+      var controls=document.createElement('div');
+      controls.style.cssText='display:flex;align-items:center;gap:8px';
+
+      // Toggle
+      var toggle=document.createElement('div');
+      toggle.style.cssText='width:32px;height:18px;border-radius:9px;background:'+(rule.enabled?'#0F6E56':'#d1d5db')+';position:relative;cursor:pointer';
+      toggle.innerHTML='<div style="width:14px;height:14px;border-radius:50%;background:white;position:absolute;'+(rule.enabled?'right':'left')+':2px;top:2px"></div>';
+      toggle.onclick=(function(idx){return function(){
+        var r=(window.kanbanRules[calId]||[])[idx];
+        if(r){r.enabled=!r.enabled;fbSaveKanban(calId);document.getElementById('kanbanAutoModal').remove();showKanbanAutomation(calId);}
+      };})(ri);
+      controls.appendChild(toggle);
+
+      // Delete
+      var delBtn=document.createElement('div');
+      delBtn.style.cssText='font-size:11px;color:#d1d5db;cursor:pointer;padding:2px';
+      delBtn.textContent='x';
+      delBtn.onclick=(function(idx){return function(){
+        if(!confirm('Excluir esta regra?'))return;
+        (window.kanbanRules[calId]||[]).splice(idx,1);
+        fbSaveKanban(calId);document.getElementById('kanbanAutoModal').remove();showKanbanAutomation(calId);
+      };})(ri);
+      controls.appendChild(delBtn);
+
+      topRow.appendChild(controls);
+      ruleDiv.appendChild(topRow);
+
+      // Description
+      var colName=function(cid){var c=cols.find(function(x){return x.id===cid;});return c?c.name:'?';};
+      var actionLabel=rule.action==='archive'?'Arquivar':rule.action==='highlight'?'Destacar vermelho':'Mover para '+colName(rule.targetColId);
+      var desc=document.createElement('div');
+      desc.style.cssText='font-size:10px;color:#6b7280;line-height:1.5;font-family:Montserrat,sans-serif';
+      desc.innerHTML='Quando card ficar na coluna <span style="padding:1px 6px;background:#e5e7eb;border-radius:4px;font-weight:500;font-size:9px">'+eh(colName(rule.colId))+'</span> por <span style="padding:1px 6px;background:white;border:0.5px solid #e5e7eb;border-radius:4px;font-weight:500;font-size:9px">'+rule.days+' dias</span> &rarr; <span style="padding:1px 6px;background:#f0f2f5;border-radius:4px;font-weight:500;font-size:9px">'+actionLabel+'</span>';
+      ruleDiv.appendChild(desc);
+
+      body.appendChild(ruleDiv);
+    });
+  }
+
+  // Add rule button
+  var addBtn=document.createElement('button');
+  addBtn.style.cssText='width:100%;padding:10px;background:#111827;color:white;border:none;border-radius:8px;font-size:11px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;margin-top:8px';
+  addBtn.textContent='+ Nova regra';
+  addBtn.onclick=function(){document.getElementById('kanbanAutoModal').remove();addKanbanRule(calId);};
+  body.appendChild(addBtn);
+
+  modal.appendChild(body);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+
+function addKanbanRule(calId){
+  var cols=window.kanbanCols[calId]||[];
+  if(cols.length<2){showToast('Crie ao menos 2 colunas primeiro.');return;}
+
+  var name=prompt('Nome da regra:');
+  if(!name||!name.trim())return;
+
+  var colList=cols.map(function(c,i){return(i+1)+'. '+c.name;}).join('\n');
+  var colChoice=prompt('Coluna de gatilho (numero):\n'+colList);
+  if(!colChoice)return;
+  var colIdx=parseInt(colChoice)-1;
+  if(colIdx<0||colIdx>=cols.length){showToast('Coluna invalida.');return;}
+
+  var days=prompt('Quantos dias na coluna para disparar?','5');
+  if(!days)return;
+  days=parseInt(days);
+  if(isNaN(days)||days<1){showToast('Numero invalido.');return;}
+
+  var actionChoice=prompt('Acao:\n1. Arquivar\n2. Destacar vermelho\n3. Mover para outra coluna');
+  if(!actionChoice)return;
+  var action,targetColId='';
+  if(actionChoice==='1')action='archive';
+  else if(actionChoice==='2')action='highlight';
+  else if(actionChoice==='3'){
+    action='move';
+    var targetList=cols.filter(function(c){return c.id!==cols[colIdx].id;}).map(function(c,i){return(i+1)+'. '+c.name;}).join('\n');
+    var targetChoice=prompt('Mover para qual coluna?\n'+targetList);
+    if(!targetChoice)return;
+    var tIdx=parseInt(targetChoice)-1;
+    var filtered=cols.filter(function(c){return c.id!==cols[colIdx].id;});
+    if(tIdx<0||tIdx>=filtered.length){showToast('Coluna invalida.');return;}
+    targetColId=filtered[tIdx].id;
+  } else {showToast('Opcao invalida.');return;}
+
+  var rules=window.kanbanRules[calId]||[];
+  rules.push({id:gid(),name:name.trim(),colId:cols[colIdx].id,days:days,action:action,targetColId:targetColId,enabled:true});
+  window.kanbanRules[calId]=rules;
+  fbSaveKanban(calId);
+  showToast('Regra criada!');
+  showKanbanAutomation(calId);
+}
+
+function runKanbanAutomation(calId){
+  var rules=window.kanbanRules[calId]||[];
+  var cards=window.kanbanCards[calId]||[];
+  var changed=false;
+  var now=Date.now();
+
+  rules.forEach(function(rule){
+    if(!rule.enabled)return;
+    cards.forEach(function(kc){
+      if(kc.colId!==rule.colId)return;
+      if(kc.archived)return;
+      if(!kc.movedAt)return;
+      var daysSince=Math.floor((now-new Date(kc.movedAt).getTime())/86400000);
+      if(daysSince<rule.days)return;
+
+      if(rule.action==='archive'){
+        kc.archived=true;
+        changed=true;
+      } else if(rule.action==='highlight'){
+        kc.highlighted=true;
+        changed=true;
+      } else if(rule.action==='move'&&rule.targetColId){
+        kc.colId=rule.targetColId;
+        kc.movedAt=new Date().toISOString();
+        changed=true;
+      }
+    });
+  });
+
+  // Filter out archived cards from active display
+  if(changed){
+    fbSaveKanban(calId);
+  }
+  return changed;
+}
+
 function renderWorkKanban(calId){
   calId=calId||activeCal;
   if(calId==='main')return;
   var cal=(window.workCals||[]).find(function(c){return c.id===calId;});
   if(!cal)return;
+  // Run automations
+  runKanbanAutomation(calId);
   var wrap=document.getElementById('workApp');
   if(!wrap)return;
   wrap.innerHTML='';
@@ -3168,11 +3347,14 @@ function renderWorkKanban(calId){
   topbar.innerHTML='<div style="font-size:11px;font-weight:600;color:#111827;letter-spacing:1px;text-transform:uppercase;font-family:Montserrat,sans-serif">'+cal.name+'</div>'
     +viewSwitcher
     +'<div style="flex:1"></div>'
+    +'<button data-kauto="1" style="background:none;border:0.5px solid #d1d5db;border-radius:7px;padding:5px 12px;cursor:pointer;font-size:10px;font-weight:400;color:#6b7280;font-family:Montserrat,sans-serif">Automacoes</button>'
     +'<button data-kaddcol="1" style="background:#111827;border:none;border-radius:7px;padding:5px 12px;cursor:pointer;font-size:10px;font-weight:500;color:white;font-family:Montserrat,sans-serif">+ Nova coluna</button>'
     +'<button data-wnew="1" style="background:#111827;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;font-size:10px;font-weight:500;color:white;font-family:Montserrat,sans-serif">+ Nova tarefa</button>';
   topbar.querySelectorAll('[data-wview]').forEach(function(b){
     b.onclick=function(){window._wView=this.dataset.wview;setWView(this.dataset.wview,calId);};
   });
+  var autoBtn=topbar.querySelector('[data-kauto]');
+  if(autoBtn)autoBtn.onclick=function(){showKanbanAutomation(calId);};
   var addColBtn=topbar.querySelector('[data-kaddcol]');
   if(addColBtn)addColBtn.onclick=function(){addKanbanCol(calId);};
   var newBtn=topbar.querySelector('[data-wnew]');
@@ -3184,7 +3366,7 @@ function renderWorkKanban(calId){
   board.style.cssText='flex:1;display:flex;gap:0;overflow-x:auto;background:#f7f8fa';
 
   cols.forEach(function(col){
-    var colCards=cards.filter(function(c){return c.colId===col.id;}).sort(function(a,b){return(a.sortOrder||0)-(b.sortOrder||0);});
+    var colCards=cards.filter(function(c){return c.colId===col.id&&!c.archived;}).sort(function(a,b){return(a.sortOrder||0)-(b.sortOrder||0);});
     var colDiv=document.createElement('div');
     colDiv.style.cssText='flex:1;min-width:220px;max-width:320px;border-right:0.5px solid #e5e7eb;display:flex;flex-direction:column;background:#fafafa';
     colDiv.dataset.colid=col.id;
@@ -3250,7 +3432,8 @@ function renderWorkKanban(calId){
       var isStale=dayCount>=30;
       var dayLabel=dayCount+'d';
       var dayColor=isStale?'#A32D2D':'#9ca3af';
-      if(isStale&&!isDone)card.style.borderLeft='3px solid #A32D2D';
+      if(kc.highlighted&&!isDone)card.style.borderLeft='3px solid #A32D2D';
+      else if(isStale&&!isDone)card.style.borderLeft='3px solid #A32D2D';
 
       // Icon (20px for kanban)
       var iconHtml='';
