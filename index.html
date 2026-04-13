@@ -780,6 +780,13 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
         </div>
       </div>
       <div class="wfield"><label>Descrição</label><textarea id="wedesc" placeholder="Notas..." style="min-height:50px;resize:vertical"></textarea></div>
+      <div class="wfield" id="weLinksField"><label>Links</label>
+        <div id="weLinksList" style="display:flex;flex-direction:column;gap:4px"></div>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <input class="inp" id="weNewLink" placeholder="Colar URL aqui..." style="flex:1;font-family:Montserrat,sans-serif;font-size:11px" onkeydown="if(event.key==='Enter'){event.preventDefault();addWeLink();}"/>
+          <button type="button" onclick="addWeLink()" style="background:#111827;border:none;border-radius:6px;padding:4px 10px;font-size:10px;color:white;cursor:pointer;font-family:Montserrat,sans-serif">+</button>
+        </div>
+      </div>
       <div class="wfield"><label>Subtarefas</label>
         <div id="weSubtasks" style="display:flex;flex-direction:column;gap:4px"></div>
         <div style="display:flex;gap:6px;margin-top:6px">
@@ -2583,6 +2590,46 @@ function buildWorkRightPanel(calId,ds,wevs){
 
 // Subtask functions
 window._weSubtasks=window._weSubtasks||[];
+window._weLinks=window._weLinks||[];
+
+function renderWeLinks(){
+  var box=document.getElementById('weLinksList');if(!box)return;
+  box.innerHTML='';
+  window._weLinks.forEach(function(link,i){
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:6px;padding:4px 8px;background:#f7f8fa;border-radius:6px;border:0.5px solid #e5e7eb';
+    var ico=document.createElement('div');
+    ico.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
+    ico.style.cssText='flex-shrink:0';
+    row.appendChild(ico);
+    var a=document.createElement('a');
+    a.href=link;a.target='_blank';a.rel='noopener';
+    a.style.cssText='font-size:10px;color:#185FA5;font-family:Montserrat,sans-serif;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:none';
+    a.textContent=link.replace(/^https?:\/\//,'').substring(0,50);
+    a.title=link;
+    a.onmouseenter=function(){this.style.textDecoration='underline';};
+    a.onmouseleave=function(){this.style.textDecoration='none';};
+    a.onclick=function(e){e.stopPropagation();};
+    row.appendChild(a);
+    var del=document.createElement('button');
+    del.style.cssText='background:none;border:none;cursor:pointer;font-size:12px;color:#d1d5db;padding:0 2px;flex-shrink:0';
+    del.textContent='x';
+    del.onclick=(function(idx){return function(){window._weLinks.splice(idx,1);renderWeLinks();};})(i);
+    row.appendChild(del);
+    box.appendChild(row);
+  });
+}
+function addWeLink(){
+  var inp=document.getElementById('weNewLink');
+  if(!inp)return;
+  var val=inp.value.trim();
+  if(!val)return;
+  if(val.indexOf('http')!==0)val='https://'+val;
+  window._weLinks.push(val);
+  inp.value='';
+  renderWeLinks();
+  inp.focus();
+}
 
 function renderWeSubtasks(){
   var box=document.getElementById('weSubtasks');if(!box)return;
@@ -2633,10 +2680,12 @@ function openWNew(){
   setWSeg('wePriority','medium');
   setWSeg('weProgress','not-started');
   setWSeg('weRepeat','none');
-  window._weSelWeekDays=[];window._weSelMonthDays=[];window._weIcon='';window._weSubtasks=[];
+  window._weSelWeekDays=[];window._weSelMonthDays=[];window._weIcon='';window._weSubtasks=[];window._weLinks=[];
   var cEl=document.getElementById('weclient');if(cEl)cEl.value='';
   buildWeIconPicker();
   renderWeSubtasks();
+  renderWeLinks();
+  renderWeLinks();
   var dlEl=document.getElementById('wedeadline');if(dlEl)dlEl.value='';
   renderWTags();
   document.querySelectorAll('#weColorRow .csw').forEach(function(e){e.classList.remove('sel2');});
@@ -2661,6 +2710,7 @@ function openWEdit(calId,evId,idate){
   window._weSelMonthDays=(ev.repeatMonthDays||[]).slice();
   window._weIcon=ev.icon||'';
   window._weSubtasks=(ev.subtasks||[]).map(function(s){return{text:s.text,done:!!s.done};});
+  window._weLinks=(ev.links||[]).slice();
   var cEl=document.getElementById('weclient');if(cEl)cEl.value=ev.client||'';
   var dlEl=document.getElementById('wedeadline');if(dlEl)dlEl.value=ev.deadline||'';
   buildWeIconPicker();
@@ -2913,6 +2963,7 @@ function saveWEv(){
       kc.color=_weColor;
       kc.tags=_weTags.slice();
       kc.subtasks=window._weSubtasks.slice();
+      kc.links=window._weLinks.slice();
       fbSaveKanban(window._editKanbanCalId);
     }
     window._kanbanSaveOverride=false;
@@ -2942,6 +2993,7 @@ function saveWEv(){
     color:_weColor,
     tags:_weTags.slice(),
     subtasks:window._weSubtasks.slice(),
+    links:window._weLinks.slice(),
     deadline:((document.getElementById('wedeadline')||{}).value||''),
     calId:_wCalId
   };
@@ -3065,7 +3117,9 @@ function editKanbanCard(calId,cardId){
   _weTags=(kc.tags||[]).slice();
   renderWTags();
   window._weSubtasks=(kc.subtasks||[]).map(function(s){return{text:s.text,done:!!s.done};});
+  window._weLinks=(kc.links||[]).slice();
   renderWeSubtasks();
+  renderWeLinks();
   // Store kanban card id for saving
   window._editKanbanCardId=cardId;
   window._editKanbanCalId=calId;
@@ -3201,12 +3255,21 @@ function renderWorkKanban(calId){
       var dlHtml='';
       if(kc.deadline){var dp=kc.deadline.split('-');dlHtml='<div style="display:inline-flex;align-items:center;gap:2px;padding:1px 5px;background:#FAEEDA;border-radius:6px;font-size:7px;color:#854F0B;font-weight:500;margin-top:4px"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="3" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'+dp[2]+'/'+dp[1]+'</div>';}
 
+      var linksHtml='';
+      if(kc.links&&kc.links.length){
+        linksHtml='<div style="display:flex;flex-direction:column;gap:2px;margin-top:4px">';
+        kc.links.forEach(function(lnk){
+          linksHtml+='<a href="'+eh(lnk)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:4px;font-size:8px;color:#185FA5;text-decoration:none;font-family:Montserrat,sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onmouseenter="this.style.textDecoration=\'underline\'" onmouseleave="this.style.textDecoration=\'none\'"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#185FA5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>'+eh(lnk.replace(/^https?:\/\//,'')).substring(0,35)+'</a>';
+        });
+        linksHtml+='</div>';
+      }
       var tagsHtml='';
       if(kc.tags&&kc.tags.length)tagsHtml='<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">'+kc.tags.map(function(t){return'<div style="font-size:8px;padding:1px 6px;border-radius:4px;background:#f0f2f5;color:#6b7280;font-family:Montserrat,sans-serif">'+eh(t)+'</div>';}).join('')+'</div>';
 
       card.innerHTML=(iconHtml?'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'+iconHtml+'<div style="font-size:11px;font-weight:500;color:'+(isDone?'#d1d5db':'#111827')+';font-family:Montserrat,sans-serif'+(isDone?';text-decoration:line-through':'')+'">'+eh(kc.title)+'</div></div>':'<div style="font-size:11px;font-weight:500;color:'+(isDone?'#d1d5db':'#111827')+';font-family:Montserrat,sans-serif'+(isDone?';text-decoration:line-through':'')+'">'+eh(kc.title)+'</div>')
         +(kc.client?'<div style="font-size:9px;color:'+(isDone?'#d1d5db':'#6b7280')+';font-family:Montserrat,sans-serif;margin-top:1px'+(isDone?';text-decoration:line-through':'')+'">'+eh(kc.client)+'</div>':'')
         +tagsHtml+subHtml+dlHtml
+        +linksHtml
         +'<div style="display:flex;justify-content:flex-end;margin-top:4px"><div data-kdelete="'+kc.id+'" style="font-size:9px;color:#d1d5db;cursor:pointer;padding:1px 4px" title="Excluir">x</div></div>';
 
       card.querySelector('[data-kdelete]').onclick=function(e){e.stopPropagation();delKanbanCard(calId,this.dataset.kdelete);};
