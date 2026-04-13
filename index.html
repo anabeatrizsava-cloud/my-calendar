@@ -2900,6 +2900,30 @@ function saveWEv(){
   var tEl=document.getElementById('wetitle');
   var title=tEl?tEl.value.trim():'';
   if(!title){showToast('Digite um titulo!');return;}
+  // Kanban card save override
+  if(window._kanbanSaveOverride&&window._editKanbanCardId){
+    var kcards=window.kanbanCards[window._editKanbanCalId]||[];
+    var kc=kcards.find(function(c){return c.id===window._editKanbanCardId;});
+    if(kc){
+      kc.title=title;
+      kc.client=((document.getElementById('weclient')||{}).value||'').trim();
+      kc.description=((document.getElementById('wedesc')||{}).value||'').trim();
+      kc.deadline=((document.getElementById('wedeadline')||{}).value||'');
+      kc.icon=window._weIcon||'';
+      kc.color=_weColor;
+      kc.tags=_weTags.slice();
+      kc.subtasks=window._weSubtasks.slice();
+      fbSaveKanban(window._editKanbanCalId);
+    }
+    window._kanbanSaveOverride=false;
+    window._editKanbanCardId=null;
+    closeWEvModal();
+    // Restore date field visibility
+    var dateField=document.getElementById('wedate');if(dateField)dateField.parentElement.parentElement.style.display='';
+    renderWorkKanban(window._editKanbanCalId);
+    showToast('Card atualizado!');
+    return;
+  }
   var ev={
     id:_weid||gid(),
     title:title,
@@ -3000,6 +3024,60 @@ function delKanbanCard(calId,cardId){
   renderWorkKanban(calId);
 }
 
+function editKanbanCard(calId,cardId){
+  var cards=window.kanbanCards[calId]||[];
+  var kc=cards.find(function(c){return c.id===cardId;});
+  if(!kc)return;
+  // Use prompts for quick edit (modal would be better but keeps it simple/stable)
+  var title=prompt('Titulo:',kc.title);
+  if(title===null)return;
+  if(!title.trim()){showToast('Titulo obrigatorio!');return;}
+  kc.title=title.trim();
+  var client=prompt('Cliente:',kc.client||'');
+  if(client!==null)kc.client=client.trim();
+  var deadline=prompt('Prazo (YYYY-MM-DD):',kc.deadline||'');
+  if(deadline!==null)kc.deadline=deadline.trim();
+  // Subtasks edit
+  var subAction=prompt('Subtarefas atuais: '+(kc.subtasks||[]).map(function(s){return(s.done?'[x] ':'[ ] ')+s.text;}).join(', ')+'\n\nDigite nova subtarefa pra adicionar, ou "limpar" pra remover todas:');
+  if(subAction){
+    if(subAction.toLowerCase()==='limpar')kc.subtasks=[];
+    else{kc.subtasks=kc.subtasks||[];kc.subtasks.push({text:subAction.trim(),done:false});}
+  }
+  fbSaveKanban(calId);
+  renderWorkKanban(calId);
+  showToast('Card atualizado!');
+}
+
+function editKanbanCard(calId,cardId){
+  var cards=window.kanbanCards[calId]||[];
+  var kc=cards.find(function(c){return c.id===cardId;});
+  if(!kc)return;
+  // Open the work event modal repurposed for kanban edit
+  _weid=null;_wCalId=calId;
+  var tEl=document.getElementById('wetitle');if(tEl)tEl.value=kc.title||'';
+  var cEl=document.getElementById('weclient');if(cEl)cEl.value=kc.client||'';
+  var descEl=document.getElementById('wedesc');if(descEl)descEl.value=kc.description||'';
+  var dlEl=document.getElementById('wedeadline');if(dlEl)dlEl.value=kc.deadline||'';
+  window._weIcon=kc.icon||'';
+  buildWeIconPicker();
+  _weColor=kc.color||'#5F5E5A';
+  document.querySelectorAll('#weColorRow .csw').forEach(function(e){e.classList.remove('sel2');});
+  _weTags=(kc.tags||[]).slice();
+  renderWTags();
+  window._weSubtasks=(kc.subtasks||[]).map(function(s){return{text:s.text,done:!!s.done};});
+  renderWeSubtasks();
+  // Store kanban card id for saving
+  window._editKanbanCardId=cardId;
+  window._editKanbanCalId=calId;
+  // Hide date/time fields (kanban cards don't need them)
+  var dateField=document.getElementById('wedate');if(dateField)dateField.parentElement.parentElement.style.display='none';
+  var dbEl=document.getElementById('weDbtn');if(dbEl){dbEl.style.display='block';dbEl.onclick=function(){delKanbanCard(calId,cardId);closeWEvModal();window._editKanbanCardId=null;};}
+  var dupEl=document.getElementById('weDupBtn');if(dupEl)dupEl.style.display='none';
+  // Override save to update kanban card instead of work event
+  window._kanbanSaveOverride=true;
+  var m=document.getElementById('wEvModal');if(m)m.classList.add('open');
+}
+
 function renderWorkKanban(calId){
   calId=calId||activeCal;
   if(calId==='main')return;
@@ -3096,10 +3174,17 @@ function renderWorkKanban(calId){
       card.style.cssText='background:white;border:0.5px solid #e5e7eb;border-radius:8px;padding:10px;cursor:grab;transition:transform .1s'+(isDone?';opacity:.6':'');
       card.draggable=true;
       card.dataset.kcardid=kc.id;
+      card.onclick=(function(kcCard){return function(e){if(e.target.dataset.kdelete)return;editKanbanCard(calId,kcCard.id);};})(kc);
       card.ondragstart=function(e){e.dataTransfer.setData('text/plain',kc.id);this.style.opacity='0.3';};
       card.ondragend=function(){this.style.opacity=isDone?'0.6':'1';};
       card.onmouseenter=function(){this.style.transform='translateY(-1px)';};
       card.onmouseleave=function(){this.style.transform='none';};
+      card._wasDragged=false;
+      card.addEventListener('dragstart',function(){this._wasDragged=true;});
+      card.addEventListener('click',(function(kcId){return function(){
+        if(this._wasDragged){this._wasDragged=false;return;}
+        editKanbanCard(calId,kcId);
+      };})(kc.id));
 
       var iconHtml='';
       if(kc.icon)iconHtml='<div style="width:16px;height:16px;border-radius:4px;background:'+tint+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'+getWcIconSvg(kc.icon,kc.color).replace(/width="14"/g,'width="8"').replace(/height="14"/g,'height="8"')+'</div>';
@@ -3127,7 +3212,7 @@ function renderWorkKanban(calId){
 
     // Add card button
     var addBtn=document.createElement('div');
-    addBtn.style.cssText='padding:8px;text-align:center;font-size:10px;color:#9ca3af;cursor:pointer;border:0.5px dashed #e5e7eb;border-radius:8px;font-family:Montserrat,sans-serif;margin-top:4px';
+    addBtn.style.cssText='padding:10px;text-align:center;font-size:10px;color:#6b7280;cursor:pointer;border:1px dashed #d1d5db;border-radius:8px;font-family:Montserrat,sans-serif;margin-top:6px;background:white';
     addBtn.textContent='+ adicionar card';
     addBtn.onmouseenter=function(){this.style.background='white';this.style.color='#6b7280';};
     addBtn.onmouseleave=function(){this.style.background='transparent';this.style.color='#9ca3af';};
