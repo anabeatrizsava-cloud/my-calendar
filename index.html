@@ -3019,7 +3019,7 @@ function sendToKanban(calId,ev){
   var cards=window.kanbanCards[calId]||[];
   // Check if already in kanban
   if(cards.find(function(c){return c.sourceId===ev.id;})){showToast('Tarefa ja esta no Kanban.');return;}
-  cards.push({id:gid(),sourceId:ev.id,title:ev.title,client:ev.client||'',icon:ev.icon||'',color:ev.color||'#5F5E5A',tags:(ev.tags||[]).slice(),subtasks:(ev.subtasks||[]).map(function(s){return{text:s.text,done:s.done};}),deadline:ev.deadline||'',colId:cols[0].id,sortOrder:cards.length});
+  cards.push({id:gid(),sourceId:ev.id,title:ev.title,client:ev.client||'',icon:ev.icon||'',color:ev.color||'#5F5E5A',tags:(ev.tags||[]).slice(),subtasks:(ev.subtasks||[]).map(function(s){return{text:s.text,done:s.done};}),deadline:ev.deadline||'',links:(ev.links||[]).slice(),colId:cols[0].id,sortOrder:cards.length,movedAt:new Date().toISOString()});
   window.kanbanCards[calId]=cards;
   fbSaveKanban(calId);
   showToast('Enviado ao Kanban!');
@@ -3041,7 +3041,7 @@ function addKanbanCard(calId,colId){
   if(!title||!title.trim())return;
   var client=prompt('Cliente (opcional):')||'';
   var cards=window.kanbanCards[calId]||[];
-  cards.push({id:gid(),sourceId:'',title:title.trim(),client:client.trim(),icon:'',color:'#5F5E5A',tags:[],subtasks:[],deadline:'',colId:colId,sortOrder:cards.length});
+  cards.push({id:gid(),sourceId:'',title:title.trim(),client:client.trim(),icon:'',color:'#5F5E5A',tags:[],subtasks:[],deadline:'',links:[],colId:colId,sortOrder:cards.length,movedAt:new Date().toISOString()});
   window.kanbanCards[calId]=cards;
   fbSaveKanban(calId);
   renderWorkKanban(calId);
@@ -3219,6 +3219,7 @@ function renderWorkKanban(calId){
       var allCards=window.kanbanCards[calId]||[];
       var card=allCards.find(function(c){return c.id===cardId;});
       if(!card)return;
+      if(card.colId!==cid)card.movedAt=new Date().toISOString();
       card.colId=cid;
       fbSaveKanban(calId);
       renderWorkKanban(calId);
@@ -3228,7 +3229,7 @@ function renderWorkKanban(calId){
       var isDone=col.name.toLowerCase().indexOf('conclu')>=0;
       var tint=WC_COLOR_TINTS[kc.color]||'#F1EFE8';
       var card=document.createElement('div');
-      card.style.cssText='background:white;border:0.5px solid #e5e7eb;border-radius:8px;padding:10px;cursor:grab;transition:transform .1s'+(isDone?';opacity:.6':'');
+      card.style.cssText='background:white;border:0.5px solid #e5e7eb;border-radius:8px;padding:12px;cursor:grab;transition:transform .1s'+(isDone?';opacity:.6':'');
       card.draggable=true;
       card.dataset.kcardid=kc.id;
       card.onclick=(function(kcCard){return function(e){if(e.target.dataset.kdelete)return;editKanbanCard(calId,kcCard.id);};})(kc);
@@ -3243,34 +3244,52 @@ function renderWorkKanban(calId){
         editKanbanCard(calId,kcId);
       };})(kc.id));
 
+      // Day counter
+      var dayCount=0;
+      if(kc.movedAt){dayCount=Math.floor((Date.now()-new Date(kc.movedAt).getTime())/86400000);}
+      var isStale=dayCount>=30;
+      var dayLabel=dayCount+'d';
+      var dayColor=isStale?'#A32D2D':'#9ca3af';
+      if(isStale&&!isDone)card.style.borderLeft='3px solid #A32D2D';
+
+      // Icon (20px for kanban)
       var iconHtml='';
-      if(kc.icon)iconHtml='<div style="width:16px;height:16px;border-radius:4px;background:'+tint+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'+getWcIconSvg(kc.icon,kc.color).replace(/width="14"/g,'width="8"').replace(/height="14"/g,'height="8"')+'</div>';
+      if(kc.icon)iconHtml='<div style="width:20px;height:20px;border-radius:5px;background:'+tint+';display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">'+getWcIconSvg(kc.icon,kc.color).replace(/width="14"/g,'width="10"').replace(/height="14"/g,'height="10"')+'</div>';
 
-      var subHtml='';
-      if(kc.subtasks&&kc.subtasks.length){
-        var sd=kc.subtasks.filter(function(s){return s.done;}).length;
-        subHtml='<div style="font-size:8px;color:#9ca3af;margin-top:4px;font-family:Montserrat,sans-serif">'+sd+'/'+kc.subtasks.length+' subtarefas</div>';
-      }
-
-      var dlHtml='';
-      if(kc.deadline){var dp=kc.deadline.split('-');dlHtml='<div style="display:inline-flex;align-items:center;gap:2px;padding:1px 5px;background:#FAEEDA;border-radius:6px;font-size:7px;color:#854F0B;font-weight:500;margin-top:4px"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="3" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'+dp[2]+'/'+dp[1]+'</div>';}
-
+      // Links
       var linksHtml='';
       if(kc.links&&kc.links.length){
-        linksHtml='<div style="display:flex;flex-direction:column;gap:2px;margin-top:4px">';
+        linksHtml='<div style="display:flex;flex-direction:column;gap:3px;margin-top:6px">';
         kc.links.forEach(function(lnk){
-          linksHtml+='<a href="'+eh(lnk)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:4px;font-size:8px;color:#185FA5;text-decoration:none;font-family:Montserrat,sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onmouseenter="this.style.textDecoration=\'underline\'" onmouseleave="this.style.textDecoration=\'none\'"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#185FA5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>'+eh(lnk.replace(/^https?:\/\//,'')).substring(0,35)+'</a>';
+          linksHtml+='<a href="'+eh(lnk)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:4px;font-size:9px;color:#185FA5;text-decoration:none;font-family:Montserrat,sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onmouseenter="this.style.textDecoration=\'underline\'" onmouseleave="this.style.textDecoration=\'none\'"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#185FA5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>'+eh(lnk.replace(/^https?:\/\//,'')).substring(0,35)+'</a>';
         });
         linksHtml+='</div>';
       }
-      var tagsHtml='';
-      if(kc.tags&&kc.tags.length)tagsHtml='<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">'+kc.tags.map(function(t){return'<div style="font-size:8px;padding:1px 6px;border-radius:4px;background:#f0f2f5;color:#6b7280;font-family:Montserrat,sans-serif">'+eh(t)+'</div>';}).join('')+'</div>';
 
-      card.innerHTML=(iconHtml?'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'+iconHtml+'<div style="font-size:11px;font-weight:500;color:'+(isDone?'#d1d5db':'#111827')+';font-family:Montserrat,sans-serif'+(isDone?';text-decoration:line-through':'')+'">'+eh(kc.title)+'</div></div>':'<div style="font-size:11px;font-weight:500;color:'+(isDone?'#d1d5db':'#111827')+';font-family:Montserrat,sans-serif'+(isDone?';text-decoration:line-through':'')+'">'+eh(kc.title)+'</div>')
-        +(kc.client?'<div style="font-size:9px;color:'+(isDone?'#d1d5db':'#6b7280')+';font-family:Montserrat,sans-serif;margin-top:1px'+(isDone?';text-decoration:line-through':'')+'">'+eh(kc.client)+'</div>':'')
-        +tagsHtml+subHtml+dlHtml
+      // Bottom line: tags + subtasks + deadline
+      var bottomParts=[];
+      if(kc.tags&&kc.tags.length)bottomParts.push(kc.tags.map(function(t){return'<div style="font-size:8px;padding:1px 6px;border-radius:4px;background:#f0f2f5;color:#6b7280;font-weight:500;font-family:Montserrat,sans-serif;text-transform:uppercase;letter-spacing:.3px">'+eh(t)+'</div>';}).join(''));
+      if(kc.subtasks&&kc.subtasks.length){var sd=kc.subtasks.filter(function(s){return s.done;}).length;bottomParts.push('<div style="font-size:8px;color:#9ca3af;font-family:Montserrat,sans-serif">'+sd+'/'+kc.subtasks.length+' subtarefas</div>');}
+      if(kc.deadline){var dp=kc.deadline.split('-');bottomParts.push('<div style="display:inline-flex;align-items:center;gap:2px;padding:1px 5px;background:#FAEEDA;border-radius:6px;font-size:8px;color:#854F0B;font-weight:500"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="3" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'+dp[2]+'/'+dp[1]+'</div>');}
+      var bottomHtml=bottomParts.length?'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px">'+bottomParts.join('')+'</div>':'';
+
+      // Stale warning
+      var staleHtml=isStale&&!isDone?'<div style="font-size:8px;color:#A32D2D;font-weight:500;margin-top:4px;font-family:Montserrat,sans-serif">Parado ha '+dayCount+' dias</div>':'';
+
+      // Card HTML
+      card.innerHTML='<div style="display:flex;align-items:flex-start;gap:8px">'
+        +iconHtml
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px">'
+        +'<div style="font-size:11px;font-weight:500;color:'+(isDone?'#d1d5db':'#111827')+';font-family:Montserrat,sans-serif;line-height:1.4'+(isDone?';text-decoration:line-through':'')+'">'+eh(kc.title)+'</div>'
+        +'<div style="font-size:9px;color:'+dayColor+';flex-shrink:0;font-family:monospace;font-weight:'+(isStale?'600':'400')+'">'+dayLabel+'</div>'
+        +'</div>'
+        +'</div>'
+        +'</div>'
         +linksHtml
-        +'<div style="display:flex;justify-content:flex-end;margin-top:4px"><div data-kdelete="'+kc.id+'" style="font-size:9px;color:#d1d5db;cursor:pointer;padding:1px 4px" title="Excluir">x</div></div>';
+        +bottomHtml
+        +staleHtml
+        +'<div style="display:flex;justify-content:flex-end;margin-top:6px"><div data-kdelete="'+kc.id+'" style="font-size:9px;color:#d1d5db;cursor:pointer;padding:1px 4px;border-radius:3px" title="Excluir" onmouseenter="this.style.color=\'#A32D2D\'" onmouseleave="this.style.color=\'#d1d5db\'">x</div></div>'
 
       card.querySelector('[data-kdelete]').onclick=function(e){e.stopPropagation();delKanbanCard(calId,this.dataset.kdelete);};
       body.appendChild(card);
