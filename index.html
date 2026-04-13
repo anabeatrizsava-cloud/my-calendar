@@ -2624,7 +2624,7 @@ function openWNew(){
   _weTags=[];_weColor='#4a5568';
   var fields=['wetitle','wedesc'];
   fields.forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
-  var dEl=document.getElementById('wedate');if(dEl)dEl.value=tds(cd);
+  var dEl=document.getElementById('wedate');if(dEl){dEl.value=tds(cd);dEl.parentElement.parentElement.style.display='';}
   var sEl=document.getElementById('westart');if(sEl)sEl.value='09:00';
   var eEl=document.getElementById('weend');if(eEl)eEl.value='10:00';
   var adEl=document.getElementById('weallday');if(adEl)adEl.checked=false;
@@ -2648,7 +2648,7 @@ function openWEdit(calId,evId,idate){
   if(!ev)return;
   _weid=evId;_wCalId=calId;_weTags=ev.tags||[];_weColor=ev.color||'#4a5568';
   var tEl=document.getElementById('wetitle');if(tEl)tEl.value=ev.title||'';
-  var dEl=document.getElementById('wedate');if(dEl)dEl.value=ev.date;
+  var dEl=document.getElementById('wedate');if(dEl){dEl.value=ev.date;dEl.parentElement.parentElement.style.display='';}
   var sEl=document.getElementById('westart');if(sEl)sEl.value=ev.startTime||'';
   var eEl=document.getElementById('weend');if(eEl)eEl.value=ev.endTime||'';
   var adEl=document.getElementById('weallday');if(adEl)adEl.checked=!!ev.allDay;
