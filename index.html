@@ -494,15 +494,9 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 <div class="center-col">
   <!-- TOPBAR -->
   <div class="topbar">
-    <div class="logo-text">My Calendar</div>
-    
-    <div style="flex:1"></div>
+    <div style="flex:0"></div>
 
-    <div class="search-wrap">
-      <svg class="search-icon" width="11" height="11" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="4" stroke="currentColor" stroke-width="1.2"/><path d="M9 9l2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
-      <input class="search-inp" id="searchInp" placeholder="Buscar..." oninput="doSearch(this.value)" onblur="setTimeout(()=>closeSearch(),200)"/>
-      <div class="search-results" id="searchRes"></div>
-    </div>
+
     <div style="display:flex;gap:3px">
       <button class="nb" onclick="nav(-1)" id="navPrev"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M8 1.5L3.5 6 8 10.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
       <button class="nb tod" onclick="goToday()">Hoje</button>
@@ -515,7 +509,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
       <button class="vb" id="vb-planner" onclick="sw('planner',null)">Planner</button>
       <button class="vb" id="vb-sticky" onclick="sw('sticky',null)">Notas</button>
     </div>
-    <button class="hide-done-btn" id="hideDoneBtn" onclick="toggleHideDone()">👁 Mostrar concluídas</button>
+    <button class="hide-done-btn" id="hideDoneBtn" onclick="toggleHideDone()" style="display:flex;align-items:center;gap:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="pointer-events:none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><span id="hideDoneLabel">concluidas</span></button>
 
     <button class="notif-btn" onclick="showCalAutomationPanel()" title="Automacoes"><svg width="14" height="14" style="pointer-events:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
 
@@ -525,15 +519,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
     </button>
   </div>
 
-  <!-- BULK BAR -->
-  <div id="bulkBar">
-    <span id="bulkCount">0 selecionado(s)</span>
-    <div id="bulkActions" style="display:flex;gap:6px;align-items:center;opacity:.4">
-      <div class="bulk-colors"><div class="bc" style="background:#252829" onclick="bulkChangeColor('#252829')" title="Cor"></div><div class="bc" style="background:#5c7161" onclick="bulkChangeColor('#5c7161')" title="Cor"></div><div class="bc" style="background:#C26D64" onclick="bulkChangeColor('#C26D64')" title="Cor"></div><div class="bc" style="background:#cca2a6" onclick="bulkChangeColor('#cca2a6')" title="Cor"></div><div class="bc" style="background:#e1c2c3" onclick="bulkChangeColor('#e1c2c3')" title="Cor"></div><div class="bc" style="background:#9b8ea8" onclick="bulkChangeColor('#9b8ea8')" title="Cor"></div><div class="bc" style="background:#b4a8c4" onclick="bulkChangeColor('#b4a8c4')" title="Cor"></div><div class="bc" style="background:#7a9bae" onclick="bulkChangeColor('#7a9bae')" title="Cor"></div><div class="bc" style="background:#b17a3a" onclick="bulkChangeColor('#b17a3a')" title="Cor"></div><div class="bc" style="background:#c4a882" onclick="bulkChangeColor('#c4a882')" title="Cor"></div></div>
-      <button class="bulk-act-btn" onclick="bulkDone()">✅ Concluir</button>
-      <button class="bulk-act-btn danger" onclick="bulkDelete()">🗑 Excluir</button>
-    </div>
-  </div>
+
 
   <!-- hidden nav refs -->
   <span id="nav-day" style="display:none"></span>
@@ -972,7 +958,7 @@ let hideDone = true;
 function toggleHideDone(){
   hideDone=!hideDone;
   const btn=document.getElementById('hideDoneBtn');
-  if(btn){btn.style.background=hideDone?'#1a1510':'';btn.style.color=hideDone?'#d4c8a8':'';btn.textContent=hideDone?'👁 Mostrar concluídas':'👁 Ocultar concluídas';}
+  if(btn){btn.style.background=hideDone?'#1a1510':'';btn.style.color=hideDone?'#d4c8a8':'';var lbl=document.getElementById('hideDoneLabel');if(lbl)lbl.textContent=hideDone?'concluidas':'concluidas';}
   renderView();
 }
 let selectedEvIds = new Set();
