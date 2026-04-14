@@ -712,6 +712,12 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
       <button class="mcl" onclick="closeWEvModal()">✕</button>
     </div>
     <div class="mb" style="gap:12px">
+      <div class="wfield" id="weTypeField"><label>Tipo</label>
+        <div class="seg-ctrl" id="weType">
+          <button class="seg-btn act" data-v="task" onclick="setWSeg('weType',this)">Tarefa</button>
+          <button class="seg-btn" data-v="meeting" onclick="setWSeg('weType',this)">Reuniao</button>
+        </div>
+      </div>
       <div class="wfield" id="weClientField"><label>Cliente</label><input class="inp" id="weclient" placeholder="Ex: Banco Safra" style="font-family:Montserrat,sans-serif"/></div>
       <div class="wfield"><label>Icone</label>
         <div style="display:flex;gap:4px;flex-wrap:wrap" id="weIconRow"></div>
@@ -2511,34 +2517,91 @@ function renderWorkDay(calId){
   var done=wevs.filter(function(e){return e.progress==='done';});
   var all=window._wHideDone?notDone:notDone.concat(done);
 
+  var meetings=all.filter(function(e){return e.type==='meeting';}).sort(function(a,b){return(a.startTime||'').localeCompare(b.startTime||'');});
+  var tasks=all.filter(function(e){return e.type!=='meeting';});
+
   if(!all.length){
     var empty=document.createElement('div');
     empty.style.cssText='text-align:center;color:#9ca3af;padding:40px 0;font-size:12px;font-family:Montserrat,sans-serif';
     empty.textContent='Nenhuma tarefa para hoje.';
     main.appendChild(empty);
   } else {
-    var grid=document.createElement('div');
-    grid.style.cssText='display:flex;flex-direction:column;gap:7px';
-    all.forEach(function(ev){grid.appendChild(wEvCard(ev,calId));});
-    // Drag & drop reorder
-    grid.ondragover=function(e){e.preventDefault();e.dataTransfer.dropEffect='move';};
-    grid.ondrop=function(e){
-      e.preventDefault();
-      var dragId=e.dataTransfer.getData('text/plain');
-      var target=e.target.closest('[data-sortevid]');
-      if(!target||target.dataset.sortevid===dragId)return;
-      var list=window.workEvs[calId]||[];
-      var dragIdx=list.findIndex(function(x){return x.id===dragId;});
-      var dropIdx=list.findIndex(function(x){return x.id===target.dataset.sortevid;});
-      if(dragIdx<0||dropIdx<0)return;
-      var item=list.splice(dragIdx,1)[0];
-      list.splice(dropIdx,0,item);
-      list.forEach(function(x,i){x.sortOrder=i;});
-      window.workEvs[calId]=list;
-      fbSaveWorkEvs(calId);
-      renderWorkDay(calId);
-    };
-    main.appendChild(grid);
+    // ── REUNIOES SECTION ──
+    if(meetings.length){
+      var meetSec=document.createElement('div');
+      meetSec.style.cssText='margin-bottom:24px';
+      // Header
+      var meetHdr=document.createElement('div');
+      meetHdr.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:12px';
+      meetHdr.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#534AB7" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><div style="font-size:10px;font-weight:600;color:#534AB7;letter-spacing:1px;text-transform:uppercase;font-family:Montserrat,sans-serif">Reunioes</div><div style="font-size:9px;color:#9ca3af;padding:1px 6px;background:white;border-radius:8px;border:0.5px solid #e5e7eb">'+meetings.length+'</div>';
+      meetSec.appendChild(meetHdr);
+      // Timeline + cards
+      var meetBody=document.createElement('div');
+      meetBody.style.cssText='display:flex;gap:12px';
+      // Timeline column
+      var timeline=document.createElement('div');
+      timeline.style.cssText='display:flex;flex-direction:column;align-items:center;width:40px;flex-shrink:0';
+      // Cards column
+      var meetCards=document.createElement('div');
+      meetCards.style.cssText='flex:1;display:flex;flex-direction:column;gap:6px';
+      meetings.forEach(function(ev,i){
+        // Time label
+        var timeLabel=document.createElement('div');
+        timeLabel.style.cssText='font-size:9px;color:#9ca3af;font-family:monospace;text-align:center';
+        timeLabel.textContent=ev.startTime||'';
+        timeline.appendChild(timeLabel);
+        // Connector line
+        if(i<meetings.length-1){
+          var line=document.createElement('div');
+          line.style.cssText='flex:1;width:1.5px;background:#EEEDFE;margin:4px 0;min-height:20px';
+          timeline.appendChild(line);
+        }
+        // Card
+        meetCards.appendChild(wEvCard(ev,calId));
+      });
+      meetBody.appendChild(timeline);
+      meetBody.appendChild(meetCards);
+      meetSec.appendChild(meetBody);
+      main.appendChild(meetSec);
+    }
+
+    // Separator
+    if(meetings.length&&tasks.length){
+      var sep=document.createElement('div');
+      sep.style.cssText='height:0.5px;background:#e5e7eb;margin-bottom:20px';
+      main.appendChild(sep);
+    }
+
+    // ── TAREFAS SECTION ──
+    if(tasks.length){
+      var taskHdr=document.createElement('div');
+      taskHdr.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:12px';
+      taskHdr.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><div style="font-size:10px;font-weight:600;color:#0F6E56;letter-spacing:1px;text-transform:uppercase;font-family:Montserrat,sans-serif">Tarefas</div><div style="font-size:9px;color:#9ca3af;padding:1px 6px;background:white;border-radius:8px;border:0.5px solid #e5e7eb">'+tasks.length+'</div>';
+      main.appendChild(taskHdr);
+
+      var grid=document.createElement('div');
+      grid.style.cssText='display:flex;flex-direction:column;gap:7px';
+      tasks.forEach(function(ev){grid.appendChild(wEvCard(ev,calId));});
+      // Drag & drop reorder
+      grid.ondragover=function(e){e.preventDefault();e.dataTransfer.dropEffect='move';};
+      grid.ondrop=function(e){
+        e.preventDefault();
+        var dragId=e.dataTransfer.getData('text/plain');
+        var target=e.target.closest('[data-sortevid]');
+        if(!target||target.dataset.sortevid===dragId)return;
+        var list=window.workEvs[calId]||[];
+        var dragIdx=list.findIndex(function(x){return x.id===dragId;});
+        var dropIdx=list.findIndex(function(x){return x.id===target.dataset.sortevid;});
+        if(dragIdx<0||dropIdx<0)return;
+        var item=list.splice(dragIdx,1)[0];
+        list.splice(dropIdx,0,item);
+        list.forEach(function(x,i){x.sortOrder=i;});
+        window.workEvs[calId]=list;
+        fbSaveWorkEvs(calId);
+        renderWorkDay(calId);
+      };
+      main.appendChild(grid);
+    }
   }
   var layout=document.createElement('div');
   layout.style.cssText='display:flex;flex:1;overflow:hidden';
@@ -2687,6 +2750,7 @@ function openWNew(){
   var adEl=document.getElementById('weallday');if(adEl)adEl.checked=false;
   var dbEl=document.getElementById('weDbtn');if(dbEl)dbEl.style.display='none';
   var dupEl=document.getElementById('weDupBtn');if(dupEl)dupEl.style.display='none';
+  setWSeg('weType','task');
   setWSeg('wePriority','medium');
   setWSeg('weProgress','not-started');
   setWSeg('weRepeat','none');
@@ -2714,6 +2778,7 @@ function openWEdit(calId,evId,idate){
   var descEl=document.getElementById('wedesc');if(descEl)descEl.value=ev.description||'';
   var dbEl=document.getElementById('weDbtn');if(dbEl)dbEl.style.display='block';
   var dupEl=document.getElementById('weDupBtn');if(dupEl)dupEl.style.display='block';
+  setWSeg('weType',ev.type||'task');
   setWSeg('wePriority',ev.priority||'medium');
   setWSeg('weProgress',ev.progress||'not-started');
   window._weSelWeekDays=(ev.repeatDays||[]).slice();
@@ -2896,6 +2961,7 @@ function saveAsTemplate(){
   var tmpl={
     id:gid(),
     name:title,
+    type:getWSeg('weType')||'task',
     client:((document.getElementById('weclient')||{}).value||'').trim(),
     icon:window._weIcon||'',
     color:_weColor,
