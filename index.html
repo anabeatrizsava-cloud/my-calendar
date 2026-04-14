@@ -3076,6 +3076,7 @@ function saveWEv(){
     endTime:(document.getElementById('weend')||{}).value||'',
     allDay:!!(document.getElementById('weallday')||{}).checked,
     description:(document.getElementById('wedesc')||{}).value||'',
+    type:getWSeg('weType')||'task',
     priority:getWSeg('wePriority')||'medium',
     progress:getWSeg('weProgress')||'not-started',
     repeat:getWSeg('weRepeat')||'none',
