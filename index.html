@@ -1231,7 +1231,7 @@ function rDay(c){
     const nowM=today.getHours()*60+today.getMinutes();let ni=false;
     Object.keys(grpsND).sort().forEach((h,idx)=>{
       if(isT&&!ni&&parseInt(h)*60>nowM){html+='<div class="now-ind"></div>';ni=true;}
-      html+='<div><div class="tgl '+(idx===0?'f':'')+'">'+h.padStart(2,'0')+':00</div>';
+      html+='<div style="margin-top:'+(idx===0?'0':'18')+'px"><div class="tgl '+(idx===0?'f':'')+'">'+h.padStart(2,'0')+':00</div>';
       grpsND[h].forEach(ev=>{html+=ecHTML(ev);});html+='</div>';
     });
     if(isT&&!ni)html+='<div class="now-ind"></div>';
@@ -1861,7 +1861,7 @@ function renderRightPanel(){
   // tomorrow
   const tomorrow=new Date(cd);tomorrow.setDate(tomorrow.getDate()+1);
   const tmrDs=tds(tomorrow);
-  const tmrEvs=getEvs(tmrDs).filter(e=>!e.allDay).sort((a,b)=>a.startTime.localeCompare(b.startTime)).slice(0,3);
+  const tmrEvs=getEvs(tmrDs).filter(e=>!e.allDay).sort((a,b)=>a.startTime.localeCompare(b.startTime)).slice(0,2);
   const days=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
   const months2rp=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const tmrLabel=days[tomorrow.getDay()]+' '+tomorrow.getDate();
@@ -1917,14 +1917,14 @@ function renderRightPanel(){
   const hStr=load.totalMins>0?(h>0?h+'h':'')+(m>0?m+'m':''):'0h';
   html+='<div style="font-size:26px;font-weight:300;color:#1a1a1a;line-height:1;font-family:Montserrat,sans-serif">'+hStr+'</div>';
   html+='<div style="font-size:9px;color:#aaa89e;margin-top:3px;font-family:Montserrat,sans-serif">agendadas</div></div></div>';
-  // carga
-  html+='<div style="background:#1a1a1a;border-radius:12px;padding:12px 13px">';
-  html+='<div style="font-size:8px;font-weight:600;color:rgba(255,255,255,0.4);letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px;font-family:Montserrat,sans-serif">Carga do dia</div>';
-  html+='<div style="display:flex;align-items:baseline;justify-content:space-between">';
-  html+='<div style="font-size:20px;font-weight:300;color:#f5f3ef;line-height:1;font-family:Montserrat,sans-serif">'+pct+'%</div>';
-  html+='<div style="font-size:10px;color:rgba(255,255,255,0.45);font-family:Montserrat,sans-serif">'+load.label+'</div></div>';
-  html+='<div style="width:100%;height:3px;background:rgba(255,255,255,0.12);border-radius:3px;overflow:hidden;margin-top:8px">';
-  html+='<div style="width:'+Math.min(pct,100)+'%;height:100%;background:rgba(255,255,255,0.55);border-radius:3px;transition:width .4s"></div></div></div></div>';
+  // carga - thin bar
+  var cargaColor=pct>=90?'#c87060':pct>=70?'#b17a3a':'#5c7161';
+  html+='<div style="background:rgba(255,255,255,0.55);border:0.5px solid rgba(255,255,255,0.8);border-radius:8px;padding:8px 12px;margin-top:7px;backdrop-filter:blur(6px)">';
+  html+='<div style="display:flex;align-items:center;gap:8px">';
+  html+='<div style="font-size:8px;color:#aaa89e;flex-shrink:0;font-family:Montserrat,sans-serif">Carga</div>';
+  html+='<div style="flex:1;height:4px;background:#e8e4de;border-radius:2px;overflow:hidden"><div style="width:'+Math.min(pct,100)+'%;height:100%;background:'+cargaColor+';border-radius:2px;transition:width .4s"></div></div>';
+  html+='<div style="font-size:8px;color:'+cargaColor+';font-weight:500;flex-shrink:0;font-family:Montserrat,sans-serif">'+pct+'%</div>';
+  html+='</div></div></div>';
 
   // amanhã
   html+='<div style="padding:14px 14px;border-bottom:0.5px solid #d8d4ce">';
@@ -1934,9 +1934,10 @@ function renderRightPanel(){
   } else {
     tmrEvs.forEach(ev=>{
       const col=ev.color||'#aaa89e';
-      html+='<div style="padding:8px 10px;background:rgba(255,255,255,0.5);border:0.5px solid rgba(255,255,255,0.75);border-left:3px solid '+col+';border-radius:10px;margin-bottom:6px;backdrop-filter:blur(4px)">';
-      html+='<div style="font-size:11px;font-weight:500;color:#1a1a1a;font-family:Montserrat,sans-serif">'+(ev.emoji&&ev.emoji!=='none'?ev.emoji+' ':'')+eh(ev.title)+'</div>';
-      html+='<div style="font-size:9px;color:#aaa89e;font-family:monospace;margin-top:2px">'+ev.startTime+' – '+ev.endTime+'</div></div>';
+      html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid #e8e4de">';
+      html+='<div style="width:2px;height:22px;background:'+col+';border-radius:1px;flex-shrink:0"></div>';
+      html+='<div style="flex:1"><div style="font-size:10px;font-weight:500;color:#1a1a1a;font-family:Montserrat,sans-serif">'+(ev.emoji&&ev.emoji!=='none'?ev.emoji+' ':'')+eh(ev.title)+'</div>';
+      html+='<div style="font-size:9px;color:#aaa89e;font-family:monospace;margin-top:1px">'+ev.startTime+' \u2013 '+ev.endTime+'</div></div></div>';
     });
   }
   html+='</div>';
