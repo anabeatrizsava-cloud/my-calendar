@@ -1228,7 +1228,7 @@ function rDay(c){
   const fer=getFeriado(ds);
   var dayNames=['DOMINGO','SEGUNDA','TERCA','QUARTA','QUINTA','SEXTA','SABADO'];
   var monthNames=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-  var dayHeader='<div style="display:flex;align-items:baseline;gap:10px;padding:0 0 14px;border-bottom:0.5px solid var(--border);margin-bottom:14px">'
+  var dayHeader='<div style="display:flex;align-items:baseline;gap:10px;padding:16px 0 14px;border-bottom:0.5px solid var(--border);margin-bottom:14px">'
     +'<div style="font-size:9px;font-weight:500;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;font-family:Montserrat,sans-serif">'+dayNames[cd.getDay()]+(isT?' - HOJE':'')+'</div>'
     +'<div style="font-size:48px;font-weight:300;color:var(--text);line-height:1;font-family:Montserrat,sans-serif">'+cd.getDate()+'</div>'
     +'<div style="font-size:13px;color:var(--text3);font-weight:300;font-family:Montserrat,sans-serif">'+monthNames[cd.getMonth()]+' - '+cd.getFullYear()+'</div>'
@@ -2355,9 +2355,9 @@ function wEvCard(ev,calId){
     var diffDays=Math.floor((dlDate-today2)/86400000);
     var isOverdue=diffDays<0&&p!=='done';
     var isNearDeadline=diffDays>=0&&diffDays<=2&&p!=='done';
-    if(isOverdue&&window.calAutoSettings.highlightOverdue){
+    if(isOverdue&&getAutoSetting('highlightOverdue')){
       deadlinePill='<div style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:#FCEBEB;border:0.5px solid #A32D2D;border-radius:10px;font-size:9px;color:#A32D2D;font-weight:500"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#A32D2D" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'+dlLabel+' atrasada</div>';
-    } else if(isNearDeadline&&window.calAutoSettings.highlightDeadline){
+    } else if(isNearDeadline&&getAutoSetting('highlightDeadline')){
       deadlinePill='<div style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:#FAEEDA;border:1px solid #EF9F27;border-radius:10px;font-size:9px;color:#854F0B;font-weight:600"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'+dlLabel+'</div>';
     } else {
       deadlinePill='<div style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:#FAEEDA;border:0.5px solid #EF9F27;border-radius:10px;font-size:9px;color:#854F0B;font-weight:500"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'+dlLabel+'</div>';
@@ -3151,6 +3151,12 @@ function editKanbanCard(calId,cardId){
 
 
 // ── CALENDAR AUTOMATION PANEL ────────────────────────────
+
+function getAutoSetting(key){
+  var defaults={eodReview:true,weeklyReview:true,movePending:false,highlightDeadline:true,highlightOverdue:true,autoComplete:false,templateRecurring:false};
+  if(!window.calAutoSettings)window.calAutoSettings=defaults;
+  return window.calAutoSettings[key]!==undefined?window.calAutoSettings[key]:defaults[key];
+}
 function saveCalAutoSettings(){
   if(!window.auth||!window.auth.currentUser)return;
   try{
@@ -3163,7 +3169,8 @@ function showCalAutomationPanel(){
   try{
   var existing=document.getElementById('calAutoPanel');
   if(existing)existing.remove();
-  var s=window.calAutoSettings||{eodReview:true,weeklyReview:true,movePending:false,highlightDeadline:true,highlightOverdue:true,autoComplete:false,templateRecurring:false};
+  if(!window.calAutoSettings)window.calAutoSettings={eodReview:true,weeklyReview:true,movePending:false,highlightDeadline:true,highlightOverdue:true,autoComplete:false,templateRecurring:false};
+  var s=window.calAutoSettings;
 
   var overlay=document.createElement('div');
   overlay.className='mo open';
@@ -3224,6 +3231,7 @@ function showCalAutomationPanel(){
     toggle.style.cssText='width:32px;height:18px;border-radius:9px;background:'+(enabled?'#0F6E56':'#d1d5db')+';position:relative;cursor:pointer';
     toggle.innerHTML='<div style="width:14px;height:14px;border-radius:50%;background:white;position:absolute;'+(enabled?'right':'left')+':2px;top:2px"></div>';
     toggle.onclick=(function(key){return function(){
+      if(!window.calAutoSettings)window.calAutoSettings={};
       window.calAutoSettings[key]=!window.calAutoSettings[key];
       saveCalAutoSettings();
       document.getElementById('calAutoPanel').remove();
@@ -3253,10 +3261,10 @@ window.showCalAutomationPanel=showCalAutomationPanel;
 
 function runCalAutomations(){
   var s=window.calAutoSettings;
-  if(s.highlightDeadline)runHighlightDeadline();
-  if(s.highlightOverdue)runHighlightOverdue();
-  if(s.autoComplete)runAutoComplete();
-  if(s.movePending)runMovePending();
+  if(getAutoSetting('highlightDeadline'))runHighlightDeadline();
+  if(getAutoSetting('highlightOverdue'))runHighlightOverdue();
+  if(getAutoSetting('autoComplete'))runAutoComplete();
+  if(getAutoSetting('movePending'))runMovePending();
 }
 
 function runHighlightDeadline(){
@@ -3331,7 +3339,7 @@ function runMovePending(){
 window._weeklyReviewShown='';
 
 function checkWeeklyReview(){
-  if(!window.calAutoSettings.weeklyReview)return;
+  if(!getAutoSetting('weeklyReview'))return;
   var now=new Date();
   if(now.getDay()!==1)return; // Only on Monday
   if(now.getHours()<6||now.getHours()>=12)return; // Morning only (6h-12h)
@@ -3499,7 +3507,7 @@ function showWeeklyReview(){
 window._endOfDayShownDate='';
 
 function checkEndOfDayReview(){
-  if(!window.calAutoSettings.eodReview)return;
+  if(!getAutoSetting('eodReview'))return;
   var now=new Date();
   if(now.getHours()<18)return;
   var todayStr=tds(now);
