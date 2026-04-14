@@ -869,7 +869,7 @@ const fapp=initializeApp(FC);const auth=getAuth(fapp);const db=getFirestore(fapp
 window.auth=auth;window.db=db;window.firestore={collection,doc,setDoc,deleteDoc,onSnapshot,updateDoc};
 let eu=null,lu=null,tu=null,su=null;
 window.signInWithGoogle=async()=>{try{await signInWithPopup(auth,prov);}catch(e){if(e.code!=='auth/popup-closed-by-user')showToast('Erro: '+e.message);}};
-window.doSignOut=async()=>{if(!confirm('Sair?'))return;[eu,lu,tu,su].forEach(u=>u&&u());await fbSO(auth);document.getElementById('mainApp').style.display='none';document.getElementById('loginScreen').style.display='flex';window.evs=[];window.lists=[];window.stickies=[];window.calAutoSettings={eodReview:true,weeklyReview:true,movePending:false,highlightDeadline:true,highlightOverdue:true,autoComplete:false,templateRecurring:false};};
+window.doSignOut=async()=>{if(!confirm('Sair?'))return;[eu,lu,tu,su].forEach(u=>u&&u());await fbSO(auth);document.getElementById('mainApp').style.display='none';document.getElementById('loginScreen').style.display='flex';window.evs=[];window.lists=[];window.stickies=[];window.calAutoSettings={eodReview:true,weeklyReview:true,movePending:false,highlightDeadline:true,highlightOverdue:true,autoComplete:false,templateRecurring:false};window.calCustomRules=window.calCustomRules||[];};
 function setSS(s){const dot=document.getElementById('syncDot');if(!dot)return;dot.className='sync-dot'+(s==='syncing'?' syncing':s==='err'?' offline':'');const lbl=document.getElementById('syncLabel');if(lbl)lbl.textContent=s==='syncing'?'Sincronizando...':s==='err'?'Erro':'Sincronizado';}
 window.fbSaveEv=async(ev)=>{if(!auth.currentUser)return;if(!window._pendingSaves)window._pendingSaves=new Set();window._pendingSaves.add(ev.id);setSS('syncing');try{const{id,...d}=ev;Object.keys(d).forEach(k=>{if(d[k]===undefined)delete d[k];});await setDoc(doc(db,'users',auth.currentUser.uid,'events',id),d);if(window._pendingSaves)window._pendingSaves.delete(ev.id);setSS('ok');}catch(e){setSS('err');}};
 window.fbDelEv=async(id)=>{if(!auth.currentUser)return;setSS('syncing');try{await deleteDoc(doc(db,'users',auth.currentUser.uid,'events',id));setSS('ok');}catch(e){setSS('err');}};
@@ -886,7 +886,7 @@ onAuthStateChanged(auth,user=>{
     if(lu)lu();lu=onSnapshot(collection(db,'users',uid,'lists'),snap=>{window.lists=snap.docs.map(d=>({id:d.id,...d.data()}));if(window.view==='planner')renderView();});
     if(tu)tu();tu=onSnapshot(doc(db,'users',uid,'config','tags'),snap=>{if(snap.exists()){const d=snap.data();window.tags=d.tags||dTags();window.tclr=d.tclr||dTclr();renderSBTags();}});
     if(su)su();su=onSnapshot(doc(db,'users',uid,'config','stickies'),snap=>{if(snap.exists()){window.stickies=snap.data().stickies||[];}else{window.stickies=[];}if(window.view==='sticky')renderView();else renderStickies();});
-    onSnapshot(doc(db,'users',uid,'config','calAutoSettings'),snap=>{if(snap.exists())window.calAutoSettings=Object.assign(window.calAutoSettings,snap.data());});
+    onSnapshot(doc(db,'users',uid,'config','calAutoSettings'),snap=>{if(snap.exists()){var d=snap.data();window.calAutoSettings=Object.assign(window.calAutoSettings||{},d);window.calCustomRules=d.customRules||[];}});
     if(!window.appInited){window.appInited=true;window._firebaseReady=true;if(typeof initFinanceIntegration==='function')initFinanceIntegration();if(window._domReady)initApp();}
   }else{document.getElementById('loginScreen').style.display='flex';document.getElementById('mainApp').style.display='none';}
 });
@@ -3161,7 +3161,8 @@ function saveCalAutoSettings(){
   if(!window.auth||!window.auth.currentUser)return;
   try{
     var uid=window.auth.currentUser.uid;
-    window.firestore.setDoc(window.firestore.doc(window.db,'users',uid,'config','calAutoSettings'),window.calAutoSettings);
+    var data=Object.assign({},window.calAutoSettings,{customRules:window.calCustomRules||[]});
+    window.firestore.setDoc(window.firestore.doc(window.db,'users',uid,'config','calAutoSettings'),data);
   }catch(e){}
 }
 
@@ -3249,6 +3250,55 @@ function showCalAutomationPanel(){
     body.appendChild(div);
   });
 
+  // Custom rules section
+  var customRules=window.calCustomRules||[];
+  if(customRules.length){
+    var crLabel=document.createElement('div');
+    crLabel.style.cssText='font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1px;text-transform:uppercase;margin:16px 0 8px';
+    crLabel.textContent='Regras personalizadas ('+customRules.length+')';
+    body.appendChild(crLabel);
+
+    customRules.forEach(function(cr,ci){
+      var crDiv=document.createElement('div');
+      crDiv.style.cssText='padding:12px;background:#f7f8fa;border-radius:8px;border:0.5px solid #e5e7eb;margin-bottom:8px'+(cr.enabled?'':';opacity:.5');
+      var crTop=document.createElement('div');
+      crTop.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:6px';
+      var crName=document.createElement('div');
+      crName.style.cssText='display:flex;align-items:center;gap:6px';
+      crName.innerHTML='<div style="width:6px;height:6px;border-radius:50%;background:'+(cr.enabled?'#534AB7':'#d1d5db')+'"></div><div style="font-size:11px;font-weight:500;color:'+(cr.enabled?'#111827':'#9ca3af')+'">'+eh(cr.name)+'</div>';
+      crTop.appendChild(crName);
+      var crCtrls=document.createElement('div');
+      crCtrls.style.cssText='display:flex;align-items:center;gap:8px';
+      var crToggle=document.createElement('div');
+      crToggle.style.cssText='width:32px;height:18px;border-radius:9px;background:'+(cr.enabled?'#0F6E56':'#d1d5db')+';position:relative;cursor:pointer';
+      crToggle.innerHTML='<div style="width:14px;height:14px;border-radius:50%;background:white;position:absolute;'+(cr.enabled?'right':'left')+':2px;top:2px"></div>';
+      crToggle.onclick=(function(idx){return function(){window.calCustomRules[idx].enabled=!window.calCustomRules[idx].enabled;saveCalAutoSettings();document.getElementById('calAutoPanel').remove();showCalAutomationPanel();};})(ci);
+      crCtrls.appendChild(crToggle);
+      var crDel=document.createElement('div');
+      crDel.style.cssText='font-size:11px;color:#d1d5db;cursor:pointer;padding:2px';
+      crDel.textContent='x';
+      crDel.onclick=(function(idx){return function(){if(!confirm('Excluir esta regra?'))return;window.calCustomRules.splice(idx,1);saveCalAutoSettings();document.getElementById('calAutoPanel').remove();showCalAutomationPanel();};})(ci);
+      crCtrls.appendChild(crDel);
+      crTop.appendChild(crCtrls);
+      crDiv.appendChild(crTop);
+      var crDesc=document.createElement('div');
+      crDesc.style.cssText='font-size:10px;color:'+(cr.enabled?'#6b7280':'#9ca3af')+';line-height:1.6';
+      var triggerDesc=cr.trigger==='time'?'As '+cr.triggerTime:'Quando tarefa '+cr.trigger;
+      var actionDesc=cr.action==='move_tomorrow'?'Mover pra amanha':cr.action==='move_date'?'Mover pra '+cr.actionDate:cr.action==='mark_done'?'Marcar como concluida':cr.action==='delete'?'Excluir tarefa':cr.action==='highlight_red'?'Destacar vermelho':cr.action==='highlight_amber'?'Destacar amber':cr.action;
+      var filterDesc=cr.filterTag?' (tag: '+cr.filterTag+')':cr.filterTitle?' (titulo contem: '+cr.filterTitle+')':'';
+      crDesc.textContent=triggerDesc+' -> '+actionDesc+filterDesc;
+      crDiv.appendChild(crDesc);
+      body.appendChild(crDiv);
+    });
+  }
+
+  // Add custom rule button
+  var addCrBtn=document.createElement('button');
+  addCrBtn.style.cssText='width:100%;padding:10px;background:#111827;color:white;border:none;border-radius:8px;font-size:11px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;margin-top:12px';
+  addCrBtn.textContent='+ Nova regra personalizada';
+  addCrBtn.onclick=function(){document.getElementById('calAutoPanel').remove();createCustomCalRule();};
+  body.appendChild(addCrBtn);
+
   modal.appendChild(body);
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
@@ -3259,7 +3309,169 @@ window.showCalAutomationPanel=showCalAutomationPanel;
 
 // ── AUTOMATION RUNNERS ───────────────────────────────────
 
+
+function createCustomCalRule(){
+  var name=prompt('Nome da regra:');
+  if(!name||!name.trim())return;
+
+  var triggerChoice=prompt('Gatilho:\n1. Horario especifico (ex: 18:00)\n2. Tarefa nao concluida no fim do dia\n3. Tarefa com prazo vencido\n4. Tarefa com prazo em X dias');
+  if(!triggerChoice){showCalAutomationPanel();return;}
+
+  var trigger='',triggerTime='',triggerDays=0;
+  if(triggerChoice==='1'){
+    triggerTime=prompt('Horario (HH:MM):','18:00');
+    if(!triggerTime){showCalAutomationPanel();return;}
+    trigger='time';
+  } else if(triggerChoice==='2'){
+    trigger='not_done_eod';
+  } else if(triggerChoice==='3'){
+    trigger='overdue';
+  } else if(triggerChoice==='4'){
+    var d=prompt('Quantos dias antes do prazo?','2');
+    if(!d){showCalAutomationPanel();return;}
+    trigger='deadline_near';
+    triggerDays=parseInt(d)||2;
+  } else {showToast('Opcao invalida.');showCalAutomationPanel();return;}
+
+  var actionChoice=prompt('Acao:\n1. Mover pra amanha\n2. Mover pra data especifica\n3. Marcar como concluida\n4. Excluir tarefa\n5. Destacar vermelho\n6. Destacar amber');
+  if(!actionChoice){showCalAutomationPanel();return;}
+
+  var action='',actionDate='';
+  if(actionChoice==='1')action='move_tomorrow';
+  else if(actionChoice==='2'){action='move_date';actionDate=prompt('Data destino (YYYY-MM-DD):');if(!actionDate){showCalAutomationPanel();return;}}
+  else if(actionChoice==='3')action='mark_done';
+  else if(actionChoice==='4')action='delete';
+  else if(actionChoice==='5')action='highlight_red';
+  else if(actionChoice==='6')action='highlight_amber';
+  else {showToast('Opcao invalida.');showCalAutomationPanel();return;}
+
+  var filterTag=prompt('Filtrar por tag (deixe vazio pra todas):');
+  var filterTitle=prompt('Filtrar por titulo contendo (deixe vazio pra todas):');
+
+  var rule={
+    id:gid(),
+    name:name.trim(),
+    trigger:trigger,
+    triggerTime:triggerTime,
+    triggerDays:triggerDays,
+    action:action,
+    actionDate:actionDate,
+    filterTag:(filterTag||'').trim(),
+    filterTitle:(filterTitle||'').trim(),
+    enabled:true
+  };
+
+  if(!window.calCustomRules)window.calCustomRules=[];
+  window.calCustomRules.push(rule);
+  saveCalAutoSettings();
+  showToast('Regra criada: '+rule.name);
+  showCalAutomationPanel();
+}
+
+function runCustomCalRules(){
+  var rules=window.calCustomRules||[];
+  var now=new Date();
+  var todayStr=tds(now);
+  var nowTime=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+
+  rules.forEach(function(rule){
+    if(!rule.enabled)return;
+
+    // Check trigger
+    var shouldRun=false;
+    if(rule.trigger==='time'&&rule.triggerTime){
+      if(nowTime===rule.triggerTime)shouldRun=true;
+    } else if(rule.trigger==='not_done_eod'){
+      if(now.getHours()>=23)shouldRun=true;
+    } else if(rule.trigger==='overdue'||rule.trigger==='deadline_near'){
+      shouldRun=true; // Always check these
+    }
+    if(!shouldRun)return;
+
+    // Run key to prevent duplicate runs
+    var runKey='_cr_'+rule.id+'_'+todayStr;
+    if(rule.trigger==='time'||rule.trigger==='not_done_eod'){
+      if(window[runKey])return;
+      window[runKey]=true;
+    }
+
+    // Apply to matching tasks across all work calendars
+    (window.workCals||[]).forEach(function(cal){
+      var list=window.workEvs[cal.id]||[];
+      var changed=false;
+      var toAdd=[];
+
+      var evs=getWEvs(cal.id,todayStr);
+      evs.forEach(function(ev){
+        if((ev.progress||'not-started')==='done')return;
+
+        // Apply filters
+        if(rule.filterTag&&(!ev.tags||ev.tags.indexOf(rule.filterTag)<0))return;
+        if(rule.filterTitle&&(ev.title||'').toLowerCase().indexOf(rule.filterTitle.toLowerCase())<0)return;
+
+        // Check deadline triggers
+        if(rule.trigger==='overdue'){
+          if(!ev.deadline)return;
+          var dlDate=new Date(ev.deadline+'T00:00:00');
+          var today2=new Date();today2.setHours(0,0,0,0);
+          if(dlDate>=today2)return; // Not overdue
+        }
+        if(rule.trigger==='deadline_near'){
+          if(!ev.deadline)return;
+          var dlDate=new Date(ev.deadline+'T00:00:00');
+          var today2=new Date();today2.setHours(0,0,0,0);
+          var diff=Math.floor((dlDate-today2)/86400000);
+          if(diff<0||diff>rule.triggerDays)return;
+        }
+
+        // Execute action
+        var master=list.find(function(e){return e.id===ev.id;});
+        if(!master)return;
+
+        if(rule.action==='mark_done'){
+          if(master.repeat&&master.repeat!=='none'){
+            if(!master.progressExceptions)master.progressExceptions={};
+            master.progressExceptions[todayStr]='done';
+          } else {
+            master.progress='done';
+          }
+          changed=true;
+        } else if(rule.action==='move_tomorrow'||rule.action==='move_date'){
+          var targetDate=rule.action==='move_tomorrow'?tds(new Date(now.getTime()+86400000)):rule.actionDate;
+          if(master.repeat&&master.repeat!=='none'){
+            if(!master.progressExceptions)master.progressExceptions={};
+            master.progressExceptions[todayStr]='done';
+            var copy=JSON.parse(JSON.stringify(master));
+            copy.id=gid();copy.date=targetDate;copy.repeat='none';
+            copy.repeatDays=[];copy.repeatMonthDays=[];
+            copy.progress='not-started';
+            delete copy.progressExceptions;delete copy._instanceDate;
+            toAdd.push(copy);
+          } else {
+            master.date=targetDate;
+          }
+          changed=true;
+        } else if(rule.action==='delete'){
+          if(master.repeat&&master.repeat!=='none'){
+            if(!master.deletedExceptions)master.deletedExceptions=[];
+            if(!master.deletedExceptions.includes(todayStr))master.deletedExceptions.push(todayStr);
+          } else {
+            window.workEvs[cal.id]=list.filter(function(e){return e.id!==master.id;});
+            list=window.workEvs[cal.id];
+          }
+          changed=true;
+        }
+        // highlight actions are applied in rendering, not here
+      });
+
+      if(toAdd.length){toAdd.forEach(function(c){list.push(c);});}
+      if(changed){window.workEvs[cal.id]=list;fbSaveWorkEvs(cal.id);}
+    });
+  });
+}
+
 function runCalAutomations(){
+  runCustomCalRules();
   var s=window.calAutoSettings;
   if(getAutoSetting('highlightDeadline'))runHighlightDeadline();
   if(getAutoSetting('highlightOverdue'))runHighlightOverdue();
