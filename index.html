@@ -13,10 +13,10 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#faf9f7;--bg2:#f5f3ef;--bg3:#efefec;--bg4:#e8e4de;
+  --bg:#f7f8fa;--bg2:#f0f2f5;--bg3:#e5e7eb;--bg4:#d1d5db;
   --sidebar:#1a1a1a;
-  --border:#e0ddd8;--border2:#d4d0ca;
-  --text:#1a1a1a;--text2:#888880;--text3:#aaa89e;--text4:#c8c4be;
+  --border:#e5e7eb;--border2:#d1d5db;
+  --text:#111827;--text2:#6b7280;--text3:#9ca3af;--text4:#d1d5db;
   --accent:#C26D64;--accent2:#d4847c;
   --glow:rgba(194,109,100,.1);
   --green:#5c7161;--red:#C26D64;--yellow:#b17a3a;--cyan:#7a9bae;--lavender:#9b8ea8;
@@ -1216,7 +1216,7 @@ function rDay(c){
   var dayNames=['DOMINGO','SEGUNDA','TERCA','QUARTA','QUINTA','SEXTA','SABADO'];
   var monthNames=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   var dayHeader='<div style="display:flex;align-items:baseline;gap:10px;padding:16px 0 14px;border-bottom:0.5px solid var(--border);margin-bottom:14px">'
-    +'<div style="font-size:9px;font-weight:500;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;font-family:Montserrat,sans-serif">'+dayNames[cd.getDay()]+(isT?' - HOJE':'')+'</div>'
+    +'<div style="font-size:9px;font-weight:500;color:#9ca3af;letter-spacing:1.5px;text-transform:uppercase;font-family:Montserrat,sans-serif">'+dayNames[cd.getDay()]+(isT?' - HOJE':'')+'</div>'
     +'<div style="font-size:48px;font-weight:300;color:var(--text);line-height:1;font-family:Montserrat,sans-serif">'+cd.getDate()+'</div>'
     +'<div style="font-size:13px;color:var(--text3);font-weight:300;font-family:Montserrat,sans-serif">'+monthNames[cd.getMonth()]+' - '+cd.getFullYear()+'</div>'
     +(fer?'<div style="padding:3px 10px;background:rgba(251,146,60,.12);border-radius:16px;font-size:10px;color:#c2410c;font-weight:500;font-family:Montserrat,sans-serif">🇧🇷 '+fer+'</div>':'')
@@ -1269,14 +1269,14 @@ function ecHTML(ev){
   const tagName=ev.tags&&ev.tags.length?ev.tags[0]:'';
   const emojiStr=(ev.emoji&&ev.emoji!=='none'&&ev.emoji!=='')?ev.emoji+' ':'';
   const col=ev.color||'#c87060';
-  const bg=ev.done?'#f5f2ed':getBgTint(col);
-  const borderCol=ev.done?'#e8e0d4':getBorderTint(col);
+  const bg=ev.done?'#f9fafb':getBgTint(col);
+  const borderCol=ev.done?'#e5e7eb':getBorderTint(col);
   return'<div class="ec'+(ev.done?' done':'')+'" data-eid="'+ev.id+'" data-idate="'+(ev._instanceDate||ev.date)+'" style="border-radius:10px;overflow:hidden;border:0.5px solid '+borderCol+';display:flex;align-items:stretch;gap:0;cursor:pointer;transition:all .15s;margin-bottom:0">'+
-    '<div style="width:3px;background:'+(ev.done?'#d4ccc0':col)+';flex-shrink:0"></div>'+
+    '<div style="width:3px;background:'+(ev.done?'#d1d5db':col)+';flex-shrink:0"></div>'+
     '<div style="flex:1;background:'+bg+';padding:9px 12px 9px 11px;display:flex;align-items:flex-start;gap:10px">'+
       '<div class="ecb" style="flex:1;min-width:0">'+
-        '<div class="ect" style="font-size:12px;font-weight:500;color:'+(ev.done?'#a09880':'#1a1510')+(ev.done?';text-decoration:line-through':'')+'">'+ emojiStr+eh(ev.title)+'</div>'+
-        '<div class="ectm" style="font-size:10px;color:#b0a080;margin-top:2px;font-family:var(--font-mono);display:flex;align-items:center;gap:4px">'+tm+(tagName?(' · '+tagName):'')+(ev.isExternal&&ev.weatherData?'<span style="padding:1px 6px;background:rgba(59,130,246,.08);border:0.5px solid rgba(59,130,246,.2);border-radius:10px;font-size:9px;color:#3b82f6">'+ev.weatherData.icon+' '+ev.weatherData.temp+'°C</span>':'')+(ev.isExternal&&!ev.weatherData?'<span style="padding:1px 6px;background:rgba(0,0,0,.04);border:0.5px solid rgba(0,0,0,.1);border-radius:10px;font-size:9px;color:#9ca3af">📍 EXT</span>':'')+'</div>'+
+        '<div class="ect" style="font-size:12px;font-weight:500;color:'+(ev.done?'#9ca3af':'#111827')+(ev.done?';text-decoration:line-through':'')+'">'+ emojiStr+eh(ev.title)+'</div>'+
+        '<div class="ectm" style="font-size:10px;color:#9ca3af;margin-top:2px;font-family:var(--font-mono);display:flex;align-items:center;gap:4px">'+tm+(tagName?(' · '+tagName):'')+(ev.isExternal&&ev.weatherData?'<span style="padding:1px 6px;background:rgba(59,130,246,.08);border:0.5px solid rgba(59,130,246,.2);border-radius:10px;font-size:9px;color:#3b82f6">'+ev.weatherData.icon+' '+ev.weatherData.temp+'°C</span>':'')+(ev.isExternal&&!ev.weatherData?'<span style="padding:1px 6px;background:rgba(0,0,0,.04);border:0.5px solid rgba(0,0,0,.1);border-radius:10px;font-size:9px;color:#9ca3af">📍 EXT</span>':'')+'</div>'+
         tg+sc+
       '</div>'+
       '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">'+
@@ -1291,12 +1291,10 @@ function ecHTML(ev){
 }
 
 function getBgTint(hex){
-  const map={'#c87060':'#fdf6f4','#8a9e78':'#f6faf4','#7890b8':'#f6f8fd','#9b8ea8':'#f8f6fb','#c4a882':'#fdf9f4','#252829':'#f5f5f4','#5c7161':'#f4f7f4','#c26d64':'#fdf5f4','#e1c2c3':'#fdf6f6','#cca2a6':'#fdf6f7','#7a9bae':'#f5f8fc','#b4a8c4':'#f8f6fb','#d4b8c4':'#fdf6f9','#998ea2':'#f8f6fa','#b17a6e':'#fdf6f4','#b17a3a':'#fdf8f4'};
-  return map[hex]||'#fdf8f4';
+  return '#ffffff';
 }
 function getBorderTint(hex){
-  const map={'#c87060':'#e8d4cc','#8a9e78':'#d4e0cc','#7890b8':'#ccd4e4','#9b8ea8':'#dcd8e8','#c4a882':'#e4d8c4','#252829':'#d0ccc8','#5c7161':'#ccd8cc','#c26d64':'#e8d0cc','#e1c2c3':'#ead4d4','#cca2a6':'#e8d4d8','#7a9bae':'#ccd8e4','#b4a8c4':'#dcd8e8','#d4b8c4':'#e8d4dc','#998ea2':'#dcd8e4','#b17a6e':'#e4d0cc','#b17a3a':'#e4d4c0'};
-  return map[hex]||'#e4d8cc';
+  return '#e5e7eb';
 }
 function adHTML(ev){return'<div class="adev '+(ev.done?'done':'')+'\" data-eid="'+ev.id+'" style="border-left-color:'+(ev.color||'#7c6af5')+';background:'+hr(ev.color||'#7c6af5',.2)+'\">'+(ev.emoji||'')+' '+eh(ev.title)+'</div>';}
 function bindBulk(w){
@@ -1791,7 +1789,7 @@ function buildRPNotes(wrap){
   // header
   const hdr=document.createElement('div');
   hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:9px';
-  hdr.innerHTML='<div style="font-size:9px;font-weight:600;color:#aaa89e;letter-spacing:1.2px;text-transform:uppercase;font-family:Montserrat,sans-serif">Notas</div>';
+  hdr.innerHTML='<div style="font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1.2px;text-transform:uppercase;font-family:Montserrat,sans-serif">Notas</div>';
   const addBtn=document.createElement('button');
   addBtn.textContent='+ nova';
   addBtn.style.cssText='font-size:10px;color:#1a1a1a;font-weight:500;background:none;border:none;cursor:pointer;font-family:Montserrat,sans-serif;letter-spacing:.2px';
@@ -1874,13 +1872,13 @@ function renderRightPanel(){
   const today=new Date();
   const f=new Date(mcd.getFullYear(),mcd.getMonth(),1);
   const l=new Date(mcd.getFullYear(),mcd.getMonth()+1,0);
-  let calHtml='<div style="padding:14px 14px 12px;border-bottom:0.5px solid #d8d4ce">';
+  let calHtml='<div style="padding:14px 14px 12px;border-bottom:0.5px solid #e5e7eb">';
   calHtml+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
-  calHtml+='<div style="font-size:9px;font-weight:600;color:#aaa89e;letter-spacing:1.2px;text-transform:uppercase;font-family:Montserrat,sans-serif">'+months2rp[mcd.getMonth()]+' '+mcd.getFullYear()+'</div>';
+  calHtml+='<div style="font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1.2px;text-transform:uppercase;font-family:Montserrat,sans-serif">'+months2rp[mcd.getMonth()]+' '+mcd.getFullYear()+'</div>';
   calHtml+='<div style="display:flex;gap:4px"><button onclick="mcPrev();renderRightPanel()" style="background:none;border:none;color:#aaa89e;cursor:pointer;font-size:14px;line-height:1;padding:0 3px">‹</button>';
   calHtml+='<button onclick="mcNext();renderRightPanel()" style="background:none;border:none;color:#aaa89e;cursor:pointer;font-size:14px;line-height:1;padding:0 3px">›</button></div></div>';
   // day headers
-  calHtml+='<div style="display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:9px;color:#c8c4be;margin-bottom:4px;font-family:Montserrat,sans-serif">';
+  calHtml+='<div style="display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:9px;color:#d1d5db;margin-bottom:4px;font-family:Montserrat,sans-serif">';
   ['D','S','T','Q','Q','S','S'].forEach(d=>{calHtml+='<div>'+d+'</div>';});
   calHtml+='</div>';
   // empty days before month start
@@ -1899,7 +1897,7 @@ function renderRightPanel(){
     let style='padding:4px;border-radius:50%;cursor:pointer;position:relative;aspect-ratio:1;width:22px;height:22px;display:flex;align-items:center;justify-content:center;margin:0 auto;';
     if(isToday)style+='background:#1a1a1a;color:#f5f3ef;font-weight:500;';
     else if(isSel)style+='background:#e8e4de;color:#1a1a1a;font-weight:500;';
-    else style+='color:#aaa89e;';
+    else style+='color:#9ca3af;';
     calHtml+='<div style="'+style+'" onclick="cd=new Date('+thisDate.getFullYear()+','+thisDate.getMonth()+','+d+');renderView()">'+d+
       (hasEvs&&!isToday?'<div style="position:absolute;bottom:1px;left:50%;transform:translateX(-50%);width:3px;height:3px;background:'+(isFer?'#b17a3a':'#aaa89e')+';border-radius:50%"></div>':'')+
       '</div>';
@@ -1908,15 +1906,15 @@ function renderRightPanel(){
 
   let html=calHtml;
   // ── RESUMO ──
-  html+='<div style="padding:16px 14px 12px;border-bottom:0.5px solid #d8d4ce">';
+  html+='<div style="padding:16px 14px 12px;border-bottom:0.5px solid #e5e7eb">';
   html+='<div style="font-size:9px;font-weight:600;color:#aaa89e;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:9px;font-family:Montserrat,sans-serif">Resumo</div>';
   html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px">';
-  html+='<div style="background:rgba(255,255,255,0.55);border:0.5px solid rgba(255,255,255,0.8);border-radius:12px;padding:11px 12px;backdrop-filter:blur(6px)">';
-  html+='<div style="font-size:8px;font-weight:600;color:#aaa89e;letter-spacing:.8px;text-transform:uppercase;margin-bottom:5px;font-family:Montserrat,sans-serif">Tarefas</div>';
+  html+='<div style="background:white;border:0.5px solid #e5e7eb;border-radius:12px;padding:11px 12px">';
+  html+='<div style="font-size:8px;font-weight:600;color:#9ca3af;letter-spacing:.8px;text-transform:uppercase;margin-bottom:5px;font-family:Montserrat,sans-serif">Tarefas</div>';
   html+='<div style="font-size:26px;font-weight:300;color:#1a1a1a;line-height:1;font-family:Montserrat,sans-serif">'+total+'</div>';
   html+='<div style="font-size:9px;color:#aaa89e;margin-top:3px;font-family:Montserrat,sans-serif">'+done+' concluída'+(done!==1?'s':'')+'</div></div>';
-  html+='<div style="background:rgba(255,255,255,0.55);border:0.5px solid rgba(255,255,255,0.8);border-radius:12px;padding:11px 12px;backdrop-filter:blur(6px)">';
-  html+='<div style="font-size:8px;font-weight:600;color:#aaa89e;letter-spacing:.8px;text-transform:uppercase;margin-bottom:5px;font-family:Montserrat,sans-serif">Horas</div>';
+  html+='<div style="background:white;border:0.5px solid #e5e7eb;border-radius:12px;padding:11px 12px">';
+  html+='<div style="font-size:8px;font-weight:600;color:#9ca3af;letter-spacing:.8px;text-transform:uppercase;margin-bottom:5px;font-family:Montserrat,sans-serif">Horas</div>';
   const h=Math.floor(load.totalMins/60),m=load.totalMins%60;
   const hStr=load.totalMins>0?(h>0?h+'h':'')+(m>0?m+'m':''):'0h';
   html+='<div style="font-size:26px;font-weight:300;color:#1a1a1a;line-height:1;font-family:Montserrat,sans-serif">'+hStr+'</div>';
@@ -1931,7 +1929,7 @@ function renderRightPanel(){
   html+='</div></div></div>';
 
   // amanhã
-  html+='<div style="padding:14px 14px;border-bottom:0.5px solid #d8d4ce">';
+  html+='<div style="padding:14px 14px;border-bottom:0.5px solid #e5e7eb">';
   html+='<div style="font-size:9px;font-weight:600;color:#aaa89e;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:9px;font-family:Montserrat,sans-serif">Amanhã · '+tmrLabel+'</div>';
   if(!tmrEvs.length){
     html+='<div style="font-size:11px;color:#c8c4be;font-family:Montserrat,sans-serif;padding:6px 0">Nenhum evento</div>';
@@ -1949,7 +1947,7 @@ function renderRightPanel(){
   // notas — collapsed by default, expand on click
   html+='<div style="padding:14px 14px;flex:1;overflow-y:auto">';
   html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;cursor:pointer" onclick="toggleNotesPanel()">';
-  html+='<div style="display:flex;align-items:center;gap:6px"><div style="font-size:9px;font-weight:600;color:#aaa89e;letter-spacing:1.2px;text-transform:uppercase;font-family:Montserrat,sans-serif">Notas</div>';
+  html+='<div style="display:flex;align-items:center;gap:6px"><div style="font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1.2px;text-transform:uppercase;font-family:Montserrat,sans-serif">Notas</div>';
   const stickyList=window.stickies||[];
   html+='<div style="font-size:9px;color:#c8c4be;font-family:Montserrat,sans-serif">('+stickyList.length+')</div></div>';
   html+='<div style="display:flex;align-items:center;gap:8px"><button onclick="event.stopPropagation();addSticky()" style="font-size:10px;color:#1a1a1a;font-weight:500;background:none;border:none;cursor:pointer;font-family:Montserrat,sans-serif;letter-spacing:.2px">+ nova</button>';
@@ -4724,7 +4722,7 @@ function renderVocabList(parent){
   var headerRow=document.createElement('div');
   headerRow.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:4px';
   var label=document.createElement('div');
-  label.style.cssText='font-size:9px;font-weight:600;color:#aaa89e;letter-spacing:1.2px;text-transform:uppercase;font-family:Montserrat,sans-serif';
+  label.style.cssText='font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1.2px;text-transform:uppercase;font-family:Montserrat,sans-serif';
   label.textContent='Vocabulario ('+list.length+')';
   headerRow.appendChild(label);
   var searchWrap=document.createElement('div');
@@ -4781,7 +4779,7 @@ function renderNotesList(parent){
     return;
   }
   var label=document.createElement('div');
-  label.style.cssText='font-size:9px;font-weight:600;color:#aaa89e;letter-spacing:1.2px;text-transform:uppercase;font-family:Montserrat,sans-serif';
+  label.style.cssText='font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1.2px;text-transform:uppercase;font-family:Montserrat,sans-serif';
   label.textContent='Anotacoes de estudo';
   parent.appendChild(label);
   var grid=document.createElement('div');
