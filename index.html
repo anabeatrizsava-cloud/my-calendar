@@ -1798,7 +1798,7 @@ function buildRPNotes(wrap){
   wrap.appendChild(hdr);
   if(!sl.length){
     const em=document.createElement('div');
-    em.style.cssText='font-size:11px;color:#c8c4be;font-family:Montserrat,sans-serif;padding:6px 0';
+    em.style.cssText='font-size:11px;color:#d1d5db;font-family:Montserrat,sans-serif;padding:6px 0';
     em.innerHTML='Nenhuma nota ainda.<br><span style="font-size:10px">Clique em + nova.</span>';
     wrap.appendChild(em);
     return;
@@ -1872,11 +1872,11 @@ function renderRightPanel(){
   const today=new Date();
   const f=new Date(mcd.getFullYear(),mcd.getMonth(),1);
   const l=new Date(mcd.getFullYear(),mcd.getMonth()+1,0);
-  let calHtml='<div style="padding:14px 14px 12px;border-bottom:0.5px solid #e5e7eb">';
+  let calHtml='<div style="padding:14px"><div style="background:white;border-radius:10px;border:0.5px solid #e5e7eb;padding:14px">';
   calHtml+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
   calHtml+='<div style="font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1.2px;text-transform:uppercase;font-family:Montserrat,sans-serif">'+months2rp[mcd.getMonth()]+' '+mcd.getFullYear()+'</div>';
-  calHtml+='<div style="display:flex;gap:4px"><button onclick="mcPrev();renderRightPanel()" style="background:none;border:none;color:#aaa89e;cursor:pointer;font-size:14px;line-height:1;padding:0 3px">‹</button>';
-  calHtml+='<button onclick="mcNext();renderRightPanel()" style="background:none;border:none;color:#aaa89e;cursor:pointer;font-size:14px;line-height:1;padding:0 3px">›</button></div></div>';
+  calHtml+='<div style="display:flex;gap:4px"><button onclick="mcPrev();renderRightPanel()" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:14px;line-height:1;padding:0 3px">‹</button>';
+  calHtml+='<button onclick="mcNext();renderRightPanel()" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:14px;line-height:1;padding:0 3px">›</button></div></div>';
   // day headers
   calHtml+='<div style="display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:9px;color:#d1d5db;margin-bottom:4px;font-family:Montserrat,sans-serif">';
   ['D','S','T','Q','Q','S','S'].forEach(d=>{calHtml+='<div>'+d+'</div>';});
@@ -1885,7 +1885,7 @@ function renderRightPanel(){
   calHtml+='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;text-align:center;font-size:10px;font-family:Montserrat,sans-serif">';
   for(let i=0;i<f.getDay();i++){
     const prev=new Date(mcd.getFullYear(),mcd.getMonth(),1-f.getDay()+i);
-    calHtml+='<div style="padding:4px;color:#d8d4ce;font-size:9px">'+prev.getDate()+'</div>';
+    calHtml+='<div style="padding:4px;color:#d1d5db;font-size:9px">'+prev.getDate()+'</div>';
   }
   for(let d=1;d<=l.getDate();d++){
     const thisDate=new Date(mcd.getFullYear(),mcd.getMonth(),d);
@@ -1896,24 +1896,24 @@ function renderRightPanel(){
     const isFer=!!getFeriado(ds2);
     let style='padding:4px;border-radius:50%;cursor:pointer;position:relative;aspect-ratio:1;width:22px;height:22px;display:flex;align-items:center;justify-content:center;margin:0 auto;';
     if(isToday)style+='background:#1a1a1a;color:#f5f3ef;font-weight:500;';
-    else if(isSel)style+='background:#e8e4de;color:#1a1a1a;font-weight:500;';
+    else if(isSel)style+='background:#e5e7eb;color:#111827;font-weight:500;';
     else style+='color:#9ca3af;';
     calHtml+='<div style="'+style+'" onclick="cd=new Date('+thisDate.getFullYear()+','+thisDate.getMonth()+','+d+');renderView()">'+d+
       (hasEvs&&!isToday?'<div style="position:absolute;bottom:1px;left:50%;transform:translateX(-50%);width:3px;height:3px;background:'+(isFer?'#b17a3a':'#aaa89e')+';border-radius:50%"></div>':'')+
       '</div>';
   }
-  calHtml+='</div></div>';
+  calHtml+='</div></div></div>';
 
   let html=calHtml;
   // ── RESUMO ──
-  html+='<div style="padding:16px 14px 12px;border-bottom:0.5px solid #e5e7eb">';
-  html+='<div style="font-size:9px;font-weight:600;color:#aaa89e;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:9px;font-family:Montserrat,sans-serif">Resumo</div>';
+  html+='<div style="padding:0 14px 14px"><div style="background:white;border-radius:10px;border:0.5px solid #e5e7eb;padding:12px">';
+  html+='<div style="font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-family:Montserrat,sans-serif">Resumo</div>';
   html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px">';
-  html+='<div style="background:white;border:0.5px solid #e5e7eb;border-radius:12px;padding:11px 12px">';
+  html+='<div style="background:#f7f8fa;border-radius:8px;padding:10px">';
   html+='<div style="font-size:8px;font-weight:600;color:#9ca3af;letter-spacing:.8px;text-transform:uppercase;margin-bottom:5px;font-family:Montserrat,sans-serif">Tarefas</div>';
   html+='<div style="font-size:26px;font-weight:300;color:#1a1a1a;line-height:1;font-family:Montserrat,sans-serif">'+total+'</div>';
   html+='<div style="font-size:9px;color:#aaa89e;margin-top:3px;font-family:Montserrat,sans-serif">'+done+' concluída'+(done!==1?'s':'')+'</div></div>';
-  html+='<div style="background:white;border:0.5px solid #e5e7eb;border-radius:12px;padding:11px 12px">';
+  html+='<div style="background:#f7f8fa;border-radius:8px;padding:10px">';
   html+='<div style="font-size:8px;font-weight:600;color:#9ca3af;letter-spacing:.8px;text-transform:uppercase;margin-bottom:5px;font-family:Montserrat,sans-serif">Horas</div>';
   const h=Math.floor(load.totalMins/60),m=load.totalMins%60;
   const hStr=load.totalMins>0?(h>0?h+'h':'')+(m>0?m+'m':''):'0h';
@@ -1921,39 +1921,39 @@ function renderRightPanel(){
   html+='<div style="font-size:9px;color:#aaa89e;margin-top:3px;font-family:Montserrat,sans-serif">agendadas</div></div></div>';
   // carga - thin bar
   var cargaColor=pct>=90?'#c87060':pct>=70?'#b17a3a':'#5c7161';
-  html+='<div style="background:rgba(255,255,255,0.55);border:0.5px solid rgba(255,255,255,0.8);border-radius:8px;padding:8px 12px;margin-top:7px;backdrop-filter:blur(6px)">';
+  html+='<div style="background:#f7f8fa;border-radius:6px;padding:6px 8px;margin-top:8px">';
   html+='<div style="display:flex;align-items:center;gap:8px">';
   html+='<div style="font-size:8px;color:#aaa89e;flex-shrink:0;font-family:Montserrat,sans-serif">Carga</div>';
-  html+='<div style="flex:1;height:4px;background:#e8e4de;border-radius:2px;overflow:hidden"><div style="width:'+Math.min(pct,100)+'%;height:100%;background:'+cargaColor+';border-radius:2px;transition:width .4s"></div></div>';
+  html+='<div style="flex:1;height:4px;background:#e5e7eb;border-radius:2px;overflow:hidden"><div style="width:'+Math.min(pct,100)+'%;height:100%;background:'+cargaColor+';border-radius:2px;transition:width .4s"></div></div>';
   html+='<div style="font-size:8px;color:'+cargaColor+';font-weight:500;flex-shrink:0;font-family:Montserrat,sans-serif">'+pct+'%</div>';
-  html+='</div></div></div>';
+  html+='</div></div></div></div>';
 
   // amanhã
-  html+='<div style="padding:14px 14px;border-bottom:0.5px solid #e5e7eb">';
-  html+='<div style="font-size:9px;font-weight:600;color:#aaa89e;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:9px;font-family:Montserrat,sans-serif">Amanhã · '+tmrLabel+'</div>';
+  html+='<div style="padding:0 14px 14px"><div style="background:white;border-radius:10px;border:0.5px solid #e5e7eb;padding:12px">';
+  html+='<div style="font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-family:Montserrat,sans-serif">Amanha . '+tmrLabel+'</div>';
   if(!tmrEvs.length){
-    html+='<div style="font-size:11px;color:#c8c4be;font-family:Montserrat,sans-serif;padding:6px 0">Nenhum evento</div>';
+    html+='<div style="font-size:11px;color:#d1d5db;font-family:Montserrat,sans-serif;padding:6px 0">Nenhum evento</div>';
   } else {
     tmrEvs.forEach(ev=>{
       const col=ev.color||'#aaa89e';
-      html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid #e8e4de">';
+      html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid #e5e7eb">';
       html+='<div style="width:2px;height:22px;background:'+col+';border-radius:1px;flex-shrink:0"></div>';
       html+='<div style="flex:1"><div style="font-size:10px;font-weight:500;color:#1a1a1a;font-family:Montserrat,sans-serif">'+(ev.emoji&&ev.emoji!=='none'?ev.emoji+' ':'')+eh(ev.title)+'</div>';
       html+='<div style="font-size:9px;color:#aaa89e;font-family:monospace;margin-top:1px">'+ev.startTime+' \u2013 '+ev.endTime+'</div></div></div>';
     });
   }
-  html+='</div>';
+  html+='</div></div>';
 
   // notas — collapsed by default, expand on click
-  html+='<div style="padding:14px 14px;flex:1;overflow-y:auto">';
+  html+='<div style="padding:0 14px 14px;flex:1;overflow-y:auto"><div style="background:white;border-radius:10px;border:0.5px solid #e5e7eb;padding:12px">';
   html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;cursor:pointer" onclick="toggleNotesPanel()">';
   html+='<div style="display:flex;align-items:center;gap:6px"><div style="font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1.2px;text-transform:uppercase;font-family:Montserrat,sans-serif">Notas</div>';
   const stickyList=window.stickies||[];
-  html+='<div style="font-size:9px;color:#c8c4be;font-family:Montserrat,sans-serif">('+stickyList.length+')</div></div>';
+  html+='<div style="font-size:9px;color:#d1d5db;font-family:Montserrat,sans-serif">('+stickyList.length+')</div></div>';
   html+='<div style="display:flex;align-items:center;gap:8px"><button onclick="event.stopPropagation();addSticky()" style="font-size:10px;color:#1a1a1a;font-weight:500;background:none;border:none;cursor:pointer;font-family:Montserrat,sans-serif;letter-spacing:.2px">+ nova</button>';
   html+='<svg width="10" height="10" viewBox="0 0 12 12" fill="none" style="transition:transform .2s;transform:rotate('+(window._notesExpanded?'180':'0')+'deg)"><path d="M2 4l4 4 4-4" stroke="#aaa89e" stroke-width="1.5" stroke-linecap="round"/></svg></div></div>';
   if(!stickyList.length){
-    html+='<div style="font-size:11px;color:#c8c4be;font-family:Montserrat,sans-serif;padding:6px 0">Nenhuma nota.<span style="font-size:10px"> Clique em + nova.</span></div>';
+    html+='<div style="font-size:11px;color:#d1d5db;font-family:Montserrat,sans-serif;padding:6px 0">Nenhuma nota.<span style="font-size:10px"> Clique em + nova.</span></div>';
   } else if(!window._notesExpanded){
     // Collapsed: show first note preview
     var firstNote=stickyList[0];
@@ -4606,7 +4606,7 @@ function renderStudyView(){
   // topbar
   var tb=document.createElement('div');
   tb.className='topbar';
-  tb.style.cssText='background:#faf9f7;border-bottom:0.5px solid #e8e4de';
+  tb.style.cssText='background:#faf9f7;border-bottom:0.5px solid #e5e7eb';
   tb.innerHTML='<div style="font-size:11px;font-weight:600;color:#1a1a1a;letter-spacing:.5px;font-family:Montserrat,sans-serif">English Study</div>'
     +'<div style="flex:1"></div>'
     +'<div style="display:flex;gap:2px;background:#f0ede8;border-radius:9px;padding:3px">'
