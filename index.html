@@ -3166,11 +3166,11 @@ function saveCalAutoSettings(){
   }catch(e){}
 }
 
-window.showCalAutomationPanel=showCalAutomationPanel;
 function showCalAutomationPanel(){
+  try{
   var existing=document.getElementById('calAutoPanel');
   if(existing)existing.remove();
-  var s=window.calAutoSettings;
+  var s=window.calAutoSettings||{eodReview:true,weeklyReview:true,movePending:false,highlightDeadline:true,highlightOverdue:true,autoComplete:false,templateRecurring:false};
 
   var overlay=document.createElement('div');
   overlay.className='mo open';
@@ -3252,7 +3252,9 @@ function showCalAutomationPanel(){
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
   overlay.querySelector('#capClose').onclick=function(){overlay.remove();};
-}
+}catch(e){console.error('AutoPanel error:',e);showToast('Erro ao abrir automacoes');}}
+window.showCalAutomationPanel=showCalAutomationPanel;
+
 
 // ── AUTOMATION RUNNERS ───────────────────────────────────
 
