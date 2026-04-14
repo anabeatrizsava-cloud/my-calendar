@@ -2535,29 +2535,46 @@ function renderWorkDay(calId){
       meetHdr.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:12px';
       meetHdr.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#534AB7" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><div style="font-size:10px;font-weight:600;color:#534AB7;letter-spacing:1px;text-transform:uppercase;font-family:Montserrat,sans-serif">Reunioes</div><div style="font-size:9px;color:#9ca3af;padding:1px 6px;background:white;border-radius:8px;border:0.5px solid #e5e7eb">'+meetings.length+'</div>';
       meetSec.appendChild(meetHdr);
-      // Timeline + cards
+      // Timeline + compact cards
       var meetBody=document.createElement('div');
-      meetBody.style.cssText='display:flex;gap:12px';
+      meetBody.style.cssText='display:flex;gap:10px';
       // Timeline column
       var timeline=document.createElement('div');
-      timeline.style.cssText='display:flex;flex-direction:column;align-items:center;width:40px;flex-shrink:0';
+      timeline.style.cssText='display:flex;flex-direction:column;align-items:center;width:36px;flex-shrink:0';
       // Cards column
       var meetCards=document.createElement('div');
       meetCards.style.cssText='flex:1;display:flex;flex-direction:column;gap:6px';
       meetings.forEach(function(ev,i){
-        // Time label
+        // Time + line row
+        var timeRow=document.createElement('div');
+        timeRow.style.cssText='display:flex;flex-direction:column;align-items:center';
         var timeLabel=document.createElement('div');
-        timeLabel.style.cssText='font-size:9px;color:#9ca3af;font-family:monospace;text-align:center';
+        timeLabel.style.cssText='font-size:8px;color:#9ca3af;font-family:monospace';
         timeLabel.textContent=ev.startTime||'';
-        timeline.appendChild(timeLabel);
-        // Connector line
+        timeRow.appendChild(timeLabel);
         if(i<meetings.length-1){
           var line=document.createElement('div');
-          line.style.cssText='flex:1;width:1.5px;background:#EEEDFE;margin:4px 0;min-height:20px';
-          timeline.appendChild(line);
+          line.style.cssText='flex:1;width:1.5px;background:#EEEDFE;margin:3px 0;min-height:16px';
+          timeRow.appendChild(line);
         }
-        // Card
-        meetCards.appendChild(wEvCard(ev,calId));
+        timeline.appendChild(timeRow);
+        // Compact meeting card
+        var col=ev.color||'#534AB7';
+        var tint=WC_COLOR_TINTS[col]||'#EEEDFE';
+        var iconHtml=ev.icon?getWcIconSvg(ev.icon,col).replace(/width="14"/g,'width="10"').replace(/height="14"/g,'height="10"'):'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="'+col+'" stroke-width="2.5" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>';
+        var card=document.createElement('div');
+        card.style.cssText='display:flex;align-items:stretch;border-radius:8px;overflow:hidden;border:0.5px solid #e5e7eb;cursor:pointer';
+        card.dataset.calid=calId;card.dataset.evid=ev.id;card.dataset.idate=ev._instanceDate||ev.date;
+        card.onclick=function(){openWEdit(this.dataset.calid,this.dataset.evid,this.dataset.idate);};
+        card.innerHTML='<div style="width:3px;background:'+col+';flex-shrink:0"></div>'
+          +'<div style="flex:1;background:white;padding:10px 12px;display:flex;align-items:center;gap:8px">'
+          +'<div style="width:20px;height:20px;border-radius:5px;background:'+tint+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'+iconHtml+'</div>'
+          +'<div style="flex:1;min-width:0">'
+          +'<div style="font-size:11px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+eh(ev.title)+'</div>'
+          +'<div style="font-size:9px;color:#9ca3af;font-family:monospace;margin-top:2px">'+(ev.startTime||'')+' - '+(ev.endTime||'')+(ev.client?' . '+eh(ev.client):'')+'</div>'
+          +'</div>'
+          +'</div>';
+        meetCards.appendChild(card);
       });
       meetBody.appendChild(timeline);
       meetBody.appendChild(meetCards);
