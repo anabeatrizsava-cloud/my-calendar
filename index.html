@@ -3282,7 +3282,7 @@ function showCalAutomationPanel(){
       crDiv.appendChild(crTop);
       var crDesc=document.createElement('div');
       crDesc.style.cssText='font-size:10px;color:'+(cr.enabled?'#6b7280':'#9ca3af')+';line-height:1.6';
-      var triggerDesc=cr.trigger==='time'?'As '+cr.triggerTime:'Quando tarefa '+cr.trigger;
+      var triggerDesc=cr.trigger==='time'?'As '+cr.triggerTime:cr.trigger==='all_tasks_today'?'Todas as tarefas do dia'+(cr.filterTitle?' com "'+cr.filterTitle+'"':''):cr.trigger==='not_done_eod'?'Tarefas nao concluidas no fim do dia':cr.trigger==='overdue'?'Tarefas com prazo vencido':cr.trigger==='deadline_near'?'Tarefas com prazo em '+cr.triggerDays+' dias':'Quando tarefa '+cr.trigger;
       var actionDesc=cr.action==='move_tomorrow'?'Mover pra amanha':cr.action==='move_date'?'Mover pra '+cr.actionDate:cr.action==='mark_done'?'Marcar como concluida':cr.action==='delete'?'Excluir tarefa':cr.action==='highlight_red'?'Destacar vermelho':cr.action==='highlight_amber'?'Destacar amber':cr.action;
       var filterDesc=cr.filterTag?' (tag: '+cr.filterTag+')':cr.filterTitle?' (titulo contem: '+cr.filterTitle+')':'';
       crDesc.textContent=triggerDesc+' -> '+actionDesc+filterDesc;
@@ -3313,10 +3313,10 @@ function createCustomCalRule(){
   var name=prompt('Nome da regra:');
   if(!name||!name.trim())return;
 
-  var triggerChoice=prompt('Gatilho:\n1. Horario especifico (ex: 18:00)\n2. Tarefa nao concluida no fim do dia\n3. Tarefa com prazo vencido\n4. Tarefa com prazo em X dias');
+  var triggerChoice=prompt('Gatilho:\n1. Horario especifico (ex: 18:00)\n2. Tarefa nao concluida no fim do dia\n3. Tarefa com prazo vencido\n4. Tarefa com prazo em X dias\\n5. Todas as tarefas do dia');
   if(!triggerChoice){showCalAutomationPanel();return;}
 
-  var trigger='',triggerTime='',triggerDays=0;
+  var trigger='',triggerTime='',triggerDays=0,filterTitle='';
   if(triggerChoice==='1'){
     triggerTime=prompt('Horario (HH:MM):','18:00');
     if(!triggerTime){showCalAutomationPanel();return;}
@@ -3330,6 +3330,11 @@ function createCustomCalRule(){
     if(!d){showCalAutomationPanel();return;}
     trigger='deadline_near';
     triggerDays=parseInt(d)||2;
+  } else if(triggerChoice==='5'){
+    trigger='all_tasks_today';
+    var taskName=prompt('Nome da tarefa (ou parte do nome):');
+    if(!taskName||!taskName.trim()){showToast('Nome obrigatorio para este gatilho.');showCalAutomationPanel();return;}
+    filterTitle=taskName.trim();
   } else {showToast('Opcao invalida.');showCalAutomationPanel();return;}
 
   var actionChoice=prompt('Acao:\n1. Mover pra amanha\n2. Mover pra data especifica\n3. Marcar como concluida\n4. Excluir tarefa\n5. Destacar vermelho\n6. Destacar amber');
@@ -3345,7 +3350,7 @@ function createCustomCalRule(){
   else {showToast('Opcao invalida.');showCalAutomationPanel();return;}
 
   var filterTag=prompt('Filtrar por tag (deixe vazio pra todas):');
-  var filterTitle=prompt('Filtrar por titulo contendo (deixe vazio pra todas):');
+  if(!filterTitle)filterTitle=prompt('Filtrar por titulo contendo (deixe vazio pra todas):');
 
   var rule={
     id:gid(),
@@ -3384,6 +3389,8 @@ function runCustomCalRules(){
       if(now.getHours()>=23)shouldRun=true;
     } else if(rule.trigger==='overdue'||rule.trigger==='deadline_near'){
       shouldRun=true; // Always check these
+    } else if(rule.trigger==='all_tasks_today'){
+      shouldRun=true; // Applies to all tasks of the day
     }
     if(!shouldRun)return;
 
@@ -3402,7 +3409,7 @@ function runCustomCalRules(){
 
       var evs=getWEvs(cal.id,todayStr);
       evs.forEach(function(ev){
-        if((ev.progress||'not-started')==='done')return;
+        if(rule.trigger!=='all_tasks_today'&&(ev.progress||'not-started')==='done')return;
 
         // Apply filters
         if(rule.filterTag&&(!ev.tags||ev.tags.indexOf(rule.filterTag)<0))return;
