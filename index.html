@@ -145,6 +145,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 .ec{cursor:pointer;transition:all .15s;position:relative;user-select:none;margin-bottom:0}
 .ec:hover{transform:translateX(2px)}
 .ec:hover .eab2{opacity:1}
+.ec:hover .ec-checkbox{opacity:1!important}
 .ec.done .ect{text-decoration:line-through}
 .ec.dragging{opacity:.4;cursor:grabbing}
 .ec.drag-over{outline:1.5px dashed var(--text);outline-offset:2px;border-radius:12px}
@@ -1279,7 +1280,7 @@ function ecHTML(ev){
         tg+sc+
       '</div>'+
       '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">'+
-        '<div class="ec-checkbox'+(ev.done?' done':'')+'" data-chk="'+ev.id+'" style="width:17px;height:17px;border-radius:4px;border:0.5px solid '+(ev.done?col:'#d8c8b8')+';background:'+(ev.done?col:'transparent')+';display:flex;align-items:center;justify-content:center;font-size:9px;color:white;cursor:pointer;flex-shrink:0">'+(ev.done?'✓':'')+'</div>'+
+        '<div class="ec-checkbox'+(ev.done?' done':'')+'" data-chk="'+ev.id+'" style="width:17px;height:17px;border-radius:4px;border:0.5px solid '+(ev.done?col:'#d8c8b8')+';background:'+(ev.done?col:'transparent')+';display:flex;align-items:center;justify-content:center;font-size:9px;color:white;cursor:pointer;flex-shrink:0;opacity:'+(ev.done?'1':'0')+';transition:opacity .15s">'+(ev.done?'✓':'')+'</div>'+
         '<div class="eca" style="display:flex;gap:3px;opacity:0;transition:opacity .1s">'+
           '<button class="eab2" data-dup="'+ev.id+'" title="Duplicar">⧉</button>'+
           '<button class="eab2 del" data-dl="'+ev.id+'" title="Excluir">✕</button>'+
@@ -1849,6 +1850,9 @@ function buildRPNotes(wrap){
   });
 }
 
+
+window._notesExpanded=false;
+function toggleNotesPanel(){window._notesExpanded=!window._notesExpanded;renderRightPanel();}
 function renderRightPanel(){
   const rp=document.getElementById('rightPanel');if(!rp)return;
   const ds=tds(cd);
@@ -1942,14 +1946,21 @@ function renderRightPanel(){
   }
   html+='</div>';
 
-  // notas — rendered as resizable cards
+  // notas — collapsed by default, expand on click
   html+='<div style="padding:14px 14px;flex:1;overflow-y:auto">';
-  html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
-  html+='<div style="font-size:9px;font-weight:600;color:#aaa89e;letter-spacing:1.2px;text-transform:uppercase;font-family:Montserrat,sans-serif">Notas</div>';
-  html+='<button onclick="addSticky()" style="font-size:10px;color:#1a1a1a;font-weight:500;background:none;border:none;cursor:pointer;font-family:Montserrat,sans-serif;letter-spacing:.2px">+ nova</button></div>';
+  html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;cursor:pointer" onclick="toggleNotesPanel()">';
+  html+='<div style="display:flex;align-items:center;gap:6px"><div style="font-size:9px;font-weight:600;color:#aaa89e;letter-spacing:1.2px;text-transform:uppercase;font-family:Montserrat,sans-serif">Notas</div>';
   const stickyList=window.stickies||[];
+  html+='<div style="font-size:9px;color:#c8c4be;font-family:Montserrat,sans-serif">('+stickyList.length+')</div></div>';
+  html+='<div style="display:flex;align-items:center;gap:8px"><button onclick="event.stopPropagation();addSticky()" style="font-size:10px;color:#1a1a1a;font-weight:500;background:none;border:none;cursor:pointer;font-family:Montserrat,sans-serif;letter-spacing:.2px">+ nova</button>';
+  html+='<svg width="10" height="10" viewBox="0 0 12 12" fill="none" style="transition:transform .2s;transform:rotate('+(window._notesExpanded?'180':'0')+'deg)"><path d="M2 4l4 4 4-4" stroke="#aaa89e" stroke-width="1.5" stroke-linecap="round"/></svg></div></div>';
   if(!stickyList.length){
-    html+='<div style="font-size:11px;color:#c8c4be;font-family:Montserrat,sans-serif;padding:6px 0">Nenhuma nota ainda.<br><span style=\'font-size:10px\'>Clique em + nova para adicionar.</span></div>';
+    html+='<div style="font-size:11px;color:#c8c4be;font-family:Montserrat,sans-serif;padding:6px 0">Nenhuma nota.<span style="font-size:10px"> Clique em + nova.</span></div>';
+  } else if(!window._notesExpanded){
+    // Collapsed: show first note preview
+    var firstNote=stickyList[0];
+    var previewText=(firstNote.text||'Nota vazia').substring(0,60);
+    html+='<div style="font-size:10px;color:#8a8680;font-family:Montserrat,sans-serif;padding:6px 0;cursor:pointer;border-left:2px solid '+(firstNote.color||'#fef3c7')+';padding-left:8px" onclick="window._notesExpanded=true;renderRightPanel()">'+eh(previewText)+(previewText.length>=60?'...':'')+'</div>';
   } else {
     const SCLRS2=['#fef3c7','#fce7f3','#e0f2fe','#dcfce7','#f3e8ff','#fff7ed'];
     stickyList.forEach((s,i)=>{
