@@ -2289,6 +2289,20 @@ function prioIcon(p){
     +'</div>';
 }
 
+function toggleMeetDone(calId,evId,idate){
+  var list=window.workEvs[calId]||[];
+  var ev=list.find(function(e){return e.id===evId;});
+  if(!ev)return;
+  if(ev.repeat&&ev.repeat!=='none'&&idate){
+    if(!ev.progressExceptions)ev.progressExceptions={};
+    var cur=ev.progressExceptions[idate]||ev.progress||'not-started';
+    ev.progressExceptions[idate]=cur==='done'?'not-started':'done';
+  } else {
+    ev.progress=(ev.progress==='done')?'not-started':'done';
+  }
+  fbSaveWorkEvs(calId);
+  renderWorkDay(calId);
+}
 function cycleWProg(calId,evId,idate,el){
   var list=window.workEvs[calId]||[];
   var ev=list.find(function(e){return e.id===evId;});
@@ -2566,14 +2580,23 @@ function renderWorkDay(calId){
         card.style.cssText='display:flex;align-items:stretch;border-radius:8px;overflow:hidden;border:0.5px solid #e5e7eb;cursor:pointer';
         card.dataset.calid=calId;card.dataset.evid=ev.id;card.dataset.idate=ev._instanceDate||ev.date;
         card.onclick=function(){openWEdit(this.dataset.calid,this.dataset.evid,this.dataset.idate);};
-        card.innerHTML='<div style="width:3px;background:'+col+';flex-shrink:0"></div>'
+        var mp=ev.progress||'not-started';
+        var isDoneMeet=mp==='done';
+        var meetStatusHtml='';
+        if(isDoneMeet) meetStatusHtml='<div class="meet-prog" data-calid="'+calId+'" data-evid="'+ev.id+'" data-idate="'+(ev._instanceDate||ev.date)+'" style="width:16px;height:16px;border-radius:50%;background:#111827;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center" title="concluida"><svg width="8" height="6" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>';
+        else meetStatusHtml='<div class="meet-prog" data-calid="'+calId+'" data-evid="'+ev.id+'" data-idate="'+(ev._instanceDate||ev.date)+'" style="width:16px;height:16px;border-radius:50%;border:1.5px solid #d1d5db;flex-shrink:0;cursor:pointer" title="pendente"></div>';
+        card.innerHTML='<div style="width:3px;background:'+(isDoneMeet?'#d1d5db':col)+';flex-shrink:0"></div>'
           +'<div style="flex:1;background:white;padding:10px 12px;display:flex;align-items:center;gap:8px">'
           +'<div style="width:20px;height:20px;border-radius:5px;background:'+tint+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'+iconHtml+'</div>'
           +'<div style="flex:1;min-width:0">'
-          +'<div style="font-size:11px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+eh(ev.title)+'</div>'
+          +'<div style="font-size:11px;font-weight:500;color:'+(isDoneMeet?'#9ca3af':'#111827')+';font-family:Montserrat,sans-serif'+(isDoneMeet?';text-decoration:line-through':'')+'">'+eh(ev.title)+'</div>'
           +'<div style="font-size:9px;color:#9ca3af;font-family:monospace;margin-top:2px">'+(ev.startTime||'')+' - '+(ev.endTime||'')+(ev.client?' . '+eh(ev.client):'')+'</div>'
           +'</div>'
+          +meetStatusHtml
           +'</div>';
+        // Bind status click
+        var progBtn=card.querySelector('.meet-prog');
+        if(progBtn){progBtn.onclick=function(e){e.stopPropagation();toggleMeetDone(this.dataset.calid,this.dataset.evid,this.dataset.idate);};}
         meetCards.appendChild(card);
       });
       meetBody.appendChild(timeline);
