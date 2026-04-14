@@ -524,6 +524,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
     </div>
     <button class="hide-done-btn" id="hideDoneBtn" onclick="toggleHideDone()">👁 Mostrar concluídas</button>
     <button class="notif-btn" onclick="requestPushPermission()" title="Notificações">🔔</button>
+    <button class="notif-btn" onclick="showCalAutomationPanel()" title="Automacoes"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
     <button class="bulk-sel-btn" id="bulkBtn" onclick="toggleBulkMode()">⊡ Sel.</button>
     <button class="addb" id="addBtn" onclick="handleAdd()">
       <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -875,7 +876,7 @@ const fapp=initializeApp(FC);const auth=getAuth(fapp);const db=getFirestore(fapp
 window.auth=auth;window.db=db;window.firestore={collection,doc,setDoc,deleteDoc,onSnapshot,updateDoc};
 let eu=null,lu=null,tu=null,su=null;
 window.signInWithGoogle=async()=>{try{await signInWithPopup(auth,prov);}catch(e){if(e.code!=='auth/popup-closed-by-user')showToast('Erro: '+e.message);}};
-window.doSignOut=async()=>{if(!confirm('Sair?'))return;[eu,lu,tu,su].forEach(u=>u&&u());await fbSO(auth);document.getElementById('mainApp').style.display='none';document.getElementById('loginScreen').style.display='flex';window.evs=[];window.lists=[];window.stickies=[];};
+window.doSignOut=async()=>{if(!confirm('Sair?'))return;[eu,lu,tu,su].forEach(u=>u&&u());await fbSO(auth);document.getElementById('mainApp').style.display='none';document.getElementById('loginScreen').style.display='flex';window.evs=[];window.lists=[];window.stickies=[];window.calAutoSettings={eodReview:true,weeklyReview:true,movePending:false,highlightDeadline:true,highlightOverdue:true,autoComplete:false,templateRecurring:false};};
 function setSS(s){const dot=document.getElementById('syncDot');if(!dot)return;dot.className='sync-dot'+(s==='syncing'?' syncing':s==='err'?' offline':'');const lbl=document.getElementById('syncLabel');if(lbl)lbl.textContent=s==='syncing'?'Sincronizando...':s==='err'?'Erro':'Sincronizado';}
 window.fbSaveEv=async(ev)=>{if(!auth.currentUser)return;if(!window._pendingSaves)window._pendingSaves=new Set();window._pendingSaves.add(ev.id);setSS('syncing');try{const{id,...d}=ev;Object.keys(d).forEach(k=>{if(d[k]===undefined)delete d[k];});await setDoc(doc(db,'users',auth.currentUser.uid,'events',id),d);if(window._pendingSaves)window._pendingSaves.delete(ev.id);setSS('ok');}catch(e){setSS('err');}};
 window.fbDelEv=async(id)=>{if(!auth.currentUser)return;setSS('syncing');try{await deleteDoc(doc(db,'users',auth.currentUser.uid,'events',id));setSS('ok');}catch(e){setSS('err');}};
@@ -888,10 +889,11 @@ onAuthStateChanged(auth,user=>{
     document.getElementById('loginScreen').style.display='none';document.getElementById('mainApp').style.display='flex';
     const _uael=document.getElementById('userAvatar');if(_uael)_uael.src=user.photoURL||'';const _un=document.getElementById('userName');if(_un)_un.textContent=user.displayName||user.email;
     const uid=user.uid;setSS('syncing');
-    if(eu)eu();eu=onSnapshot(collection(db,'users',uid,'events'),snap=>{const fresh=snap.docs.map(d=>({id:d.id,...d.data()}));if(window.evs&&window.evs.length){  fresh.forEach(fe=>{    const local=window.evs.find(e=>e.id===fe.id);    if(local&&window._pendingSaves&&window._pendingSaves.has(fe.id)){      fe.done=local.done;      fe.doneExceptions=local.doneExceptions;      fe.deletedExceptions=local.deletedExceptions;    }  });}window.evs=fresh;renderView();renderMC();renderSBTags();updProgress();setSS('ok');});
+    if(eu)eu();eu=onSnapshot(collection(db,'users',uid,'events'),snap=>{const fresh=snap.docs.map(d=>({id:d.id,...d.data()}));if(window.evs&&window.evs.length){  fresh.forEach(fe=>{    const local=window.evs.find(e=>e.id===fe.id);    if(local&&window._pendingSaves&&window._pendingSaves.has(fe.id)){      fe.done=local.done;      fe.doneExceptions=local.doneExceptions;      fe.deletedExceptions=local.deletedExceptions;    }  });}window.evs=fresh;renderView();renderMC();setTimeout(checkWeeklyReview,1000);renderSBTags();updProgress();setSS('ok');});
     if(lu)lu();lu=onSnapshot(collection(db,'users',uid,'lists'),snap=>{window.lists=snap.docs.map(d=>({id:d.id,...d.data()}));if(window.view==='planner')renderView();});
     if(tu)tu();tu=onSnapshot(doc(db,'users',uid,'config','tags'),snap=>{if(snap.exists()){const d=snap.data();window.tags=d.tags||dTags();window.tclr=d.tclr||dTclr();renderSBTags();}});
     if(su)su();su=onSnapshot(doc(db,'users',uid,'config','stickies'),snap=>{if(snap.exists()){window.stickies=snap.data().stickies||[];}else{window.stickies=[];}if(window.view==='sticky')renderView();else renderStickies();});
+    onSnapshot(doc(db,'users',uid,'config','calAutoSettings'),snap=>{if(snap.exists())window.calAutoSettings=Object.assign(window.calAutoSettings,snap.data());});
     if(!window.appInited){window.appInited=true;window._firebaseReady=true;if(typeof initFinanceIntegration==='function')initFinanceIntegration();if(window._domReady)initApp();}
   }else{document.getElementById('loginScreen').style.display='flex';document.getElementById('mainApp').style.display='none';}
 });
@@ -1139,6 +1141,8 @@ function initApp(){mkManifest();buildMDGrid();renderMC();renderView();updTop();r
       renderView();renderRightPanel();
     }
     checkEndOfDayReview();
+    checkWeeklyReview();
+    runCalAutomations();
   },60000);if('Notification' in window && Notification.permission==='granted'){pushEnabled=true;registerSW();}setTimeout(checkEndOfDayReview,3000);}
 function mkManifest(){const m={name:'My Calendar',short_name:'My Calendar',start_url:'./',display:'standalone',background_color:'#2a2320',theme_color:'#2a2320',icons:[{src:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230e0f11'/><text y='.9em' font-size='80'>📅</text></svg>",sizes:'192x192',type:'image/svg+xml'}]};const b=new Blob([JSON.stringify(m)],{type:'application/json'});document.getElementById('manifestLink').href=URL.createObjectURL(b);}
 function handleAdd(){if(view==='planner')openNewList();else if(view==='sticky')addSticky();else openNew();}
@@ -2114,6 +2118,7 @@ function fbLoadWorkData(){
     });
     window.firestore.onSnapshot(window.firestore.collection(window.db,'users',uid,'workEvs'),function(snap){
       snap.docs.forEach(function(d){window.workEvs[d.id]=d.data().events||[];});
+      setTimeout(checkEndOfDayReview,500);
     });
     window.firestore.onSnapshot(window.firestore.collection(window.db,'users',uid,'kanban'),function(snap){
       snap.docs.forEach(function(d){var data=d.data();window.kanbanCols[d.id]=data.cols||[];window.kanbanCards[d.id]=data.cards||[];window.kanbanRules[d.id]=data.rules||[];});
@@ -2352,7 +2357,18 @@ function wEvCard(ev,calId){
   if(ev.deadline){
     var dlParts=ev.deadline.split('-');
     var dlLabel=dlParts[2]+'/'+dlParts[1];
-    deadlinePill='<div style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:#FAEEDA;border:0.5px solid #EF9F27;border-radius:10px;font-size:9px;color:#854F0B;font-weight:500"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'+dlLabel+'</div>';
+    var dlDate=new Date(ev.deadline+'T00:00:00');
+    var today2=new Date();today2.setHours(0,0,0,0);
+    var diffDays=Math.floor((dlDate-today2)/86400000);
+    var isOverdue=diffDays<0&&p!=='done';
+    var isNearDeadline=diffDays>=0&&diffDays<=2&&p!=='done';
+    if(isOverdue&&window.calAutoSettings.highlightOverdue){
+      deadlinePill='<div style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:#FCEBEB;border:0.5px solid #A32D2D;border-radius:10px;font-size:9px;color:#A32D2D;font-weight:500"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#A32D2D" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'+dlLabel+' atrasada</div>';
+    } else if(isNearDeadline&&window.calAutoSettings.highlightDeadline){
+      deadlinePill='<div style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:#FAEEDA;border:1px solid #EF9F27;border-radius:10px;font-size:9px;color:#854F0B;font-weight:600"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'+dlLabel+'</div>';
+    } else {
+      deadlinePill='<div style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:#FAEEDA;border:0.5px solid #EF9F27;border-radius:10px;font-size:9px;color:#854F0B;font-weight:500"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'+dlLabel+'</div>';
+    }
   }
   // Time + deadline row
   // Status circle (top-right)
@@ -3139,14 +3155,360 @@ function editKanbanCard(calId,cardId){
 
 
 
+
+
+// ── CALENDAR AUTOMATION PANEL ────────────────────────────
+function saveCalAutoSettings(){
+  if(!window.auth||!window.auth.currentUser)return;
+  try{
+    var uid=window.auth.currentUser.uid;
+    window.firestore.setDoc(window.firestore.doc(window.db,'users',uid,'config','calAutoSettings'),window.calAutoSettings);
+  }catch(e){}
+}
+
+function showCalAutomationPanel(){
+  var existing=document.getElementById('calAutoPanel');
+  if(existing)existing.remove();
+  var s=window.calAutoSettings;
+
+  var overlay=document.createElement('div');
+  overlay.className='mo open';
+  overlay.id='calAutoPanel';
+  overlay.onclick=function(e){if(e.target===this)this.remove();};
+
+  var modal=document.createElement('div');
+  modal.className='modal';
+  modal.style.cssText='width:500px;max-height:80vh;overflow-y:auto;font-family:Montserrat,sans-serif';
+  modal.onclick=function(e){e.stopPropagation();};
+
+  var activeCount=Object.values(s).filter(function(v){return v===true;}).length;
+
+  var hdr=document.createElement('div');
+  hdr.style.cssText='padding:16px 20px;border-bottom:0.5px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between';
+  hdr.innerHTML='<div><div style="font-size:14px;font-weight:500;color:#111827">Automacoes do calendario</div><div style="font-size:10px;color:#9ca3af;margin-top:2px">7 regras . '+activeCount+' ativas</div></div><div id="capClose" style="font-size:14px;color:#9ca3af;cursor:pointer;padding:2px 6px">x</div>';
+  modal.appendChild(hdr);
+
+  var body=document.createElement('div');
+  body.style.cssText='padding:16px 20px';
+
+  var rules=[
+    {key:'eodReview',name:'Revisao de fim de dia',desc:'As 18:00 mostra modal com tarefas pendentes do Work Calendar',native:true},
+    {key:'weeklyReview',name:'Resumo semanal',desc:'Toda segunda-feira de manha mostra metricas da semana anterior',native:true},
+    {key:'movePending',name:'Mover pendentes pra amanha',desc:'Tarefas nao concluidas sao movidas automaticamente para o dia seguinte as 23:59'},
+    {key:'highlightDeadline',name:'Destacar prazo proximo',desc:'Tarefas com deadline nos proximos 2 dias ganham borda amber'},
+    {key:'highlightOverdue',name:'Destacar tarefas atrasadas',desc:'Tarefas com deadline vencido ganham borda vermelha e badge "atrasada"'},
+    {key:'autoComplete',name:'Auto-concluir apos horario',desc:'Marca tarefa como concluida 30 min apos o horario final'},
+    {key:'templateRecurring',name:'Template recorrente',desc:'Toda segunda criar tarefas a partir de um template salvo'}
+  ];
+
+  // Native label
+  var natLabel=document.createElement('div');
+  natLabel.style.cssText='font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px';
+  natLabel.textContent='Regras automaticas';
+  body.appendChild(natLabel);
+
+  rules.forEach(function(rule,ri){
+    if(ri===2){
+      var confLabel=document.createElement('div');
+      confLabel.style.cssText='font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1px;text-transform:uppercase;margin:16px 0 8px';
+      confLabel.textContent='Regras configuraveis';
+      body.appendChild(confLabel);
+    }
+    var enabled=!!s[rule.key];
+    var div=document.createElement('div');
+    div.style.cssText='padding:12px;background:#f7f8fa;border-radius:8px;border:0.5px solid #e5e7eb;margin-bottom:8px'+(enabled?'':';opacity:.5');
+
+    var top=document.createElement('div');
+    top.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:6px';
+
+    var nameDiv=document.createElement('div');
+    nameDiv.style.cssText='display:flex;align-items:center;gap:6px';
+    nameDiv.innerHTML='<div style="width:6px;height:6px;border-radius:50%;background:'+(enabled?'#0F6E56':'#d1d5db')+'"></div><div style="font-size:11px;font-weight:500;color:'+(enabled?'#111827':'#9ca3af')+'">'+rule.name+'</div>'+(rule.native?'<div style="font-size:8px;padding:2px 8px;border-radius:10px;background:#E1F5EE;color:#085041;font-weight:500">nativa</div>':'');
+    top.appendChild(nameDiv);
+
+    var toggle=document.createElement('div');
+    toggle.style.cssText='width:32px;height:18px;border-radius:9px;background:'+(enabled?'#0F6E56':'#d1d5db')+';position:relative;cursor:pointer';
+    toggle.innerHTML='<div style="width:14px;height:14px;border-radius:50%;background:white;position:absolute;'+(enabled?'right':'left')+':2px;top:2px"></div>';
+    toggle.onclick=(function(key){return function(){
+      window.calAutoSettings[key]=!window.calAutoSettings[key];
+      saveCalAutoSettings();
+      document.getElementById('calAutoPanel').remove();
+      showCalAutomationPanel();
+    };})(rule.key);
+    top.appendChild(toggle);
+
+    div.appendChild(top);
+
+    var desc=document.createElement('div');
+    desc.style.cssText='font-size:10px;color:'+(enabled?'#6b7280':'#9ca3af')+';line-height:1.6';
+    desc.textContent=rule.desc;
+    div.appendChild(desc);
+
+    body.appendChild(div);
+  });
+
+  modal.appendChild(body);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+  overlay.querySelector('#capClose').onclick=function(){overlay.remove();};
+}
+
+// ── AUTOMATION RUNNERS ───────────────────────────────────
+
+function runCalAutomations(){
+  var s=window.calAutoSettings;
+  if(s.highlightDeadline)runHighlightDeadline();
+  if(s.highlightOverdue)runHighlightOverdue();
+  if(s.autoComplete)runAutoComplete();
+  if(s.movePending)runMovePending();
+}
+
+function runHighlightDeadline(){
+  // Applied visually in wEvCard - check deadline within 2 days
+  // This is handled in the card rendering, no batch action needed
+}
+
+function runHighlightOverdue(){
+  // Applied visually in wEvCard - check deadline < today
+  // Handled in card rendering
+}
+
+function runAutoComplete(){
+  var now=new Date();
+  var todayStr=tds(now);
+  var nowMinutes=now.getHours()*60+now.getMinutes();
+  (window.workCals||[]).forEach(function(cal){
+    var list=window.workEvs[cal.id]||[];
+    var changed=false;
+    list.forEach(function(ev){
+      if(ev.progress==='done')return;
+      if(!ev.endTime||ev.allDay)return;
+      if(ev.date!==todayStr)return;
+      var parts=ev.endTime.split(':');
+      var endMin=parseInt(parts[0])*60+parseInt(parts[1]);
+      if(nowMinutes>=endMin+30){
+        ev.progress='done';
+        changed=true;
+      }
+    });
+    if(changed)fbSaveWorkEvs(cal.id);
+  });
+}
+
+function runMovePending(){
+  var now=new Date();
+  if(now.getHours()<23)return;
+  var todayStr=tds(now);
+  var moveKey='_movedPending_'+todayStr;
+  if(window[moveKey])return;
+  window[moveKey]=true;
+  var tomorrow=new Date(now);
+  tomorrow.setDate(tomorrow.getDate()+1);
+  var tomorrowStr=tds(tomorrow);
+  (window.workCals||[]).forEach(function(cal){
+    var list=window.workEvs[cal.id]||[];
+    var changed=false;
+    var toAdd=[];
+    list.forEach(function(ev){
+      if(ev.date!==todayStr)return;
+      if((ev.progress||'not-started')==='done')return;
+      if(ev.repeat&&ev.repeat!=='none'){
+        if(!ev.progressExceptions)ev.progressExceptions={};
+        ev.progressExceptions[todayStr]='done';
+        var copy=JSON.parse(JSON.stringify(ev));
+        copy.id=gid();copy.date=tomorrowStr;copy.repeat='none';
+        copy.repeatDays=[];copy.repeatMonthDays=[];
+        copy.progress='not-started';
+        delete copy.progressExceptions;delete copy._instanceDate;
+        toAdd.push(copy);
+      } else {
+        ev.date=tomorrowStr;
+      }
+      changed=true;
+    });
+    if(toAdd.length)list.push.apply(list,toAdd);
+    if(changed){window.workEvs[cal.id]=list;fbSaveWorkEvs(cal.id);}
+  });
+}
+
+// ── RESUMO SEMANAL (segunda) ─────────────────────────────
+window._weeklyReviewShown='';
+
+function checkWeeklyReview(){
+  if(!window.calAutoSettings.weeklyReview)return;
+  var now=new Date();
+  if(now.getDay()!==1)return; // Only on Monday
+  if(now.getHours()<6||now.getHours()>=12)return; // Morning only (6h-12h)
+  var weekKey=tds(now);
+  if(window._weeklyReviewShown===weekKey)return;
+  if(!window.evs||!window.evs.length)return;
+  window._weeklyReviewShown=weekKey;
+  showWeeklyReview();
+}
+
+function showWeeklyReview(){
+  var existing=document.getElementById('weeklyReviewModal');
+  if(existing)existing.remove();
+
+  var today=new Date();
+  // Last week: Monday to Sunday
+  var lastMon=new Date(today);
+  lastMon.setDate(today.getDate()-7);
+  var lastSun=new Date(lastMon);
+  lastSun.setDate(lastMon.getDate()+6);
+
+  // This week: Monday to Friday
+  var thisMon=new Date(today);
+  var thisFri=new Date(today);
+  thisFri.setDate(today.getDate()+4);
+
+  var dayNames=['seg','ter','qua','qui','sex'];
+  var mn=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+  // Collect last week stats from main calendar
+  var totalByDay=[];
+  var doneByDay=[];
+  var totalDone=0;
+  var totalAll=0;
+  for(var i=0;i<5;i++){
+    var d=new Date(lastMon);
+    d.setDate(lastMon.getDate()+i);
+    var ds=tds(d);
+    var dayEvs=getEvs(ds);
+    var dayDone=dayEvs.filter(function(e){return e.done;}).length;
+    totalByDay.push(dayEvs.length);
+    doneByDay.push(dayDone);
+    totalAll+=dayEvs.length;
+    totalDone+=dayDone;
+  }
+  var pendentes=totalAll-totalDone;
+  var taxa=totalAll>0?Math.round((totalDone/totalAll)*100):0;
+
+  // This week preview from main calendar
+  var thisWeekEvs=[];
+  var thisWeekWithDeadline=[];
+  var thisWeekTotal=0;
+  for(var i=0;i<5;i++){
+    var d=new Date(thisMon);
+    d.setDate(thisMon.getDate()+i);
+    var ds=tds(d);
+    var dayEvs=getEvs(ds);
+    thisWeekTotal+=dayEvs.length;
+    dayEvs.forEach(function(ev){
+      if(ev.deadline){
+        thisWeekWithDeadline.push({title:ev.title||'Sem titulo',deadline:ev.deadline});
+      }
+    });
+  }
+
+  // Build modal
+  var overlay=document.createElement('div');
+  overlay.className='mo open';
+  overlay.id='weeklyReviewModal';
+  overlay.onclick=function(e){if(e.target===this)this.remove();};
+
+  var modal=document.createElement('div');
+  modal.className='modal';
+  modal.style.cssText='width:440px;max-height:80vh;overflow-y:auto;font-family:Montserrat,sans-serif';
+  modal.onclick=function(e){e.stopPropagation();};
+
+  // Header
+  var hdr=document.createElement('div');
+  hdr.style.cssText='padding:16px 20px;border-bottom:0.5px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between';
+  var ddMon=lastMon.getDate().toString().padStart(2,'0')+'/'+String(lastMon.getMonth()+1).padStart(2,'0');
+  var ddSun=lastSun.getDate().toString().padStart(2,'0')+'/'+String(lastSun.getMonth()+1).padStart(2,'0');
+  hdr.innerHTML='<div><div style="font-size:14px;font-weight:500;color:#111827">Resumo semanal</div><div style="font-size:10px;color:#9ca3af;margin-top:2px">Semana '+ddMon+' - '+ddSun+'</div></div><div id="wrClose" style="font-size:14px;color:#9ca3af;cursor:pointer;padding:2px 4px">x</div>';
+  modal.appendChild(hdr);
+
+  var body=document.createElement('div');
+  body.style.cssText='padding:16px 20px';
+
+  // Metric cards
+  var metrics=document.createElement('div');
+  metrics.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px';
+  metrics.innerHTML='<div style="background:#f7f8fa;border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:500;color:#0F6E56">'+totalDone+'</div><div style="font-size:9px;color:#9ca3af;margin-top:2px">concluidas</div></div>'
+    +'<div style="background:#f7f8fa;border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:500;color:#A32D2D">'+pendentes+'</div><div style="font-size:9px;color:#9ca3af;margin-top:2px">pendentes</div></div>'
+    +'<div style="background:#f7f8fa;border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:500;color:#111827">'+taxa+'%</div><div style="font-size:9px;color:#9ca3af;margin-top:2px">taxa conclusao</div></div>';
+  body.appendChild(metrics);
+
+  // Bar chart
+  var chartDiv=document.createElement('div');
+  chartDiv.style.cssText='margin-bottom:16px';
+  var chartLabel=document.createElement('div');
+  chartLabel.style.cssText='font-size:10px;font-weight:500;color:#6b7280;margin-bottom:8px';
+  chartLabel.textContent='Distribuicao por dia';
+  chartDiv.appendChild(chartLabel);
+
+  var maxEvs=Math.max.apply(null,totalByDay.concat([1]));
+  var bars=document.createElement('div');
+  bars.style.cssText='display:flex;gap:4px;align-items:flex-end;height:60px';
+  for(var i=0;i<5;i++){
+    var barH=Math.round((totalByDay[i]/maxEvs)*50)+5;
+    var doneH=totalByDay[i]>0?Math.round((doneByDay[i]/totalByDay[i])*barH):0;
+    var bar=document.createElement('div');
+    bar.style.cssText='flex:1;display:flex;flex-direction:column;align-items:center;gap:2px';
+    bar.innerHTML='<div style="width:100%;border-radius:3px 3px 0 0;height:'+barH+'px;background:#0F6E56;position:relative"><div style="position:absolute;bottom:0;width:100%;height:'+doneH+'px;background:#0F6E56;border-radius:0 0 3px 3px"></div></div><div style="font-size:8px;color:#9ca3af">'+dayNames[i]+'</div>';
+    bars.appendChild(bar);
+  }
+  chartDiv.appendChild(bars);
+  body.appendChild(chartDiv);
+
+  // This week preview
+  var previewDiv=document.createElement('div');
+  previewDiv.style.cssText='padding-top:12px;border-top:0.5px solid #e5e7eb';
+  var ddThisMon=thisMon.getDate().toString().padStart(2,'0')+'/'+String(thisMon.getMonth()+1).padStart(2,'0');
+  var ddThisFri=thisFri.getDate().toString().padStart(2,'0')+'/'+String(thisFri.getMonth()+1).padStart(2,'0');
+  var previewHdr=document.createElement('div');
+  previewHdr.style.cssText='font-size:10px;font-weight:500;color:#6b7280;margin-bottom:8px';
+  previewHdr.textContent='Esta semana ('+ddThisMon+' - '+ddThisFri+')';
+  previewDiv.appendChild(previewHdr);
+
+  var summary=document.createElement('div');
+  summary.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:8px';
+  summary.innerHTML='<div style="font-size:9px;color:#9ca3af">'+thisWeekTotal+' tarefas agendadas</div>'
+    +(thisWeekWithDeadline.length?'<div style="width:3px;height:3px;border-radius:50%;background:#d1d5db"></div><div style="font-size:9px;color:#A32D2D;font-weight:500">'+thisWeekWithDeadline.length+' com prazo</div>':'');
+  previewDiv.appendChild(summary);
+
+  if(thisWeekWithDeadline.length){
+    var deadlineList=document.createElement('div');
+    deadlineList.style.cssText='display:flex;flex-direction:column;gap:4px';
+    thisWeekWithDeadline.slice(0,5).forEach(function(item){
+      var dp=item.deadline.split('-');
+      var dlLabel=dp[2]+'/'+dp[1];
+      var row=document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:6px;font-size:10px;color:#6b7280';
+      row.innerHTML='<div style="display:inline-flex;align-items:center;gap:2px;padding:1px 5px;background:#FAEEDA;border-radius:6px;font-size:8px;color:#854F0B;font-weight:500"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="3" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'+dlLabel+'</div>'+eh(item.title);
+      deadlineList.appendChild(row);
+    });
+    previewDiv.appendChild(deadlineList);
+  }
+
+  body.appendChild(previewDiv);
+
+  // Close button
+  var footer=document.createElement('div');
+  footer.style.cssText='margin-top:14px';
+  footer.innerHTML='<div id="wrCloseBtn" style="padding:6px 14px;background:#f7f8fa;color:#6b7280;border-radius:8px;font-size:10px;cursor:pointer;border:0.5px solid #e5e7eb;text-align:center">Fechar</div>';
+  body.appendChild(footer);
+
+  modal.appendChild(body);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#wrClose').onclick=function(){overlay.remove();};
+  overlay.querySelector('#wrCloseBtn').onclick=function(){overlay.remove();};
+}
+
 // ── REVISAO FIM DE DIA ──────────────────────────────────
 window._endOfDayShownDate='';
 
 function checkEndOfDayReview(){
+  if(!window.calAutoSettings.eodReview)return;
   var now=new Date();
   if(now.getHours()<18)return;
   var todayStr=tds(now);
   if(window._endOfDayShownDate===todayStr)return;
+  if(!window.workCals||!window.workCals.length)return;
   // Collect pending events from My Calendar
   var allEvs=getEvs(todayStr);
   var pending=[];
