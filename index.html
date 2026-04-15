@@ -4868,6 +4868,8 @@ function renderStudyView(){
 
   if(_studyTab==='vocab'){
     renderVocabList(main);
+  } else if(_studyTab==='flashcards'){
+    renderFlashcards(main);
   } else {
     renderNotesList(main);
   }
@@ -5168,6 +5170,121 @@ function openPronunModal(item){
   fbSaveStudy();renderStudyView();showToast('Regra salva!');
 }
 
+
+
+// ── FLASHCARDS ───────────────────────────────────────────
+window._fcIndex=0;window._fcRevealed=false;window._fcDeck=[];window._fcCatFilter='';
+
+function buildFlashcardDeck(){
+  var list=(window.studyVocab||[]).slice();
+  if(window._fcCatFilter)list=list.filter(function(v){return v.category===window._fcCatFilter;});
+  list.sort(function(a,b){
+    var da=a.fcDifficulty||0,db=b.fcDifficulty||0;
+    if(da!==db)return db-da;
+    return Math.random()-0.5;
+  });
+  return list;
+}
+
+function renderFlashcards(parent){
+  var list=window.studyVocab||[];
+  if(!list.length){
+    var empty=document.createElement('div');
+    empty.style.cssText='text-align:center;color:#9ca3af;padding:40px 0;font-size:12px;font-family:Montserrat,sans-serif';
+    empty.textContent='Adicione palavras no Vocabulario primeiro.';
+    parent.appendChild(empty);
+    return;
+  }
+  // Category filter
+  var cats=[];list.forEach(function(v){if(v.category&&cats.indexOf(v.category)<0)cats.push(v.category);});
+  if(cats.length){
+    var fw=document.createElement('div');fw.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px';
+    var allP=document.createElement('div');
+    allP.style.cssText='padding:4px 12px;border-radius:16px;font-size:9px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;border:0.5px solid '+(window._fcCatFilter?'#d1d5db':'#111827')+';background:'+(window._fcCatFilter?'transparent':'#111827')+';color:'+(window._fcCatFilter?'#6b7280':'white');
+    allP.textContent='Todas ('+list.length+')';
+    allP.onclick=function(){window._fcCatFilter='';window._fcIndex=0;window._fcRevealed=false;window._fcDeck=buildFlashcardDeck();renderStudyView();};
+    fw.appendChild(allP);
+    cats.forEach(function(c){
+      var cnt=list.filter(function(v){return v.category===c;}).length;
+      var p=document.createElement('div');
+      var act=window._fcCatFilter===c;
+      p.style.cssText='padding:4px 12px;border-radius:16px;font-size:9px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;border:0.5px solid '+(act?'#111827':'#d1d5db')+';background:'+(act?'#111827':'transparent')+';color:'+(act?'white':'#6b7280');
+      p.textContent=c+' ('+cnt+')';
+      p.onclick=(function(cat){return function(){window._fcCatFilter=cat;window._fcIndex=0;window._fcRevealed=false;window._fcDeck=buildFlashcardDeck();renderStudyView();};})(c);
+      fw.appendChild(p);
+    });
+    parent.appendChild(fw);
+  }
+
+  if(!window._fcDeck.length)window._fcDeck=buildFlashcardDeck();
+  var deck=window._fcDeck;
+  if(!deck.length){
+    var emptyC=document.createElement('div');
+    emptyC.style.cssText='text-align:center;color:#9ca3af;padding:40px 0;font-size:12px;font-family:Montserrat,sans-serif';
+    emptyC.textContent='Nenhuma palavra nesta categoria.';
+    parent.appendChild(emptyC);
+    return;
+  }
+  var idx=window._fcIndex%deck.length;
+  var card=deck[idx];
+
+  // Progress bar
+  var progWrap=document.createElement('div');
+  progWrap.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:14px';
+  progWrap.innerHTML='<div style="font-size:9px;color:#9ca3af;font-family:Montserrat,sans-serif">'+(idx+1)+' de '+deck.length+'</div>'
+    +'<div style="font-size:9px;color:#6b7280;cursor:pointer;font-family:Montserrat,sans-serif" onclick="window._fcDeck=buildFlashcardDeck();window._fcIndex=0;window._fcRevealed=false;renderStudyView();">Embaralhar</div>';
+  parent.appendChild(progWrap);
+  var progBar=document.createElement('div');
+  progBar.style.cssText='height:3px;background:#e5e7eb;border-radius:2px;overflow:hidden;margin-bottom:20px';
+  progBar.innerHTML='<div style="width:'+Math.round((idx+1)/deck.length*100)+'%;height:100%;background:#111827;border-radius:2px;transition:width .3s"></div>';
+  parent.appendChild(progBar);
+
+  // Flashcard
+  var fc=document.createElement('div');
+  fc.style.cssText='background:white;border:0.5px solid #e5e7eb;border-radius:16px;padding:36px 24px;text-align:center;min-height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:box-shadow .2s';
+  fc.onmouseenter=function(){this.style.boxShadow='0 4px 16px rgba(0,0,0,.06)';};
+  fc.onmouseleave=function(){this.style.boxShadow='none';};
+  fc.onclick=function(){window._fcRevealed=!window._fcRevealed;renderStudyView();};
+
+  if(!window._fcRevealed){
+    fc.innerHTML='<div style="font-size:28px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif;margin-bottom:8px">'+eh(card.word)+'</div>'
+      +(card.pronunciation?'<div style="font-size:13px;color:#7a9bae;font-family:Montserrat,sans-serif">/'+eh(card.pronunciation)+'/</div>':'')
+      +(card.category?'<div style="font-size:9px;color:#d1d5db;font-family:Montserrat,sans-serif;margin-top:12px">'+eh(card.category)+'</div>':'')
+      +'<div style="font-size:10px;color:#d1d5db;margin-top:20px;font-family:Montserrat,sans-serif">Toque pra revelar</div>';
+  } else {
+    fc.innerHTML='<div style="font-size:28px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif;margin-bottom:8px">'+eh(card.word)+'</div>'
+      +(card.pronunciation?'<div style="font-size:13px;color:#7a9bae;font-family:Montserrat,sans-serif">/'+eh(card.pronunciation)+'/</div>':'')
+      +'<div style="width:40px;height:0.5px;background:#e5e7eb;margin:20px auto"></div>'
+      +'<div style="font-size:20px;color:#111827;font-family:Montserrat,sans-serif;margin-bottom:4px">'+eh(card.translation)+'</div>'
+      +(card.example?'<div style="font-size:11px;color:#9ca3af;font-style:italic;font-family:Montserrat,sans-serif;margin-top:8px;max-width:300px">'+eh(card.example)+'</div>':'');
+  }
+  parent.appendChild(fc);
+
+  // Difficulty buttons (only when revealed)
+  if(window._fcRevealed){
+    var btns=document.createElement('div');
+    btns.style.cssText='display:flex;justify-content:center;gap:10px;margin-top:20px';
+    var diffData=[{label:'Dificil',bg:'#FCEBEB',color:'#791F1F',val:3},{label:'Medio',bg:'#FAEEDA',color:'#854F0B',val:2},{label:'Facil',bg:'#E1F5EE',color:'#085041',val:1}];
+    diffData.forEach(function(d){
+      var b=document.createElement('div');
+      b.style.cssText='padding:10px 24px;border-radius:10px;font-size:11px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;background:'+d.bg+';color:'+d.color+';transition:transform .1s';
+      b.textContent=d.label;
+      b.onmouseenter=function(){this.style.transform='scale(1.05)';};
+      b.onmouseleave=function(){this.style.transform='scale(1)';};
+      b.onclick=(function(val){return function(e){
+        e.stopPropagation();
+        var v=(window.studyVocab||[]).find(function(x){return x.id===card.id;});
+        if(v)v.fcDifficulty=val;
+        fbSaveStudy();
+        window._fcIndex++;
+        window._fcRevealed=false;
+        renderStudyView();
+      };})(d.val);
+      btns.appendChild(b);
+    });
+    parent.appendChild(btns);
+  }
+}
 
 function initStudyModule(){
   fbLoadStudy();
