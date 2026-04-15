@@ -383,8 +383,26 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 .ring{animation:ring .6s ease}
 .toast{position:fixed;bottom:14px;right:14px;z-index:999;background:var(--text);border-radius:var(--r);padding:8px 13px;box-shadow:var(--shadow);font-size:11px;color:#f5f3ef;display:flex;align-items:center;gap:7px;transform:translateY(60px);opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);pointer-events:none;letter-spacing:.2px}
 .toast.show{transform:translateY(0);opacity:1}
-@media(max-width:768px){.right-panel{display:none}.center-col{flex:1}}
-@media(max-width:500px){.sidebar{display:none}}
+@media(max-width:768px){
+  .right-panel{display:none}
+  .center-col{flex:1}
+  .sidebar{display:none}
+  .topbar{padding:8px 12px!important;gap:6px!important;flex-wrap:nowrap}
+  .topbar .logo-text{display:none}
+  .topbar .search-wrap{display:none}
+  .topbar .vsw{gap:1px}
+  .topbar .vb{padding:4px 7px!important;font-size:9px!important}
+  .topbar .nb{padding:3px 6px!important}
+  .topbar .addb{padding:4px 10px!important;font-size:9px!important}
+  .topbar .hide-done-btn,.topbar .notif-btn{padding:3px 6px!important;font-size:9px!important}
+  .mobile-bottom-nav{display:flex!important}
+  .ec{margin-bottom:0!important}
+  .modal{width:100%!important;max-width:100%!important;border-radius:12px 12px 0 0!important;max-height:85vh!important;position:fixed!important;bottom:0!important;left:0!important;right:0!important}
+  .mo{align-items:flex-end!important;padding:0!important}
+}
+@media(min-width:769px){
+  .mobile-bottom-nav{display:none!important}
+}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
 /* ── WORK CALENDAR ─────────────────────────── */
@@ -879,7 +897,7 @@ onAuthStateChanged(auth,user=>{
     if(lu)lu();lu=onSnapshot(collection(db,'users',uid,'lists'),snap=>{window.lists=snap.docs.map(d=>({id:d.id,...d.data()}));if(window.view==='planner')renderView();});
     if(tu)tu();tu=onSnapshot(doc(db,'users',uid,'config','tags'),snap=>{if(snap.exists()){const d=snap.data();window.tags=d.tags||dTags();window.tclr=d.tclr||dTclr();renderSBTags();}});
     if(su)su();su=onSnapshot(doc(db,'users',uid,'config','stickies'),snap=>{if(snap.exists()){window.stickies=snap.data().stickies||[];}else{window.stickies=[];}if(window.view==='sticky')renderView();else renderStickies();});
-    onSnapshot(doc(db,'users',uid,'config','calAutoSettings'),snap=>{if(snap.exists()){var d=snap.data();window.calAutoSettings=Object.assign(window.calAutoSettings||{},d);window.calCustomRules=d.customRules||[];}});
+    onSnapshot(doc(db,'users',uid,'config','calAutoSettings'),snap=>{if(snap.exists()){var d=snap.data();window.calAutoSettings=Object.assign(window.calAutoSettings||{},d);window.calCustomRules=d.customRules||[];console.log('Loaded custom rules:',window.calCustomRules.length);setTimeout(function(){runCalAutomations();},2000);}});
     if(!window.appInited){window.appInited=true;window._firebaseReady=true;if(typeof initFinanceIntegration==='function')initFinanceIntegration();if(window._domReady)initApp();}
   }else{document.getElementById('loginScreen').style.display='flex';document.getElementById('mainApp').style.display='none';}
 });
@@ -1129,7 +1147,7 @@ function initApp(){mkManifest();buildMDGrid();renderMC();renderView();updTop();r
     checkEndOfDayReview();
     checkWeeklyReview();
     runCalAutomations();
-  },60000);if('Notification' in window && Notification.permission==='granted'){pushEnabled=true;registerSW();}setTimeout(checkEndOfDayReview,3000);}
+  },60000);if('Notification' in window && Notification.permission==='granted'){pushEnabled=true;registerSW();}setTimeout(checkEndOfDayReview,3000);setTimeout(function(){runCalAutomations();},5000);}
 function mkManifest(){const m={name:'My Calendar',short_name:'My Calendar',start_url:'./',display:'standalone',background_color:'#2a2320',theme_color:'#2a2320',icons:[{src:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230e0f11'/><text y='.9em' font-size='80'>📅</text></svg>",sizes:'192x192',type:'image/svg+xml'}]};const b=new Blob([JSON.stringify(m)],{type:'application/json'});document.getElementById('manifestLink').href=URL.createObjectURL(b);}
 function handleAdd(){if(view==='planner')openNewList();else if(view==='sticky')addSticky();else openNew();}
 function updTop(){
@@ -3481,32 +3499,42 @@ function createCustomCalRule(){
 
 function runCustomCalRules(){
   var rules=window.calCustomRules||[];
+  if(!rules.length)return;
+  console.log('Running custom rules:',rules.length,'rules');
   var now=new Date();
   var todayStr=tds(now);
-  var nowTime=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  var nowHour=now.getHours();
+  var nowMin=now.getMinutes();
+  var nowTime=String(nowHour).padStart(2,'0')+':'+String(nowMin).padStart(2,'0');
 
   rules.forEach(function(rule){
     if(!rule.enabled)return;
 
+    // Run key to prevent duplicate runs per day
+    var runKey='_cr_'+rule.id+'_'+todayStr;
+    if(window[runKey])return;
+
     // Check trigger
     var shouldRun=false;
     if(rule.trigger==='time'&&rule.triggerTime){
-      if(nowTime===rule.triggerTime)shouldRun=true;
+      var tParts=rule.triggerTime.split(':');
+      var triggerMin=parseInt(tParts[0])*60+parseInt(tParts[1]);
+      var currentMin=nowHour*60+nowMin;
+      if(currentMin>=triggerMin&&currentMin<=triggerMin+2)shouldRun=true;
+      console.log('Time rule "'+rule.name+'": trigger='+rule.triggerTime+' current='+nowTime+' shouldRun='+shouldRun);
     } else if(rule.trigger==='not_done_eod'){
-      if(now.getHours()>=23)shouldRun=true;
+      if(nowHour>=18)shouldRun=true;
+      console.log('EOD rule "'+rule.name+'": hour='+nowHour+' shouldRun='+shouldRun);
     } else if(rule.trigger==='overdue'||rule.trigger==='deadline_near'){
-      shouldRun=true; // Always check these
+      shouldRun=true;
     } else if(rule.trigger==='all_tasks_today'){
-      shouldRun=true; // Applies to all tasks of the day
+      shouldRun=true;
     }
-    if(!shouldRun)return;
+    if(!shouldRun){console.log('Rule "'+rule.name+'" skipped: trigger not met');return;}
+    console.log('Rule "'+rule.name+'" FIRING: trigger='+rule.trigger+' action='+rule.action);
 
-    // Run key to prevent duplicate runs
-    var runKey='_cr_'+rule.id+'_'+todayStr;
-    if(rule.trigger==='time'||rule.trigger==='not_done_eod'){
-      if(window[runKey])return;
-      window[runKey]=true;
-    }
+    // Mark as run for today
+    window[runKey]=true;
 
     // Apply to matching tasks across all work calendars
     (window.workCals||[]).forEach(function(cal){
@@ -3519,7 +3547,7 @@ function runCustomCalRules(){
         if(rule.trigger!=='all_tasks_today'&&(ev.progress||'not-started')==='done')return;
 
         // Apply filters
-        if(rule.filterTag&&(!ev.tags||ev.tags.indexOf(rule.filterTag)<0))return;
+        if(rule.filterTag){var hasTag=false;(ev.tags||[]).forEach(function(t){if(t.toLowerCase()===rule.filterTag.toLowerCase())hasTag=true;});if(!hasTag)return;}
         if(rule.filterTitle&&(ev.title||'').toLowerCase().indexOf(rule.filterTitle.toLowerCase())<0)return;
 
         // Check deadline triggers
@@ -3541,6 +3569,7 @@ function runCustomCalRules(){
         var master=list.find(function(e){return e.id===ev.id;});
         if(!master)return;
 
+        console.log('  Applying action "'+rule.action+'" to: '+ev.title);
         if(rule.action==='mark_done'){
           if(master.repeat&&master.repeat!=='none'){
             if(!master.progressExceptions)master.progressExceptions={};
@@ -5063,6 +5092,67 @@ function setNoEmoji(){
   var ep=document.getElementById('epick');if(ep)ep.classList.remove('open');
 }
 
+
+// ── MOBILE NAVIGATION ────────────────────────────────────
+function mobNavTo(tab){
+  document.querySelectorAll('.mob-tab').forEach(function(t){
+    var isActive=t.dataset.mobtab===tab;
+    t.querySelectorAll('svg').forEach(function(s){s.setAttribute('stroke',isActive?'#111827':'#9ca3af');});
+    var label=t.querySelector('div');
+    if(label){label.style.color=isActive?'#111827':'#9ca3af';label.style.fontWeight=isActive?'500':'400';}
+  });
+  if(tab==='calendar'){
+    switchCal('main');
+    sw('day',null);
+  } else if(tab==='work'){
+    var wc=(window.workCals||[]).find(function(c){return true;});
+    if(wc){switchCal(wc.id);window._wView='day';renderWorkDay(wc.id);}
+    else showToast('Nenhum Work Calendar criado.');
+  } else if(tab==='kanban'){
+    var wc=(window.workCals||[]).find(function(c){return true;});
+    if(wc){switchCal(wc.id);window._wView='kanban';renderWorkKanban(wc.id);}
+    else showToast('Nenhum Work Calendar criado.');
+  } else if(tab==='notes'){
+    switchCal('main');
+    sw('sticky',null);
+  } else if(tab==='more'){
+    showCalAutomationPanel();
+  }
+}
+function adjustMobilePadding(){
+  if(window.innerWidth<=768){
+    var vc=document.getElementById('vc');
+    if(vc)vc.style.paddingBottom='70px';
+    var wa=document.getElementById('workApp');
+    if(wa)wa.style.paddingBottom='70px';
+  }
+}
+window.addEventListener('resize',adjustMobilePadding);
+setTimeout(adjustMobilePadding,500);
 </script>
+
+<!-- MOBILE BOTTOM NAV -->
+<div class="mobile-bottom-nav" id="mobileBottomNav" style="display:none;position:fixed;bottom:0;left:0;right:0;height:56px;background:white;border-top:0.5px solid #e5e7eb;align-items:center;justify-content:space-around;z-index:90;padding:0 8px;font-family:Montserrat,sans-serif">
+  <div class="mob-tab" data-mobtab="calendar" onclick="mobNavTo('calendar')" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:6px 0;flex:1">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/><path d="M16 2v4M8 2v4"/></svg>
+    <div style="font-size:8px;color:#111827;font-weight:500">Calendario</div>
+  </div>
+  <div class="mob-tab" data-mobtab="work" onclick="mobNavTo('work')" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:6px 0;flex:1">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+    <div style="font-size:8px;color:#9ca3af">Work</div>
+  </div>
+  <div class="mob-tab" data-mobtab="kanban" onclick="mobNavTo('kanban')" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:6px 0;flex:1">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+    <div style="font-size:8px;color:#9ca3af">Kanban</div>
+  </div>
+  <div class="mob-tab" data-mobtab="notes" onclick="mobNavTo('notes')" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:6px 0;flex:1">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.8" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    <div style="font-size:8px;color:#9ca3af">Notas</div>
+  </div>
+  <div class="mob-tab" data-mobtab="more" onclick="mobNavTo('more')" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:6px 0;flex:1">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+    <div style="font-size:8px;color:#9ca3af">Mais</div>
+  </div>
+</div>
 </body>
 </html>
