@@ -852,6 +852,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
         <div class="wfield"><label>Pronuncia</label><input class="inp" id="sm-pronun" placeholder="Ex: streit-FOR-uord"/></div>
         <div class="wfield"><label>Traducao / significado</label><input class="inp" id="sm-trans" placeholder="Ex: direto ao ponto"/></div>
         <div class="wfield"><label>Exemplo ou contexto (opcional)</label><input class="inp" id="sm-example" placeholder="Ex: She is very straightforward."/></div>
+        <div class="wfield"><label>Categoria (opcional)</label><input class="inp" id="sm-category" placeholder="Ex: Skincare, True Crime, Business" list="sm-cat-list"/><datalist id="sm-cat-list"></datalist></div>
       </div>
       <div id="smf-note" style="display:none;flex-direction:column;gap:10px">
         <div class="wfield"><label>Anotacao da sessao</label><textarea class="inp" id="sm-note" style="min-height:120px;resize:vertical" placeholder="O que voce estudou hoje? Palavras novas, dificuldades, observacoes..."></textarea></div>
@@ -4821,6 +4822,7 @@ function switchToStudy(){
 
 // Study view tabs
 var _studyTab='vocab';
+window._vocabCatFilter='';
 var _studyModal=false;
 var _studyModalType='vocab';
 var _editStudyId=null;
@@ -4978,11 +4980,12 @@ function buildVocabCards(grid,list){
     var card=document.createElement('div');
     card.style.cssText='background:white;border:0.5px solid #e8e4de;border-radius:12px;padding:11px 14px;display:flex;align-items:center;gap:12px;cursor:pointer';
     card.onclick=function(){openStudyEdit('vocab',v.id);};
-    card.innerHTML='<div style="min-width:140px"><div style="font-size:13px;font-weight:500;color:#1a1a1a;font-family:Montserrat,sans-serif">'+eh(v.word)+'</div>'
-      +(v.pronunciation?'<div style="font-size:9px;color:#7a9bae;font-family:Montserrat,sans-serif;margin-top:1px">/'+eh(v.pronunciation)+'/</div>':'')+'</div>'
-      +'<div style="width:0.5px;height:28px;background:#e8e4de;flex-shrink:0"></div>'
-      +'<div style="font-size:12px;color:#6b6860;flex:1;font-family:Montserrat,sans-serif">'+eh(v.translation)+'</div>'
-      +(v.example?'<div style="font-size:10px;color:#aaa89e;font-style:italic;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:Montserrat,sans-serif">'+eh(v.example)+'</div>':'');
+    card.innerHTML='<div style="min-width:120px"><div style="font-size:13px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+eh(v.word)+'</div>'
+      +(v.pronunciation?'<div style="font-size:9px;color:#7a9bae;font-family:Montserrat,sans-serif;margin-top:1px">/'+eh(v.pronunciation)+'/</div>':'')
+      +(v.category?'<div style="font-size:8px;color:#9ca3af;font-family:Montserrat,sans-serif;margin-top:2px;display:flex;align-items:center;gap:3px"><div style="width:4px;height:4px;border-radius:50%;background:#d1d5db"></div>'+eh(v.category)+'</div>':'')+'</div>'
+      +'<div style="width:0.5px;height:28px;background:#e5e7eb;flex-shrink:0"></div>'
+      +'<div style="font-size:12px;color:#6b7280;flex:1;font-family:Montserrat,sans-serif">'+eh(v.translation)+'</div>'
+      +(v.example?'<div style="font-size:10px;color:#9ca3af;font-style:italic;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:Montserrat,sans-serif">'+eh(v.example)+'</div>':'');
     grid.appendChild(card);
   });
 }
@@ -5063,6 +5066,7 @@ function showStudyModal(item){
       if(pi)pi.value=item.pronunciation||'';
       if(ti)ti.value=item.translation||'';
       if(ei)ei.value=item.example||'';
+      var ci=document.getElementById('sm-category');if(ci)ci.value=item.category||'';
     } else {
       var ni=document.getElementById('sm-note');
       if(ni)ni.value=item.text||'';
@@ -5070,7 +5074,7 @@ function showStudyModal(item){
     var dbtn=document.getElementById('sm-delbtn');
     if(dbtn)dbtn.style.display='block';
   } else {
-    ['sm-word','sm-pronun','sm-trans','sm-example','sm-note'].forEach(function(id){
+    ['sm-word','sm-pronun','sm-trans','sm-example','sm-category','sm-note'].forEach(function(id){
       var el=document.getElementById(id);if(el)el.value='';
     });
     var dbtn=document.getElementById('sm-delbtn');
@@ -5092,7 +5096,7 @@ function saveStudyEntry(){
     var trans=(document.getElementById('sm-trans')||{}).value||'';
     if(!word.trim()){showToast('Digite a palavra!');return;}
     var pronun=((document.getElementById('sm-pronun')||{}).value||'').trim();
-    var entry={id:_editStudyId||gid(),word:word.trim(),pronunciation:pronun,translation:trans.trim(),example:((document.getElementById('sm-example')||{}).value||'').trim(),date:new Date().toISOString()};
+    var entry={id:_editStudyId||gid(),word:word.trim(),pronunciation:pronun,translation:trans.trim(),example:((document.getElementById('sm-example')||{}).value||'').trim(),category:((document.getElementById('sm-category')||{}).value||'').trim(),date:new Date().toISOString()};
     if(_editStudyId){
       var idx=(window.studyVocab||[]).findIndex(function(v){return v.id===_editStudyId;});
       if(idx>=0)window.studyVocab[idx]=entry;else window.studyVocab.unshift(entry);
@@ -5163,6 +5167,7 @@ function openPronunModal(item){
   }
   fbSaveStudy();renderStudyView();showToast('Regra salva!');
 }
+
 
 function initStudyModule(){
   fbLoadStudy();
