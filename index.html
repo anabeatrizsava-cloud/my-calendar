@@ -385,11 +385,11 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 .toast{position:fixed;bottom:14px;right:14px;z-index:999;background:var(--text);border-radius:var(--r);padding:8px 13px;box-shadow:var(--shadow);font-size:11px;color:#f5f3ef;display:flex;align-items:center;gap:7px;transform:translateY(60px);opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);pointer-events:none;letter-spacing:.2px}
 .toast.show{transform:translateY(0);opacity:1}
 @media(max-width:768px){
-  .right-panel{display:none;position:fixed;bottom:56px;left:0;right:0;max-height:70vh;overflow-y:auto;z-index:80;border-radius:16px 16px 0 0;box-shadow:0 -4px 20px rgba(0,0,0,.12);border-top:0.5px solid #e5e7eb}
-  .right-panel.mob-open{display:flex!important;flex-direction:column}
+  .right-panel{display:none!important;position:fixed;bottom:56px;left:0;right:0;max-height:70vh;overflow-y:auto;z-index:80;border-radius:16px 16px 0 0;box-shadow:0 -4px 20px rgba(0,0,0,.12);border-top:0.5px solid #e5e7eb;background:#f7f8fa}
+  .right-panel.mob-open{display:flex!important;flex-direction:column;padding-bottom:env(safe-area-inset-bottom,0)}
   .center-col{flex:1}
   .sidebar{display:none}
-  .topbar{padding:8px 10px!important;gap:4px!important;flex-wrap:nowrap;overflow:hidden}
+  .topbar{padding:8px 10px!important;padding-top:env(safe-area-inset-top,8px)!important;gap:4px!important;flex-wrap:nowrap;overflow:hidden}
   .center-col{overflow-x:hidden}
   #vc{overflow-x:hidden}
   .topbar .logo-text{display:none}
@@ -404,7 +404,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
   .modal{width:100%!important;max-width:100%!important;border-radius:12px 12px 0 0!important;max-height:85vh!important;position:fixed!important;bottom:0!important;left:0!important;right:0!important}
   .mo{align-items:flex-end!important;padding:0!important}
 }
-.mobile-bottom-nav{display:none}
+.mobile-bottom-nav{display:none;padding-bottom:env(safe-area-inset-bottom,0)}
 @media(min-width:769px){
   .mobile-bottom-nav{display:none!important}
 }
@@ -5178,6 +5178,13 @@ function setNoEmoji(){
 
 // ── MOBILE NAVIGATION ────────────────────────────────────
 function mobNavTo(tab){
+  // Close right panel sheet if open
+  var rp=document.getElementById('rightPanel');
+  if(rp&&rp.classList.contains('mob-open')){
+    rp.classList.remove('mob-open');
+    var ov=document.getElementById('mobRpOverlay');if(ov)ov.remove();
+  }
+  // Update active tab styling
   document.querySelectorAll('.mob-tab').forEach(function(t){
     var isActive=t.dataset.mobtab===tab;
     t.querySelectorAll('svg').forEach(function(s){s.setAttribute('stroke',isActive?'#111827':'#9ca3af');});
@@ -5186,7 +5193,8 @@ function mobNavTo(tab){
   });
   if(tab==='calendar'){
     switchCal('main');
-    sw('day',null);
+    view='day';
+    renderView();updTop();
   } else if(tab==='work'){
     var wc=(window.workCals||[]).find(function(c){return true;});
     if(wc){switchCal(wc.id);window._wView='day';renderWorkDay(wc.id);}
@@ -5197,7 +5205,8 @@ function mobNavTo(tab){
     else showToast('Nenhum Work Calendar criado.');
   } else if(tab==='notes'){
     switchCal('main');
-    sw('sticky',null);
+    view='sticky';
+    renderView();updTop();
   } else if(tab==='more'){
     showCalAutomationPanel();
   }
@@ -5205,11 +5214,16 @@ function mobNavTo(tab){
 function toggleMobRightPanel(){
   var rp=document.getElementById('rightPanel');
   if(!rp)return;
+  // Make sure we're on main calendar first
+  if(activeCal!=='main'){
+    switchCal('main');
+    view='day';
+    renderView();updTop();
+  }
   var overlay=document.getElementById('mobRpOverlay');
   if(rp.classList.contains('mob-open')){
     rp.classList.remove('mob-open');
     if(overlay)overlay.remove();
-    // Reset tab styling
     document.querySelectorAll('.mob-tab').forEach(function(t){
       if(t.dataset.mobtab==='resumo'){
         t.querySelectorAll('svg').forEach(function(s){s.setAttribute('stroke','#9ca3af');});
@@ -5218,8 +5232,8 @@ function toggleMobRightPanel(){
     });
   } else {
     rp.classList.add('mob-open');
+    rp.style.display='flex';
     renderRightPanel();
-    // Add overlay behind panel
     if(!overlay){
       overlay=document.createElement('div');
       overlay.id='mobRpOverlay';
@@ -5227,7 +5241,6 @@ function toggleMobRightPanel(){
       overlay.onclick=function(){toggleMobRightPanel();};
       document.body.appendChild(overlay);
     }
-    // Highlight tab
     document.querySelectorAll('.mob-tab').forEach(function(t){
       if(t.dataset.mobtab==='resumo'){
         t.querySelectorAll('svg').forEach(function(s){s.setAttribute('stroke','#111827');});
