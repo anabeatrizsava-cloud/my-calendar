@@ -4843,6 +4843,7 @@ function renderStudyView(){
     +'<button onclick="setStudyTab(\'vocab\')" id="stab-vocab" style="padding:4px 14px;border:none;border-radius:7px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;background:'+(
       _studyTab==='vocab'?'#1a1a1a':'transparent')+';color:'+(_studyTab==='vocab'?'#f5f3ef':'#9a9590')+'">Vocabulario</button>'
     +'<button onclick="setStudyTab(\'flashcards\')" id="stab-flash" style="padding:4px 14px;border:none;border-radius:7px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;background:'+(_studyTab==='flashcards'?'#1a1a1a':'transparent')+';color:'+(_studyTab==='flashcards'?'#f5f3ef':'#9a9590')+'">Praticar</button>'
+    +'<button onclick="setStudyTab(\'quiz\')" id="stab-quiz" style="padding:4px 14px;border:none;border-radius:7px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;background:'+(_studyTab==='quiz'?'#1a1a1a':'transparent')+';color:'+(_studyTab==='quiz'?'#f5f3ef':'#9a9590')+'">Quiz</button>'
     +'<button onclick="setStudyTab(\'notes\')" id="stab-notes" style="padding:4px 14px;border:none;border-radius:7px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;background:'+(
       _studyTab==='notes'?'#1a1a1a':'transparent')+';color:'+(_studyTab==='notes'?'#f5f3ef':'#9a9590')+'">Anotacoes</button>'
     +'</div>'
@@ -4871,6 +4872,8 @@ function renderStudyView(){
     renderVocabList(main);
   } else if(_studyTab==='flashcards'){
     renderFlashcards(main);
+  } else if(_studyTab==='quiz'){
+    renderFFQuiz(main);
   } else {
     renderNotesList(main);
   }
@@ -5285,6 +5288,125 @@ function renderFlashcards(parent){
     });
     parent.appendChild(btns);
   }
+}
+
+
+// ── QUIZ FALSE FRIENDS ───────────────────────────────────
+window._quizIndex=0;window._quizAnswered=false;window._quizScore=0;window._quizTotal=0;window._quizDeck=[];
+
+function renderFFQuiz(parent){
+  var ff=window.studyFalseFriends||[];
+  if(ff.length<2){
+    var empty=document.createElement('div');
+    empty.style.cssText='text-align:center;color:#9ca3af;padding:40px 0;font-size:12px;font-family:Montserrat,sans-serif;line-height:1.8';
+    empty.innerHTML='Adicione pelo menos 2 False Friends<br>no painel direito pra jogar o quiz.';
+    parent.appendChild(empty);
+    return;
+  }
+  if(!window._quizDeck.length){
+    window._quizDeck=ff.slice().sort(function(){return Math.random()-0.5;});
+    window._quizIndex=0;window._quizScore=0;window._quizTotal=0;window._quizAnswered=false;
+  }
+  var deck=window._quizDeck;
+
+  // Quiz finished
+  if(window._quizIndex>=deck.length){
+    var pct=window._quizTotal>0?Math.round(window._quizScore/window._quizTotal*100):0;
+    var fin=document.createElement('div');
+    fin.style.cssText='background:white;border:0.5px solid #e5e7eb;border-radius:16px;padding:36px 24px;text-align:center';
+    fin.innerHTML='<div style="font-size:14px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif;margin-bottom:16px">Quiz finalizado!</div>'
+      +'<div style="font-size:42px;font-weight:500;color:'+(pct>=70?'#0F6E56':'#A32D2D')+';font-family:Montserrat,sans-serif;margin-bottom:6px">'+pct+'%</div>'
+      +'<div style="font-size:11px;color:#9ca3af;font-family:Montserrat,sans-serif;margin-bottom:24px">'+window._quizScore+' de '+window._quizTotal+' corretas</div>'
+      +'<div id="quizRestart" style="padding:10px 24px;background:#111827;color:white;border-radius:10px;font-size:11px;font-weight:500;cursor:pointer;display:inline-block;font-family:Montserrat,sans-serif">Jogar de novo</div>';
+    parent.appendChild(fin);
+    fin.querySelector('#quizRestart').onclick=function(){window._quizDeck=[];renderStudyView();};
+    return;
+  }
+
+  // Progress
+  var prog=document.createElement('div');
+  prog.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:8px';
+  prog.innerHTML='<div style="font-size:9px;color:#9ca3af;font-family:Montserrat,sans-serif">Pergunta '+(window._quizIndex+1)+' de '+deck.length+'</div>'
+    +'<div style="font-size:9px;color:#9ca3af;font-family:Montserrat,sans-serif">Acertos: '+window._quizScore+'</div>';
+  parent.appendChild(prog);
+  var progBar=document.createElement('div');
+  progBar.style.cssText='height:3px;background:#e5e7eb;border-radius:2px;overflow:hidden;margin-bottom:20px';
+  progBar.innerHTML='<div style="width:'+Math.round((window._quizIndex+1)/deck.length*100)+'%;height:100%;background:#111827;border-radius:2px;transition:width .3s"></div>';
+  parent.appendChild(progBar);
+
+  var item=deck[window._quizIndex];
+
+  // Question card
+  var qCard=document.createElement('div');
+  qCard.style.cssText='background:white;border:0.5px solid #e5e7eb;border-radius:16px;padding:28px 24px';
+
+  var qHeader=document.createElement('div');
+  qHeader.style.cssText='text-align:center;margin-bottom:20px';
+  qHeader.innerHTML='<div style="font-size:10px;color:#9ca3af;font-family:Montserrat,sans-serif;margin-bottom:8px">O que significa...</div>'
+    +'<div style="font-size:26px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+eh(item.en)+'</div>';
+  qCard.appendChild(qHeader);
+
+  // Build options: correct + trap + one random
+  var options=[{text:item.correct,isCorrect:true},{text:item.trap,isCorrect:false}];
+  var others=ff.filter(function(f){return f.id!==item.id;});
+  if(others.length){
+    var rnd=others[Math.floor(Math.random()*others.length)];
+    options.push({text:rnd.correct,isCorrect:false});
+  }
+  // Shuffle (use stored order if already answered to avoid re-shuffle)
+  if(!item._shuffledOpts){
+    options.sort(function(){return Math.random()-0.5;});
+    item._shuffledOpts=options;
+  } else {
+    options=item._shuffledOpts;
+  }
+
+  var optDiv=document.createElement('div');
+  optDiv.style.cssText='display:flex;flex-direction:column;gap:8px';
+  options.forEach(function(opt,oi){
+    var letter=String.fromCharCode(65+oi);
+    var btn=document.createElement('div');
+    if(window._quizAnswered){
+      if(opt.isCorrect){
+        btn.style.cssText='padding:12px 16px;border-radius:10px;font-size:12px;font-family:Montserrat,sans-serif;background:#E1F5EE;border:0.5px solid #0F6E56;color:#0F6E56;font-weight:500';
+        btn.textContent=letter+') '+opt.text+' ✓';
+      } else {
+        btn.style.cssText='padding:12px 16px;border-radius:10px;font-size:12px;font-family:Montserrat,sans-serif;background:#f7f8fa;border:0.5px solid #e5e7eb;color:#9ca3af';
+        btn.textContent=letter+') '+opt.text;
+      }
+    } else {
+      btn.style.cssText='padding:12px 16px;border-radius:10px;font-size:12px;font-family:Montserrat,sans-serif;cursor:pointer;background:white;border:0.5px solid #e5e7eb;color:#111827;transition:background .1s';
+      btn.textContent=letter+') '+opt.text;
+      btn.onmouseenter=function(){this.style.background='#f7f8fa';};
+      btn.onmouseleave=function(){this.style.background='white';};
+      btn.onclick=(function(isC){return function(){
+        window._quizAnswered=true;
+        window._quizTotal++;
+        if(isC)window._quizScore++;
+        renderStudyView();
+      };})(opt.isCorrect);
+    }
+    optDiv.appendChild(btn);
+  });
+  qCard.appendChild(optDiv);
+
+  // Explanation after answer
+  if(window._quizAnswered){
+    var expl=document.createElement('div');
+    expl.style.cssText='margin-top:20px;padding:14px;background:#f7f8fa;border-radius:10px';
+    expl.innerHTML='<div style="font-size:10px;color:#A32D2D;font-weight:500;font-family:Montserrat,sans-serif;margin-bottom:6px">Cuidado com o false friend!</div>'
+      +'<div style="font-size:12px;color:#111827;font-family:Montserrat,sans-serif;line-height:1.6"><strong>'+eh(item.en)+'</strong> NAO significa "'+eh(item.trap)+'"</div>'
+      +'<div style="font-size:12px;color:#0F6E56;font-family:Montserrat,sans-serif;margin-top:4px;line-height:1.6">Significa: <strong>'+eh(item.correct)+'</strong></div>';
+    qCard.appendChild(expl);
+
+    var nextBtn=document.createElement('div');
+    nextBtn.style.cssText='margin-top:16px;padding:10px 24px;background:#111827;color:white;border-radius:10px;font-size:11px;font-weight:500;cursor:pointer;display:inline-block;font-family:Montserrat,sans-serif;text-align:center';
+    nextBtn.textContent=window._quizIndex>=deck.length-1?'Ver resultado':'Proxima';
+    nextBtn.onclick=function(){window._quizIndex++;window._quizAnswered=false;renderStudyView();};
+    qCard.appendChild(nextBtn);
+  }
+
+  parent.appendChild(qCard);
 }
 
 function initStudyModule(){
