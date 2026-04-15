@@ -3520,7 +3520,7 @@ function runCustomCalRules(){
       var tParts=rule.triggerTime.split(':');
       var triggerMin=parseInt(tParts[0])*60+parseInt(tParts[1]);
       var currentMin=nowHour*60+nowMin;
-      if(currentMin>=triggerMin&&currentMin<=triggerMin+2)shouldRun=true;
+      if(currentMin>=triggerMin)shouldRun=true;
       console.log('Time rule "'+rule.name+'": trigger='+rule.triggerTime+' current='+nowTime+' shouldRun='+shouldRun);
     } else if(rule.trigger==='not_done_eod'){
       if(nowHour>=18)shouldRun=true;
