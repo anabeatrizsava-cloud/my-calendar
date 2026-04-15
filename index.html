@@ -3610,6 +3610,80 @@ function runCustomCalRules(){
       if(toAdd.length){toAdd.forEach(function(c){list.push(c);});}
       if(changed){window.workEvs[cal.id]=list;fbSaveWorkEvs(cal.id);}
     });
+
+    // Also apply to main calendar events
+    var mainEvs=getEvs(todayStr);
+    console.log('  Checking '+mainEvs.length+' main calendar events');
+    mainEvs.forEach(function(ev){
+      if(rule.trigger!=='all_tasks_today'&&ev.done){console.log('  Skip (done): '+ev.title);return;}
+
+      // Apply filters
+      if(rule.filterTag){
+        var hasTag=false;
+        var evTags=(ev.tags||[]).map(function(t){return t.toLowerCase();});
+        console.log('  Tag filter: rule="'+rule.filterTag+'" ev tags='+JSON.stringify(ev.tags||[]));
+        evTags.forEach(function(t){if(t===rule.filterTag.toLowerCase())hasTag=true;});
+        if(!hasTag){console.log('  Skip (tag mismatch): '+ev.title);return;}
+      }
+      if(rule.filterTitle&&(ev.title||'').toLowerCase().indexOf(rule.filterTitle.toLowerCase())<0){console.log('  Skip (title mismatch): '+ev.title);return;}
+
+      // Check deadline triggers
+      if(rule.trigger==='overdue'){
+        if(!ev.deadline)return;
+        var dlDate=new Date(ev.deadline+'T00:00:00');
+        var today2=new Date();today2.setHours(0,0,0,0);
+        if(dlDate>=today2)return;
+      }
+      if(rule.trigger==='deadline_near'){
+        if(!ev.deadline)return;
+        var dlDate=new Date(ev.deadline+'T00:00:00');
+        var today2=new Date();today2.setHours(0,0,0,0);
+        var diff=Math.floor((dlDate-today2)/86400000);
+        if(diff<0||diff>rule.triggerDays)return;
+      }
+
+      // Find master event
+      var master=(window.evs||[]).find(function(e){return e.id===ev.id;});
+      if(!master)return;
+      console.log('  Applying action "'+rule.action+'" to main cal: '+ev.title);
+
+      if(rule.action==='mark_done'){
+        if(master.repeat&&master.repeat!=='none'){
+          if(!master.doneExceptions)master.doneExceptions={};
+          master.doneExceptions[todayStr]=true;
+        } else {
+          master.done=true;
+        }
+        if(window.fbSaveEv)fbSaveEv(master);
+        renderView();
+      } else if(rule.action==='move_tomorrow'||rule.action==='move_date'){
+        var targetDate=rule.action==='move_tomorrow'?tds(new Date(now.getTime()+86400000)):rule.actionDate;
+        if(master.repeat&&master.repeat!=='none'){
+          if(!master.doneExceptions)master.doneExceptions={};
+          master.doneExceptions[todayStr]=true;
+          var copy=JSON.parse(JSON.stringify(master));
+          copy.id=gid();copy.date=targetDate;copy.repeat='none';
+          copy.repeatDays=[];copy.repeatMonthDays=[];
+          copy.done=false;
+          delete copy.doneExceptions;delete copy._instanceDate;
+          window.evs.push(copy);
+          if(window.fbSaveEv){fbSaveEv(master);fbSaveEv(copy);}
+        } else {
+          master.date=targetDate;
+          if(window.fbSaveEv)fbSaveEv(master);
+        }
+        renderView();
+      } else if(rule.action==='delete'){
+        if(master.repeat&&master.repeat!=='none'){
+          if(!master.deletedExceptions)master.deletedExceptions=[];
+          if(!master.deletedExceptions.includes(todayStr))master.deletedExceptions.push(todayStr);
+          if(window.fbSaveEv)fbSaveEv(master);
+        } else {
+          if(window.fbDelEv)fbDelEv(master.id);
+        }
+        renderView();
+      }
+    });
   });
 }
 
