@@ -693,7 +693,8 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
     <div class="mf">
       <button class="bdel" id="dbtn" onclick="delEv()" style="display:none">Excluir</button>
       <button class="bdup" id="dupbtn" onclick="dupEv()" style="display:none">Duplicar</button>
-      <button class="bg-btn" onclick="closeM()">Cancelar</button>
+      <button class="bg-btn" onclick="cancelEvForDay()">Cancelar tarefa</button>
+      <button class="bg-btn" onclick="closeM()">Fechar</button>
       <button class="bp" onclick="saveEv()">Salvar</button>
     </div>
   </div>
@@ -1760,6 +1761,7 @@ function saveEv(){
   if(window.fbSaveEv)fbSaveEv(ev);closeM();schedRem(ev);showToast(eid?'Atualizado!':'Criado!');
 }
 function delEv(){if(!eid)return;const ev=evs.find(e=>e.id===eid);if(!ev)return;if(ev.repeat&&ev.repeat!=='none'&&editingInstanceDate&&editingInstanceDate!==ev.date){const all=confirm('Excluir TODAS as ocorrencias da tarefa repetida?\n\nOK = excluir todas   Cancelar = excluir so '+editingInstanceDate);if(all){if(window.fbDelEv)fbDelEv(eid);showToast('Todas excluidas.');}else{if(!ev.deletedExceptions)ev.deletedExceptions=[];if(!ev.deletedExceptions.includes(editingInstanceDate))ev.deletedExceptions.push(editingInstanceDate);if(window.fbSaveEv)fbSaveEv(ev);showToast('Dia excluido.');}}else{if(!confirm('Excluir este evento?'))return;if(window.fbDelEv)fbDelEv(eid);showToast('Excluido.');}closeM();}
+function cancelEvForDay(){if(!eid)return;const ev=evs.find(e=>e.id===eid);if(!ev)return;const idate=editingInstanceDate||ev.date;if(ev.repeat&&ev.repeat!=='none'){if(!ev.deletedExceptions)ev.deletedExceptions=[];if(!ev.deletedExceptions.includes(idate))ev.deletedExceptions.push(idate);if(window.fbSaveEv)fbSaveEv(ev);showToast('Tarefa cancelada para '+idate+'.');}else{if(!confirm('Cancelar esta tarefa?'))return;if(window.fbDelEv)fbDelEv(eid);showToast('Tarefa cancelada.');}closeM();renderView();}
 function dupEv(){if(!eid)return;const o=evs.find(e=>e.id===eid);if(!o)return;const cp=JSON.parse(JSON.stringify(o));cp.id=gid();cp.title+=' (copia)';if(window.fbSaveEv)fbSaveEv(cp);closeM();showToast('Duplicado!');}
 function qDup(id){const o=evs.find(e=>e.id===id);if(!o)return;const cp=JSON.parse(JSON.stringify(o));cp.id=gid();cp.title+=' (copia)';if(window.fbSaveEv)fbSaveEv(cp);showToast('Duplicado!');}
 function qDel(id,idate){const ev=evs.find(e=>e.id===id);if(!ev)return;if(ev.repeat&&ev.repeat!=='none'&&idate&&idate!==ev.date){const all=confirm('Excluir TODAS as ocorrencias?\n\nOK = todas   Cancelar = so '+idate);if(all){if(window.fbDelEv)fbDelEv(id);showToast('Todas excluidas.');}else{if(!ev.deletedExceptions)ev.deletedExceptions=[];if(!ev.deletedExceptions.includes(idate))ev.deletedExceptions.push(idate);if(window.fbSaveEv)fbSaveEv(ev);showToast('Dia excluido.');}}else{if(!confirm('Excluir?'))return;if(window.fbDelEv)fbDelEv(id);showToast('Excluido.');}renderView();}
@@ -6457,20 +6459,10 @@ function renderGoalsView(){
 
   if(objectives.length){
     var mRow=document.createElement('div');
-    mRow.style.cssText='display:flex;gap:10px;margin-bottom:20px';
-    // Ring progress
-    var ringCard=document.createElement('div');
-    ringCard.style.cssText='flex:1;background:#131F28;border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:14px';
-    var dashOffset=Math.round(119.4*(1-overallPct/100));
-    ringCard.innerHTML='<div style="position:relative;width:48px;height:48px;flex-shrink:0"><svg viewBox="0 0 48 48" width="48" height="48"><circle cx="24" cy="24" r="19" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="3.5"/><circle cx="24" cy="24" r="19" fill="none" stroke="#C5CED0" stroke-width="3.5" stroke-dasharray="119.4" stroke-dashoffset="'+dashOffset+'" stroke-linecap="round" transform="rotate(-90 24 24)"/></svg><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:white;font-family:Montserrat,sans-serif">'+overallPct+'%</div></div>'
-      +'<div><div style="font-size:13px;font-weight:500;color:white;font-family:Montserrat,sans-serif">Progresso geral</div><div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:2px;font-family:Montserrat,sans-serif">'+doneKR+' de '+totalKR+' KRs concluidos</div></div>';
-    mRow.appendChild(ringCard);
-    // On track / at risk
-    var statusCol=document.createElement('div');
-    statusCol.style.cssText='display:flex;flex-direction:column;gap:6px;min-width:160px';
-    statusCol.innerHTML='<div style="flex:1;background:#486068;border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px"><div style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.4);flex-shrink:0"></div><div><div style="font-size:16px;font-weight:500;color:white;font-family:Montserrat,sans-serif">'+(doneKR+onTrack)+'</div><div style="font-size:9px;color:rgba(255,255,255,.5);font-family:Montserrat,sans-serif">on track</div></div></div>'
-      +'<div style="flex:1;background:#B3907F;border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px"><div style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.4);flex-shrink:0"></div><div><div style="font-size:16px;font-weight:500;color:white;font-family:Montserrat,sans-serif">'+atRisk+'</div><div style="font-size:9px;color:rgba(255,255,255,.5);font-family:Montserrat,sans-serif">at risk</div></div></div>';
-    mRow.appendChild(statusCol);
+    mRow.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px';
+    mRow.innerHTML='<div style="background:#131F28;border-radius:12px;padding:14px;text-align:center"><div style="font-size:11px;color:rgba(255,255,255,.5);font-family:Montserrat,sans-serif">Progresso</div><div style="font-size:22px;font-weight:500;color:white;margin-top:4px;font-family:Montserrat,sans-serif">'+overallPct+'%</div><div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:2px;font-family:Montserrat,sans-serif">'+doneKR+' de '+totalKR+' KRs</div></div>'
+      +'<div style="background:#486068;border-radius:12px;padding:14px;text-align:center"><div style="font-size:11px;color:rgba(255,255,255,.5);font-family:Montserrat,sans-serif">On track</div><div style="font-size:22px;font-weight:500;color:white;margin-top:4px;font-family:Montserrat,sans-serif">'+(doneKR+onTrack)+'</div><div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:2px;font-family:Montserrat,sans-serif">KRs</div></div>'
+      +'<div style="background:#B3907F;border-radius:12px;padding:14px;text-align:center"><div style="font-size:11px;color:rgba(255,255,255,.5);font-family:Montserrat,sans-serif">At risk</div><div style="font-size:22px;font-weight:500;color:white;margin-top:4px;font-family:Montserrat,sans-serif">'+atRisk+'</div><div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:2px;font-family:Montserrat,sans-serif">KRs</div></div>';
     main.appendChild(mRow);
   }
 
