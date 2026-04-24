@@ -969,7 +969,7 @@ onAuthStateChanged(auth,user=>{
     if(su)su();su=onSnapshot(doc(db,'users',uid,'config','stickies'),snap=>{if(snap.exists()){window.stickies=snap.data().stickies||[];}else{window.stickies=[];}if(window.view==='sticky')renderView();else renderStickies();});
     onSnapshot(doc(db,'users',uid,'config','calAutoSettings'),snap=>{if(snap.exists()){var d=snap.data();window.calAutoSettings=Object.assign(window.calAutoSettings||{},d);window.calCustomRules=d.customRules||[];console.log('Loaded custom rules:',window.calCustomRules.length);setTimeout(function(){runCalAutomations();},2000);}});
     onSnapshot(doc(db,'users',uid,'config','goalsData'),snap=>{if(snap.exists())window.goalsData=snap.data();updateAutoKRs();});
-    onSnapshot(doc(db,'users',uid,'config','notebookData'),snap=>{if(snap.exists())window.notebookData=snap.data();});
+    onSnapshot(doc(db,'users',uid,'config','notebookData'),snap=>{if(snap.exists()){window.notebookData=snap.data();if(!window.notebookData.notebooks)window.notebookData.notebooks=[];window.notebookData.notebooks.forEach(function(nb){if(!nb.rows)nb.rows=[];if(!nb.columns)nb.columns=[];});}});
     if(!window.appInited){window.appInited=true;window._firebaseReady=true;if(typeof initFinanceIntegration==='function')initFinanceIntegration();if(window._domReady)initApp();}
   }else{document.getElementById('loginScreen').style.display='flex';document.getElementById('mainApp').style.display='none';}
 });
@@ -5046,8 +5046,12 @@ function switchToNotebook(){
 function fbSaveNotebooks(){
   if(!window.auth||!window.auth.currentUser)return;
   try{var uid=window.auth.currentUser.uid;
-  window.firestore.setDoc(window.firestore.doc(window.db,'users',uid,'config','notebookData'),window.notebookData);
-  }catch(e){}
+  // Ensure arrays exist before saving
+  var data=JSON.parse(JSON.stringify(window.notebookData));
+  if(!data.notebooks)data.notebooks=[];
+  data.notebooks.forEach(function(nb){if(!nb.rows)nb.rows=[];if(!nb.columns)nb.columns=[];});
+  window.firestore.setDoc(window.firestore.doc(window.db,'users',uid,'config','notebookData'),data);
+  }catch(e){console.error('Notebook save error:',e);}
 }
 
 function renderNotebookView(){
@@ -5209,6 +5213,7 @@ function createNotebook(){
 function addNotebookColumn(nbId){
   var nb=window.notebookData.notebooks.find(function(n){return n.id===nbId;});
   if(!nb)return;
+  if(!nb.columns)nb.columns=[];
   var name=prompt('Nome da coluna:');
   if(!name||!name.trim())return;
   nb.columns.push({id:gid(),name:name.trim()});
@@ -5218,6 +5223,8 @@ function addNotebookColumn(nbId){
 function addNotebookRow(nbId){
   var nb=window.notebookData.notebooks.find(function(n){return n.id===nbId;});
   if(!nb)return;
+  if(!nb.rows)nb.rows=[];
+  if(!nb.columns)nb.columns=[];
   var row={id:gid(),data:{},date:new Date().toISOString()};
   nb.rows.push(row);
   fbSaveNotebooks();renderNotebookView();
