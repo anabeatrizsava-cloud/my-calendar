@@ -869,7 +869,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 
 <!-- LESSON MODAL -->
 <div class="mo" id="lessonModal" onclick="if(event.target===this)return;">
-  <div class="modal" style="width:500px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column" onclick="event.stopPropagation()">
+  <div class="modal" style="width:520px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column" onclick="event.stopPropagation()">
     <div class="mhd" style="padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:0.5px solid #e5e7eb;flex-shrink:0">
       <div>
         <div style="font-size:14px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">Aula em andamento</div>
@@ -877,27 +877,28 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
       </div>
       <button class="mcl" onclick="closeLessonModal()">✕</button>
     </div>
-    <div id="lessonCatArea" style="padding:14px 20px;border-bottom:0.5px solid #e5e7eb;background:#f7f8fa;flex-shrink:0">
-      <div style="font-size:10px;font-weight:500;color:#6b7280;margin-bottom:8px;font-family:Montserrat,sans-serif">Categoria da aula</div>
+    <div id="lessonCatArea" style="padding:12px 20px;border-bottom:0.5px solid #e5e7eb;background:#f7f8fa;flex-shrink:0">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:10px;font-weight:500;color:#6b7280;font-family:Montserrat,sans-serif">Categoria</div>
+        <div style="position:relative" id="lsSearchWrap">
+          <svg width="11" height="11" viewBox="0 0 13 13" fill="none" style="position:absolute;left:8px;top:7px;pointer-events:none"><circle cx="5.5" cy="5.5" r="4" stroke="#9ca3af" stroke-width="1.2"/><path d="M9 9l2.5 2.5" stroke="#9ca3af" stroke-width="1.2" stroke-linecap="round"/></svg>
+          <input class="inp" id="ls-search" placeholder="Buscar palavras..." oninput="lessonSearch(this.value)" onblur="setTimeout(function(){closeLessonSearch();},200)" style="font-family:Montserrat,sans-serif;font-size:10px;padding:5px 8px 5px 24px;width:180px;border-radius:16px"/>
+          <div id="lsSearchResults" style="display:none;position:absolute;right:0;top:32px;width:280px;z-index:10;background:white;border:0.5px solid #e5e7eb;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.08);max-height:200px;overflow-y:auto"></div>
+        </div>
+      </div>
       <div id="lessonCatPills" style="display:flex;gap:6px;flex-wrap:wrap"></div>
     </div>
-    <div style="padding:14px 20px;border-bottom:0.5px solid #e5e7eb;flex-shrink:0">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-        <div class="wfield"><label style="font-size:9px;color:#9ca3af">Palavra</label><input class="inp" id="ls-word" placeholder="Ex: witness" style="font-family:Montserrat,sans-serif"/></div>
-        <div class="wfield"><label style="font-size:9px;color:#9ca3af">Pronuncia</label><input class="inp" id="ls-pronun" placeholder="Ex: UIT-ness" style="font-family:Montserrat,sans-serif"/></div>
+    <div style="flex-shrink:0;border-bottom:0.5px solid #e5e7eb">
+      <div id="lessonSubTabs" style="display:flex;border-bottom:0.5px solid #e5e7eb">
+        <div class="ls-subtab active" data-lstab="word" onclick="setLessonSubTab('word')" style="flex:1;padding:10px 0;text-align:center;font-size:10px;font-weight:500;color:#111827;border-bottom:2px solid #111827;cursor:pointer;font-family:Montserrat,sans-serif">Palavra</div>
+        <div class="ls-subtab" data-lstab="ff" onclick="setLessonSubTab('ff')" style="flex:1;padding:10px 0;text-align:center;font-size:10px;color:#9ca3af;cursor:pointer;font-family:Montserrat,sans-serif;border-bottom:2px solid transparent">False friend</div>
+        <div class="ls-subtab" data-lstab="pron" onclick="setLessonSubTab('pron')" style="flex:1;padding:10px 0;text-align:center;font-size:10px;color:#9ca3af;cursor:pointer;font-family:Montserrat,sans-serif;border-bottom:2px solid transparent">Pronuncia</div>
       </div>
-      <div class="wfield" style="margin-bottom:8px"><label style="font-size:9px;color:#9ca3af">Traducao</label><input class="inp" id="ls-trans" placeholder="Ex: testemunha" style="font-family:Montserrat,sans-serif"/></div>
-      <div class="wfield" style="margin-bottom:10px"><label style="font-size:9px;color:#9ca3af">Exemplo / frase</label><input class="inp" id="ls-example" placeholder="Ex: The witness identified the suspect." style="font-family:Montserrat,sans-serif"/></div>
-      <div style="display:flex;justify-content:flex-end">
-        <button onclick="addLessonWord()" style="padding:6px 16px;background:#111827;color:white;border:none;border-radius:8px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;display:flex;align-items:center;gap:4px">
-          <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M5 1v8M1 5h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-          Adicionar
-        </button>
-      </div>
+      <div id="lessonInputArea" style="padding:14px 20px"></div>
     </div>
     <div id="lessonWordList" style="padding:14px 20px;flex:1;overflow-y:auto"></div>
     <div style="padding:14px 20px;border-top:0.5px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;background:#f7f8fa;flex-shrink:0">
-      <div style="font-size:10px;color:#9ca3af;font-family:Montserrat,sans-serif">Palavras salvas ao adicionar</div>
+      <div style="font-size:10px;color:#9ca3af;font-family:Montserrat,sans-serif">Salvo automaticamente</div>
       <button onclick="finishLesson()" style="padding:8px 20px;background:#0F6E56;color:white;border:none;border-radius:8px;font-size:11px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif">Finalizar aula</button>
     </div>
   </div>
@@ -5451,23 +5452,22 @@ function renderFFQuiz(parent){
 
 // ── LESSON MODE ──────────────────────────────────────────
 window._lessonWords=[];
+window._lessonFF=[];
+window._lessonPron=[];
 window._lessonCategory='';
+window._lessonSubTab='word';
 var LESSON_DEFAULT_CATS=['Rotina e trabalho','True Crime','Beauty','Business','Daily'];
 
 function openLessonModal(){
-  window._lessonWords=[];
-  window._lessonCategory='';
+  window._lessonWords=[];window._lessonFF=[];window._lessonPron=[];
+  window._lessonCategory='';window._lessonSubTab='word';
   var m=document.getElementById('lessonModal');
   if(!m)return;
-  // Clear inputs
-  ['ls-word','ls-pronun','ls-trans','ls-example'].forEach(function(id){
-    var el=document.getElementById(id);if(el)el.value='';
-  });
   updateLessonCount();
   renderLessonCats();
+  setLessonSubTab('word');
   renderLessonWordList();
   m.classList.add('open');
-  setTimeout(function(){var w=document.getElementById('ls-word');if(w)w.focus();},200);
 }
 
 function closeLessonModal(){
@@ -5475,115 +5475,242 @@ function closeLessonModal(){
   if(m)m.classList.remove('open');
 }
 
+function setLessonSubTab(tab){
+  window._lessonSubTab=tab;
+  document.querySelectorAll('.ls-subtab').forEach(function(t){
+    var active=t.dataset.lstab===tab;
+    t.style.color=active?'#111827':'#9ca3af';
+    t.style.fontWeight=active?'500':'400';
+    t.style.borderBottom=active?'2px solid #111827':'2px solid transparent';
+  });
+  renderLessonInputArea();
+}
+
+function renderLessonInputArea(){
+  var area=document.getElementById('lessonInputArea');if(!area)return;
+  area.innerHTML='';
+  var tab=window._lessonSubTab;
+  if(tab==='word'){
+    area.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
+      +'<div><div style="font-size:9px;color:#9ca3af;margin-bottom:3px;font-family:Montserrat,sans-serif">Palavra</div><input class="inp" id="ls-word" placeholder="Ex: witness" style="font-family:Montserrat,sans-serif"/></div>'
+      +'<div><div style="font-size:9px;color:#9ca3af;margin-bottom:3px;font-family:Montserrat,sans-serif">Pronuncia</div><input class="inp" id="ls-pronun" placeholder="Ex: UIT-ness" style="font-family:Montserrat,sans-serif"/></div>'
+      +'</div>'
+      +'<div style="margin-bottom:8px"><div style="font-size:9px;color:#9ca3af;margin-bottom:3px;font-family:Montserrat,sans-serif">Traducao</div><input class="inp" id="ls-trans" placeholder="Ex: testemunha" style="font-family:Montserrat,sans-serif"/></div>'
+      +'<div style="margin-bottom:10px"><div style="font-size:9px;color:#9ca3af;margin-bottom:3px;font-family:Montserrat,sans-serif">Exemplo / frase</div><input class="inp" id="ls-example" placeholder="Ex: The witness identified the suspect." style="font-family:Montserrat,sans-serif"/></div>'
+      +'<div style="display:flex;justify-content:flex-end"><button onclick="addLessonWord()" style="padding:6px 16px;background:#111827;color:white;border:none;border-radius:8px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;display:flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M5 1v8M1 5h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Adicionar</button></div>';
+    setTimeout(function(){var w=document.getElementById('ls-word');if(w)w.focus();},100);
+  } else if(tab==='ff'){
+    area.innerHTML='<div style="margin-bottom:8px"><div style="font-size:9px;color:#9ca3af;margin-bottom:3px;font-family:Montserrat,sans-serif">Palavra em ingles</div><input class="inp" id="ls-ff-en" placeholder="Ex: actually" style="font-family:Montserrat,sans-serif"/></div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'
+      +'<div><div style="font-size:9px;color:#A32D2D;margin-bottom:3px;font-family:Montserrat,sans-serif">Parece significar (armadilha)</div><input class="inp" id="ls-ff-trap" placeholder="Ex: atualmente" style="font-family:Montserrat,sans-serif;border-color:#FCEBEB"/></div>'
+      +'<div><div style="font-size:9px;color:#0F6E56;margin-bottom:3px;font-family:Montserrat,sans-serif">Significa de verdade</div><input class="inp" id="ls-ff-correct" placeholder="Ex: na verdade" style="font-family:Montserrat,sans-serif;border-color:#E1F5EE"/></div>'
+      +'</div>'
+      +'<div style="display:flex;justify-content:flex-end"><button onclick="addLessonFF()" style="padding:6px 16px;background:#A32D2D;color:white;border:none;border-radius:8px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;display:flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M5 1v8M1 5h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Adicionar</button></div>';
+    setTimeout(function(){var w=document.getElementById('ls-ff-en');if(w)w.focus();},100);
+  } else if(tab==='pron'){
+    area.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
+      +'<div><div style="font-size:9px;color:#9ca3af;margin-bottom:3px;font-family:Montserrat,sans-serif">Padrao</div><input class="inp" id="ls-pron-pattern" placeholder="Ex: -tion" style="font-family:Montserrat,sans-serif"/></div>'
+      +'<div><div style="font-size:9px;color:#9ca3af;margin-bottom:3px;font-family:Montserrat,sans-serif">Som</div><input class="inp" id="ls-pron-sound" placeholder="Ex: SHON" style="font-family:Montserrat,sans-serif"/></div>'
+      +'</div>'
+      +'<div style="margin-bottom:10px"><div style="font-size:9px;color:#9ca3af;margin-bottom:3px;font-family:Montserrat,sans-serif">Exemplo</div><input class="inp" id="ls-pron-example" placeholder="Ex: investigation = in-ves-ti-GUEI-shon" style="font-family:Montserrat,sans-serif"/></div>'
+      +'<div style="display:flex;justify-content:flex-end"><button onclick="addLessonPron()" style="padding:6px 16px;background:#185FA5;color:white;border:none;border-radius:8px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;display:flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M5 1v8M1 5h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Adicionar</button></div>';
+    setTimeout(function(){var w=document.getElementById('ls-pron-pattern');if(w)w.focus();},100);
+  }
+}
+
 function renderLessonCats(){
   var wrap=document.getElementById('lessonCatPills');if(!wrap)return;
   wrap.innerHTML='';
-  // Merge default cats with cats from existing vocab
   var allCats=LESSON_DEFAULT_CATS.slice();
-  (window.studyVocab||[]).forEach(function(v){
-    if(v.category&&allCats.indexOf(v.category)<0)allCats.push(v.category);
-  });
+  (window.studyVocab||[]).forEach(function(v){if(v.category&&allCats.indexOf(v.category)<0)allCats.push(v.category);});
   allCats.forEach(function(c){
     var pill=document.createElement('div');
     var active=window._lessonCategory===c;
-    pill.style.cssText='padding:5px 12px;border-radius:16px;font-size:9px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;transition:all .15s;border:0.5px solid '+(active?'#111827':'#e5e7eb')+';background:'+(active?'#111827':'white')+';color:'+(active?'white':'#6b7280');
+    pill.style.cssText='padding:4px 11px;border-radius:16px;font-size:9px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;transition:all .15s;border:0.5px solid '+(active?'#111827':'#e5e7eb')+';background:'+(active?'#111827':'white')+';color:'+(active?'white':'#6b7280');
     pill.textContent=c;
-    pill.onclick=(function(cat){return function(){
-      window._lessonCategory=cat;
-      renderLessonCats();
-    };})(c);
+    pill.onclick=(function(cat){return function(){window._lessonCategory=cat;renderLessonCats();};})(c);
     wrap.appendChild(pill);
   });
-  // Add new cat button
   var addPill=document.createElement('div');
-  addPill.style.cssText='padding:5px 12px;border-radius:16px;font-size:9px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;border:0.5px dashed #d1d5db;color:#9ca3af';
+  addPill.style.cssText='padding:4px 11px;border-radius:16px;font-size:9px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;border:0.5px dashed #d1d5db;color:#9ca3af';
   addPill.textContent='+ Nova';
-  addPill.onclick=function(){
-    var name=prompt('Nome da nova categoria:');
-    if(!name||!name.trim())return;
-    LESSON_DEFAULT_CATS.push(name.trim());
-    window._lessonCategory=name.trim();
-    renderLessonCats();
-  };
+  addPill.onclick=function(){var n=prompt('Nome da nova categoria:');if(!n||!n.trim())return;LESSON_DEFAULT_CATS.push(n.trim());window._lessonCategory=n.trim();renderLessonCats();};
   wrap.appendChild(addPill);
 }
 
+// ── SEARCH ───
+function lessonSearch(q){
+  var wrap=document.getElementById('lsSearchResults');if(!wrap)return;
+  if(!q||q.length<2){wrap.style.display='none';return;}
+  var list=(window.studyVocab||[]).filter(function(v){
+    var ql=q.toLowerCase();
+    return (v.word||'').toLowerCase().indexOf(ql)>=0||(v.translation||'').toLowerCase().indexOf(ql)>=0||(v.example||'').toLowerCase().indexOf(ql)>=0;
+  }).slice(0,5);
+  if(!list.length){
+    wrap.style.display='block';
+    wrap.innerHTML='<div style="padding:12px;text-align:center;font-size:10px;color:#9ca3af;font-family:Montserrat,sans-serif">Nenhuma palavra encontrada</div>';
+    return;
+  }
+  wrap.style.display='block';
+  wrap.innerHTML='<div style="padding:6px 10px;font-size:9px;color:#9ca3af;border-bottom:0.5px solid #e5e7eb;font-family:Montserrat,sans-serif">'+list.length+' resultado'+(list.length>1?'s':'')+' para "'+eh(q)+'"</div>';
+  list.forEach(function(v){
+    var card=document.createElement('div');
+    card.style.cssText='padding:8px 12px;cursor:pointer;border-bottom:0.5px solid #f0f2f5;font-family:Montserrat,sans-serif';
+    card.onmouseenter=function(){this.style.background='#f7f8fa';};
+    card.onmouseleave=function(){this.style.background='transparent';};
+    card.innerHTML='<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:2px"><div style="font-size:11px;font-weight:500;color:#111827">'+eh(v.word)+'</div>'+(v.pronunciation?'<div style="font-size:9px;color:#7a9bae">/'+eh(v.pronunciation)+'/</div>':'')+'</div>'
+      +'<div style="font-size:10px;color:#6b7280">'+eh(v.translation)+'</div>'
+      +'<div style="display:flex;align-items:center;gap:6px;margin-top:2px">'
+      +(v.example?'<div style="font-size:9px;color:#9ca3af;font-style:italic;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+eh(v.example)+'</div>':'')
+      +(v.category?'<div style="padding:1px 6px;border-radius:8px;font-size:8px;background:#f0f2f5;color:#9ca3af;flex-shrink:0">'+eh(v.category)+'</div>':'')
+      +'</div>';
+    wrap.appendChild(card);
+  });
+}
+
+function closeLessonSearch(){
+  var wrap=document.getElementById('lsSearchResults');
+  if(wrap)wrap.style.display='none';
+}
+
+// ── ADD FUNCTIONS ───
 function addLessonWord(){
   var word=(document.getElementById('ls-word')||{}).value||'';
   if(!word.trim()){showToast('Digite a palavra!');return;}
-  var entry={
-    id:gid(),
-    word:word.trim(),
-    pronunciation:((document.getElementById('ls-pronun')||{}).value||'').trim(),
-    translation:((document.getElementById('ls-trans')||{}).value||'').trim(),
-    example:((document.getElementById('ls-example')||{}).value||'').trim(),
-    category:window._lessonCategory||'',
-    date:new Date().toISOString()
-  };
-  // Save to vocab immediately
+  var entry={id:gid(),word:word.trim(),pronunciation:((document.getElementById('ls-pronun')||{}).value||'').trim(),translation:((document.getElementById('ls-trans')||{}).value||'').trim(),example:((document.getElementById('ls-example')||{}).value||'').trim(),category:window._lessonCategory||'',date:new Date().toISOString()};
   window.studyVocab.unshift(entry);
   fbSaveStudy();
-  // Track in lesson list
   window._lessonWords.unshift(entry);
-  // Clear inputs for next word
-  ['ls-word','ls-pronun','ls-trans','ls-example'].forEach(function(id){
-    var el=document.getElementById(id);if(el)el.value='';
-  });
-  var w=document.getElementById('ls-word');if(w)w.focus();
+  renderLessonInputArea();
   updateLessonCount();
   renderLessonWordList();
   showToast(entry.word+' adicionada!');
 }
 
-function removeLessonWord(id){
-  // Remove from vocab
-  window.studyVocab=(window.studyVocab||[]).filter(function(v){return v.id!==id;});
+function addLessonFF(){
+  var en=(document.getElementById('ls-ff-en')||{}).value||'';
+  if(!en.trim()){showToast('Digite a palavra em ingles!');return;}
+  var trap=((document.getElementById('ls-ff-trap')||{}).value||'').trim();
+  var correct=((document.getElementById('ls-ff-correct')||{}).value||'').trim();
+  if(!trap||!correct){showToast('Preencha os dois significados!');return;}
+  var entry={id:gid(),en:en.trim(),trap:trap,correct:correct};
+  if(!window.studyFalseFriends)window.studyFalseFriends=[];
+  window.studyFalseFriends.push(entry);
   fbSaveStudy();
-  // Remove from lesson list
-  window._lessonWords=window._lessonWords.filter(function(w){return w.id!==id;});
+  window._lessonFF.unshift(entry);
+  renderLessonInputArea();
   updateLessonCount();
   renderLessonWordList();
+  showToast('False friend adicionado!');
+}
+
+function addLessonPron(){
+  var pattern=(document.getElementById('ls-pron-pattern')||{}).value||'';
+  if(!pattern.trim()){showToast('Digite o padrao!');return;}
+  var sound=((document.getElementById('ls-pron-sound')||{}).value||'').trim();
+  var example=((document.getElementById('ls-pron-example')||{}).value||'').trim();
+  var entry={id:gid(),pattern:pattern.trim(),sound:sound,example:example};
+  if(!window.studyPronunRules)window.studyPronunRules=[];
+  window.studyPronunRules.push(entry);
+  fbSaveStudy();
+  window._lessonPron.unshift(entry);
+  renderLessonInputArea();
+  updateLessonCount();
+  renderLessonWordList();
+  showToast('Regra de pronuncia adicionada!');
+}
+
+function removeLessonWord(id){
+  window.studyVocab=(window.studyVocab||[]).filter(function(v){return v.id!==id;});
+  fbSaveStudy();
+  window._lessonWords=window._lessonWords.filter(function(w){return w.id!==id;});
+  updateLessonCount();renderLessonWordList();
+}
+function removeLessonFF(id){
+  window.studyFalseFriends=(window.studyFalseFriends||[]).filter(function(f){return f.id!==id;});
+  fbSaveStudy();
+  window._lessonFF=window._lessonFF.filter(function(f){return f.id!==id;});
+  updateLessonCount();renderLessonWordList();
+}
+function removeLessonPron(id){
+  window.studyPronunRules=(window.studyPronunRules||[]).filter(function(p){return p.id!==id;});
+  fbSaveStudy();
+  window._lessonPron=window._lessonPron.filter(function(p){return p.id!==id;});
+  updateLessonCount();renderLessonWordList();
 }
 
 function updateLessonCount(){
-  var el=document.getElementById('lessonCount');
-  if(el)el.textContent=window._lessonWords.length+' palavra'+(window._lessonWords.length!==1?'s':'')+' adicionada'+(window._lessonWords.length!==1?'s':'');
+  var el=document.getElementById('lessonCount');if(!el)return;
+  var parts=[];
+  if(window._lessonWords.length)parts.push(window._lessonWords.length+' palavra'+(window._lessonWords.length>1?'s':''));
+  if(window._lessonFF.length)parts.push(window._lessonFF.length+' false friend'+(window._lessonFF.length>1?'s':''));
+  if(window._lessonPron.length)parts.push(window._lessonPron.length+' pronuncia'+(window._lessonPron.length>1?'s':''));
+  el.textContent=parts.length?parts.join(' . '):'Nenhum item adicionado';
 }
 
 function renderLessonWordList(){
   var wrap=document.getElementById('lessonWordList');if(!wrap)return;
   wrap.innerHTML='';
-  if(!window._lessonWords.length){
-    wrap.innerHTML='<div style="text-align:center;color:#d1d5db;padding:20px 0;font-size:11px;font-family:Montserrat,sans-serif">As palavras adicionadas aparecerao aqui</div>';
+  var hasAny=window._lessonWords.length||window._lessonFF.length||window._lessonPron.length;
+  if(!hasAny){
+    wrap.innerHTML='<div style="text-align:center;color:#d1d5db;padding:20px 0;font-size:11px;font-family:Montserrat,sans-serif">Os itens adicionados aparecerao aqui</div>';
     return;
   }
-  var label=document.createElement('div');
-  label.style.cssText='font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-family:Montserrat,sans-serif';
-  label.textContent='Palavras desta aula ('+window._lessonWords.length+')';
-  wrap.appendChild(label);
-  window._lessonWords.forEach(function(w){
-    var card=document.createElement('div');
-    card.style.cssText='display:flex;align-items:center;gap:10px;padding:8px 10px;background:#f7f8fa;border-radius:8px;margin-bottom:6px';
-    card.innerHTML='<div style="flex:1;min-width:0">'
-      +'<div style="display:flex;align-items:baseline;gap:6px"><div style="font-size:11px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+eh(w.word)+'</div>'
-      +(w.pronunciation?'<div style="font-size:9px;color:#7a9bae;font-family:Montserrat,sans-serif">/'+eh(w.pronunciation)+'/</div>':'')+'</div>'
-      +'<div style="font-size:10px;color:#6b7280;margin-top:1px;font-family:Montserrat,sans-serif">'+eh(w.translation)+'</div>'
-      +(w.example?'<div style="font-size:9px;color:#9ca3af;font-style:italic;margin-top:2px;font-family:Montserrat,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+eh(w.example)+'</div>':'')
-      +'</div>';
-    var del=document.createElement('div');
-    del.style.cssText='font-size:10px;color:#d1d5db;cursor:pointer;padding:2px 4px';
-    del.textContent='✕';
-    del.onclick=(function(id){return function(){removeLessonWord(id);};})(w.id);
-    card.appendChild(del);
-    wrap.appendChild(card);
-  });
+  // Words
+  if(window._lessonWords.length){
+    var lbl=document.createElement('div');
+    lbl.style.cssText='font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-family:Montserrat,sans-serif';
+    lbl.textContent='Palavras ('+window._lessonWords.length+')';
+    wrap.appendChild(lbl);
+    window._lessonWords.forEach(function(w){
+      var card=document.createElement('div');
+      card.style.cssText='display:flex;align-items:center;gap:10px;padding:8px 10px;background:#f7f8fa;border-radius:8px;margin-bottom:6px';
+      card.innerHTML='<div style="flex:1;min-width:0"><div style="display:flex;align-items:baseline;gap:6px"><div style="font-size:11px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+eh(w.word)+'</div>'+(w.pronunciation?'<div style="font-size:9px;color:#7a9bae;font-family:Montserrat,sans-serif">/'+eh(w.pronunciation)+'/</div>':'')+'</div><div style="font-size:10px;color:#6b7280;margin-top:1px;font-family:Montserrat,sans-serif">'+eh(w.translation)+'</div>'+(w.example?'<div style="font-size:9px;color:#9ca3af;font-style:italic;margin-top:2px;font-family:Montserrat,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+eh(w.example)+'</div>':'')+'</div>';
+      var del=document.createElement('div');
+      del.style.cssText='font-size:10px;color:#d1d5db;cursor:pointer;padding:2px 4px';del.textContent='✕';
+      del.onclick=(function(id){return function(){removeLessonWord(id);};})(w.id);
+      card.appendChild(del);wrap.appendChild(card);
+    });
+  }
+  // False Friends
+  if(window._lessonFF.length){
+    var lbl2=document.createElement('div');
+    lbl2.style.cssText='font-size:9px;font-weight:600;color:#A32D2D;letter-spacing:1px;text-transform:uppercase;margin:14px 0 8px;font-family:Montserrat,sans-serif';
+    lbl2.textContent='False friends ('+window._lessonFF.length+')';
+    wrap.appendChild(lbl2);
+    window._lessonFF.forEach(function(f){
+      var card=document.createElement('div');
+      card.style.cssText='display:flex;align-items:center;gap:10px;padding:8px 10px;background:#FCEBEB;border-radius:8px;margin-bottom:6px';
+      card.innerHTML='<div style="flex:1"><div style="font-size:11px;font-weight:500;color:#791F1F;font-family:Montserrat,sans-serif">'+eh(f.en)+'</div><div style="font-size:10px;color:#A32D2D;margin-top:1px;font-family:Montserrat,sans-serif">Parece: '+eh(f.trap)+' . Significa: '+eh(f.correct)+'</div></div>';
+      var del=document.createElement('div');
+      del.style.cssText='font-size:10px;color:#A32D2D;cursor:pointer;padding:2px 4px;opacity:.5';del.textContent='✕';
+      del.onclick=(function(id){return function(){removeLessonFF(id);};})(f.id);
+      card.appendChild(del);wrap.appendChild(card);
+    });
+  }
+  // Pronunciation
+  if(window._lessonPron.length){
+    var lbl3=document.createElement('div');
+    lbl3.style.cssText='font-size:9px;font-weight:600;color:#185FA5;letter-spacing:1px;text-transform:uppercase;margin:14px 0 8px;font-family:Montserrat,sans-serif';
+    lbl3.textContent='Pronuncias ('+window._lessonPron.length+')';
+    wrap.appendChild(lbl3);
+    window._lessonPron.forEach(function(p){
+      var card=document.createElement('div');
+      card.style.cssText='display:flex;align-items:center;gap:10px;padding:8px 10px;background:#E6F1FB;border-radius:8px;margin-bottom:6px';
+      card.innerHTML='<div style="flex:1"><div style="font-size:11px;font-weight:500;color:#0C447C;font-family:Montserrat,sans-serif">'+eh(p.pattern)+' = '+eh(p.sound)+'</div>'+(p.example?'<div style="font-size:10px;color:#185FA5;margin-top:1px;font-family:Montserrat,sans-serif">Ex: '+eh(p.example)+'</div>':'')+'</div>';
+      var del=document.createElement('div');
+      del.style.cssText='font-size:10px;color:#185FA5;cursor:pointer;padding:2px 4px;opacity:.5';del.textContent='✕';
+      del.onclick=(function(id){return function(){removeLessonPron(id);};})(p.id);
+      card.appendChild(del);wrap.appendChild(card);
+    });
+  }
 }
 
 function finishLesson(){
-  var count=window._lessonWords.length;
+  var total=window._lessonWords.length+window._lessonFF.length+window._lessonPron.length;
   closeLessonModal();
   renderStudyView();
-  if(count)showToast('Aula finalizada! '+count+' palavra'+(count!==1?'s':'')+' salva'+(count!==1?'s':'')+'.');
+  if(total)showToast('Aula finalizada! '+total+' ite'+(total>1?'ns':'m')+' salvo'+(total>1?'s':'')+'.');
   else showToast('Aula finalizada.');
 }
 
