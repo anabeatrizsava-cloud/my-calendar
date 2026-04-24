@@ -4882,6 +4882,7 @@ function renderStudyView(){
       _studyTab==='vocab'?'#1a1a1a':'transparent')+';color:'+(_studyTab==='vocab'?'#f5f3ef':'#9a9590')+'">Vocabulario</button>'
     +'<button onclick="setStudyTab(\'flashcards\')" id="stab-flash" style="padding:4px 14px;border:none;border-radius:7px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;background:'+(_studyTab==='flashcards'?'#1a1a1a':'transparent')+';color:'+(_studyTab==='flashcards'?'#f5f3ef':'#9a9590')+'">'+(function(){var r=getWordsToReview();return r.all.length?'Praticar <span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:50%;background:#E24B4A;color:white;font-size:9px;font-weight:500;margin-left:4px">'+r.all.length+'</span>':'Praticar';})()+'</button>'
     +'<button onclick="setStudyTab(\'quiz\')" id="stab-quiz" style="padding:4px 14px;border:none;border-radius:7px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;background:'+(_studyTab==='quiz'?'#1a1a1a':'transparent')+';color:'+(_studyTab==='quiz'?'#f5f3ef':'#9a9590')+'">Quiz</button>'
+    +'<button onclick="setStudyTab(\'progress\')" id="stab-progress" style="padding:4px 14px;border:none;border-radius:7px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;background:'+(_studyTab==='progress'?'#1a1a1a':'transparent')+';color:'+(_studyTab==='progress'?'#f5f3ef':'#9a9590')+'">Progresso</button>'
     +'<button onclick="setStudyTab(\'notes\')" id="stab-notes" style="padding:4px 14px;border:none;border-radius:7px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;background:'+(
       _studyTab==='notes'?'#1a1a1a':'transparent')+';color:'+(_studyTab==='notes'?'#f5f3ef':'#9a9590')+'">Anotacoes</button>'
     +'</div>'
@@ -4935,6 +4936,8 @@ function renderStudyView(){
     renderFlashcards(main);
   } else if(_studyTab==='quiz'){
     renderFFQuiz(main);
+  } else if(_studyTab==='progress'){
+    renderStudyProgress(main);
   } else {
     renderNotesList(main);
   }
@@ -5762,6 +5765,139 @@ function finishLesson(){
   renderStudyView();
   if(total)showToast('Aula finalizada! '+total+' ite'+(total>1?'ns':'m')+' salvo'+(total>1?'s':'')+'.');
   else showToast('Aula finalizada.');
+}
+
+
+// ── PROGRESS DASHBOARD ───────────────────────────────────
+function renderStudyProgress(parent){
+  var vocab=window.studyVocab||[];
+  var ff=window.studyFalseFriends||[];
+  var pron=window.studyPronunRules||[];
+
+  // ── Metric cards ──
+  var metrics=document.createElement('div');
+  metrics.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px';
+  metrics.innerHTML='<div style="background:white;border-radius:10px;border:0.5px solid #e5e7eb;padding:14px;text-align:center"><div style="font-size:28px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+vocab.length+'</div><div style="font-size:9px;color:#9ca3af;margin-top:2px;font-family:Montserrat,sans-serif">palavras</div></div>'
+    +'<div style="background:white;border-radius:10px;border:0.5px solid #e5e7eb;padding:14px;text-align:center"><div style="font-size:28px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+ff.length+'</div><div style="font-size:9px;color:#9ca3af;margin-top:2px;font-family:Montserrat,sans-serif">false friends</div></div>'
+    +'<div style="background:white;border-radius:10px;border:0.5px solid #e5e7eb;padding:14px;text-align:center"><div style="font-size:28px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+pron.length+'</div><div style="font-size:9px;color:#9ca3af;margin-top:2px;font-family:Montserrat,sans-serif">regras pron.</div></div>';
+  parent.appendChild(metrics);
+
+  // ── Words by category ──
+  var catCounts={};
+  vocab.forEach(function(v){var c=v.category||'Sem categoria';catCounts[c]=(catCounts[c]||0)+1;});
+  var catArr=Object.keys(catCounts).map(function(k){return{name:k,count:catCounts[k]};}).sort(function(a,b){return b.count-a.count;});
+  var maxCat=catArr.length?catArr[0].count:1;
+  var catColors=['#534AB7','#0F6E56','#854F0B','#993556','#185FA5','#993C1D','#888780'];
+
+  if(catArr.length){
+    var catCard=document.createElement('div');
+    catCard.style.cssText='background:white;border-radius:10px;border:0.5px solid #e5e7eb;padding:16px;margin-bottom:12px';
+    var catHdr=document.createElement('div');
+    catHdr.style.cssText='font-size:12px;font-weight:500;color:#111827;margin-bottom:14px;font-family:Montserrat,sans-serif';
+    catHdr.textContent='Palavras por categoria';
+    catCard.appendChild(catHdr);
+    catArr.forEach(function(c,ci){
+      var row=document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:6px';
+      var col=catColors[ci%catColors.length];
+      var pct=Math.round(c.count/maxCat*100);
+      row.innerHTML='<div style="font-size:10px;color:#6b7280;width:90px;text-align:right;font-family:Montserrat,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+eh(c.name)+'</div>'
+        +'<div style="flex:1;height:14px;background:#f0f2f5;border-radius:4px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+col+';border-radius:4px"></div></div>'
+        +'<div style="font-size:10px;color:#6b7280;width:24px;font-family:Montserrat,sans-serif">'+c.count+'</div>';
+      catCard.appendChild(row);
+    });
+    parent.appendChild(catCard);
+  }
+
+  // ── Difficulty breakdown + Quiz stats side by side ──
+  var gridRow=document.createElement('div');
+  gridRow.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px';
+
+  // Difficulty
+  var diffCard=document.createElement('div');
+  diffCard.style.cssText='background:white;border-radius:10px;border:0.5px solid #e5e7eb;padding:16px';
+  var hard=0,med=0,easy=0,unpracticed=0;
+  vocab.forEach(function(v){
+    if(!v.fcDifficulty)unpracticed++;
+    else if(v.fcDifficulty===3)hard++;
+    else if(v.fcDifficulty===2)med++;
+    else easy++;
+  });
+  var total=vocab.length||1;
+  diffCard.innerHTML='<div style="font-size:12px;font-weight:500;color:#111827;margin-bottom:12px;font-family:Montserrat,sans-serif">Dominio do vocabulario</div>'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="width:8px;height:8px;border-radius:50%;background:#E24B4A;flex-shrink:0"></div><div style="flex:1;font-size:10px;color:#6b7280;font-family:Montserrat,sans-serif">Dificil</div><div style="font-size:12px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+hard+'</div></div>'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="width:8px;height:8px;border-radius:50%;background:#EF9F27;flex-shrink:0"></div><div style="flex:1;font-size:10px;color:#6b7280;font-family:Montserrat,sans-serif">Media</div><div style="font-size:12px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+med+'</div></div>'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="width:8px;height:8px;border-radius:50%;background:#0F6E56;flex-shrink:0"></div><div style="flex:1;font-size:10px;color:#6b7280;font-family:Montserrat,sans-serif">Facil</div><div style="font-size:12px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+easy+'</div></div>'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><div style="width:8px;height:8px;border-radius:50%;background:#d1d5db;flex-shrink:0"></div><div style="flex:1;font-size:10px;color:#6b7280;font-family:Montserrat,sans-serif">Nao praticada</div><div style="font-size:12px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+unpracticed+'</div></div>'
+    +'<div style="height:6px;background:#f0f2f5;border-radius:3px;overflow:hidden;display:flex"><div style="width:'+Math.round(hard/total*100)+'%;background:#E24B4A"></div><div style="width:'+Math.round(med/total*100)+'%;background:#EF9F27"></div><div style="width:'+Math.round(easy/total*100)+'%;background:#0F6E56"></div><div style="width:'+Math.round(unpracticed/total*100)+'%;background:#d1d5db"></div></div>';
+  gridRow.appendChild(diffCard);
+
+  // Quiz stats
+  var quizCard=document.createElement('div');
+  quizCard.style.cssText='background:white;border-radius:10px;border:0.5px solid #e5e7eb;padding:16px';
+  quizCard.innerHTML='<div style="font-size:12px;font-weight:500;color:#111827;margin-bottom:12px;font-family:Montserrat,sans-serif">Quiz de false friends</div>';
+  if(ff.length<2){
+    quizCard.innerHTML+='<div style="font-size:10px;color:#9ca3af;font-family:Montserrat,sans-serif">Adicione mais false friends pra ver estatisticas.</div>';
+  } else {
+    quizCard.innerHTML+='<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:4px"><div style="font-size:28px;font-weight:500;color:#0F6E56;font-family:Montserrat,sans-serif">'+ff.length+'</div><div style="font-size:10px;color:#9ca3af;font-family:Montserrat,sans-serif">false friends cadastrados</div></div>'
+      +'<div style="font-size:10px;color:#6b7280;margin-bottom:10px;font-family:Montserrat,sans-serif">Disponiveis para o quiz</div>'
+      +'<div style="font-size:10px;font-weight:500;color:#9ca3af;margin-bottom:6px;font-family:Montserrat,sans-serif">Mais recentes:</div>';
+    var recentFF=ff.slice(-3).reverse();
+    recentFF.forEach(function(f){
+      quizCard.innerHTML+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><div style="width:4px;height:4px;border-radius:50%;background:#A32D2D"></div><div style="font-size:10px;color:#6b7280;font-family:Montserrat,sans-serif">'+eh(f.en)+' <span style="color:#9ca3af">('+eh(f.correct)+')</span></div></div>';
+    });
+  }
+  gridRow.appendChild(quizCard);
+  parent.appendChild(gridRow);
+
+  // ── Weekly activity ──
+  var weekCard=document.createElement('div');
+  weekCard.style.cssText='background:white;border-radius:10px;border:0.5px solid #e5e7eb;padding:16px';
+  var weekHdr=document.createElement('div');
+  weekHdr.style.cssText='font-size:12px;font-weight:500;color:#111827;margin-bottom:14px;font-family:Montserrat,sans-serif';
+  weekHdr.textContent='Atividade semanal';
+  weekCard.appendChild(weekHdr);
+
+  // Count words added per day this week
+  var today=new Date();
+  var dayOfWeek=today.getDay();
+  var monday=new Date(today);
+  monday.setDate(today.getDate()-(dayOfWeek===0?6:dayOfWeek-1));
+  monday.setHours(0,0,0,0);
+
+  var dayNames=['seg','ter','qua','qui','sex','sab','dom'];
+  var dayCounts=[0,0,0,0,0,0,0];
+  var weekTotal=0;
+  vocab.forEach(function(v){
+    if(!v.date)return;
+    var d=new Date(v.date);
+    if(d>=monday){
+      var dw=d.getDay();
+      var idx=dw===0?6:dw-1;
+      dayCounts[idx]++;
+      weekTotal++;
+    }
+  });
+  var maxDay=Math.max.apply(null,dayCounts.concat([1]));
+
+  var bars=document.createElement('div');
+  bars.style.cssText='display:flex;gap:6px;align-items:flex-end;height:80px';
+  dayCounts.forEach(function(cnt,i){
+    var barH=cnt>0?Math.max(Math.round(cnt/maxDay*65),4):4;
+    var bar=document.createElement('div');
+    bar.style.cssText='flex:1;display:flex;flex-direction:column;align-items:center;gap:3px';
+    bar.innerHTML='<div style="font-size:9px;color:#9ca3af;font-family:Montserrat,sans-serif">'+cnt+'</div>'
+      +'<div style="width:100%;background:'+(cnt>0?'#0F6E56':'#f0f2f5')+';border-radius:4px 4px 0 0;height:'+barH+'px"></div>'
+      +'<div style="font-size:9px;color:#9ca3af;font-family:Montserrat,sans-serif">'+dayNames[i]+'</div>';
+    bars.appendChild(bar);
+  });
+  weekCard.appendChild(bars);
+
+  var weekLabel=document.createElement('div');
+  weekLabel.style.cssText='font-size:10px;color:#9ca3af;text-align:center;margin-top:8px;font-family:Montserrat,sans-serif';
+  weekLabel.textContent=weekTotal+' palavra'+(weekTotal!==1?'s':'')+' adicionada'+(weekTotal!==1?'s':'')+' esta semana';
+  weekCard.appendChild(weekLabel);
+  parent.appendChild(weekCard);
 }
 
 function initStudyModule(){
