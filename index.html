@@ -1996,9 +1996,9 @@ function renderRPFinance(rp){
 
   var metrics=document.createElement('div');
   metrics.style.cssText='display:flex;gap:4px;margin-bottom:12px';
-  metrics.innerHTML='<div style="flex:1;background:#111827;border-radius:8px;padding:8px;text-align:center"><div style="font-size:7px;color:rgba(255,255,255,.5);font-family:Montserrat,sans-serif">Total</div><div style="font-size:14px;color:white;font-weight:500;font-family:Montserrat,sans-serif">'+formatBRL(totalAmt)+'</div></div>'
-    +'<div style="flex:1;background:#586357;border-radius:8px;padding:8px;text-align:center"><div style="font-size:7px;color:rgba(255,255,255,.5);font-family:Montserrat,sans-serif">Quitado</div><div style="font-size:14px;color:white;font-weight:500;font-family:Montserrat,sans-serif">'+formatBRL(paidAmt)+'</div></div>'
-    +'<div style="flex:1;background:#734141;border-radius:8px;padding:8px;text-align:center"><div style="font-size:7px;color:rgba(255,255,255,.5);font-family:Montserrat,sans-serif">Pendente</div><div style="font-size:14px;color:white;font-weight:500;font-family:Montserrat,sans-serif">'+formatBRL(pendAmt)+'</div></div>';
+  metrics.innerHTML='<div style="flex:1;background:#131F28;border-radius:8px;padding:8px;text-align:center"><div style="font-size:7px;color:rgba(255,255,255,.5);font-family:Montserrat,sans-serif">Total</div><div style="font-size:14px;color:white;font-weight:500;font-family:Montserrat,sans-serif">'+formatBRL(totalAmt)+'</div></div>'
+    +'<div style="flex:1;background:#486068;border-radius:8px;padding:8px;text-align:center"><div style="font-size:7px;color:rgba(255,255,255,.5);font-family:Montserrat,sans-serif">Quitado</div><div style="font-size:14px;color:white;font-weight:500;font-family:Montserrat,sans-serif">'+formatBRL(paidAmt)+'</div></div>'
+    +'<div style="flex:1;background:#B3907F;border-radius:8px;padding:8px;text-align:center"><div style="font-size:7px;color:rgba(255,255,255,.5);font-family:Montserrat,sans-serif">Pendente</div><div style="font-size:14px;color:white;font-weight:500;font-family:Montserrat,sans-serif">'+formatBRL(pendAmt)+'</div></div>';
   main.appendChild(metrics);
 
   var todayStr=new Date().toISOString().split('T')[0];
@@ -2009,8 +2009,8 @@ function renderRPFinance(rp){
     var lbl=document.createElement('div');
     lbl.style.cssText='font-size:10px;font-weight:500;color:#111827;margin:10px 0 6px;font-family:Montserrat,sans-serif;display:flex;align-items:center;gap:4px';
     lbl.innerHTML=dayNames[dt.getDay()]+', '+dt.getDate()+'/'+(dt.getMonth()+1).toString().padStart(2,'0')
-      +(isToday?' <span style="background:#f5eeed;padding:1px 4px;border-radius:4px;color:#734141;font-size:8px">hoje</span>'
-      :isPast&&grouped[ds].some(function(t){return t.calStatus!=='concluido';})?' <span style="background:#f2e6e6;padding:1px 4px;border-radius:4px;color:#3D0000;font-size:8px">vencida</span>':'');
+      +(isToday?' <span style="background:#e8edf0;padding:1px 4px;border-radius:4px;color:#486068;font-size:8px">hoje</span>'
+      :isPast&&grouped[ds].some(function(t){return t.calStatus!=='concluido';})?' <span style="background:#f5eeea;padding:1px 4px;border-radius:4px;color:#B3907F;font-size:8px">vencida</span>':'');
     main.appendChild(lbl);
     grouped[ds].forEach(function(t){
       var isPaid=t.calStatus==='concluido';var isOverdue=isPast&&!isPaid;
@@ -2021,7 +2021,7 @@ function renderRPFinance(rp){
         +'<div style="font-size:11px;font-weight:500;color:'+(isPaid?'#9ca3af':'#111827')+';font-family:Montserrat,sans-serif'+(isPaid?';text-decoration:line-through':'')+'">'+formatBRL(amt)+'</div>';
       if(!isPaid){
         var payBtn=document.createElement('div');
-        payBtn.style.cssText='padding:3px 8px;border-radius:6px;font-size:9px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;'+(isOverdue?'background:#3D0000;color:#FFF2E6':'border:0.5px solid #734141;color:#734141');
+        payBtn.style.cssText='padding:3px 8px;border-radius:6px;font-size:9px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;'+(isOverdue?'background:#131F28;color:#C5CED0':'border:0.5px solid #486068;color:#486068');
         payBtn.textContent='Pagar';
         payBtn.onclick=(function(did){return function(e){e.stopPropagation();markFinPaid(did);setTimeout(renderRightPanel,500);};})(t._docId);
         row.appendChild(payBtn);
@@ -2044,7 +2044,7 @@ function renderRPGoals(rp){
   var overallPct=Math.round(objectives.reduce(function(s,o){return s+getObjProgress(o);},0)/objectives.length);
   // Compact ring
   var ringDiv=document.createElement('div');
-  ringDiv.style.cssText='background:#374151;border-radius:10px;padding:12px;display:flex;align-items:center;gap:10px;margin-bottom:12px';
+  ringDiv.style.cssText='background:#131F28;border-radius:10px;padding:12px;display:flex;align-items:center;gap:10px;margin-bottom:12px';
   var dash=Math.round(119.4*(1-overallPct/100));
   ringDiv.innerHTML='<div style="position:relative;width:36px;height:36px;flex-shrink:0"><svg viewBox="0 0 36 36" width="36" height="36"><circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="3"/><circle cx="18" cy="18" r="15" fill="none" stroke="white" stroke-width="3" stroke-dasharray="94.2" stroke-dashoffset="'+Math.round(94.2*(1-overallPct/100))+'" stroke-linecap="round" transform="rotate(-90 18 18)"/></svg><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;color:white;font-family:Montserrat,sans-serif">'+overallPct+'%</div></div>'
     +'<div><div style="font-size:11px;font-weight:500;color:white;font-family:Montserrat,sans-serif">'+period+'</div><div style="font-size:9px;color:rgba(255,255,255,.5);font-family:Montserrat,sans-serif">'+objectives.length+' objetivo'+(objectives.length>1?'s':'')+'</div></div>';
@@ -2079,8 +2079,8 @@ function renderRPEng(rp){
   // Review card
   if(reviewData.all.length){
     var rc=document.createElement('div');
-    rc.style.cssText='background:#FAEEDA;border-radius:8px;padding:10px;margin-bottom:12px;display:flex;align-items:center;gap:8px;cursor:pointer';
-    rc.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><div style="flex:1"><div style="font-size:10px;font-weight:500;color:#854F0B;font-family:Montserrat,sans-serif">'+reviewData.all.length+' palavra'+(reviewData.all.length>1?'s':'')+' pra revisar</div></div>';
+    rc.style.cssText='background:#eef1f2;border-radius:8px;padding:10px;margin-bottom:12px;display:flex;align-items:center;gap:8px;cursor:pointer';
+    rc.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#486068" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><div style="flex:1"><div style="font-size:10px;font-weight:500;color:#486068;font-family:Montserrat,sans-serif">'+reviewData.all.length+' palavra'+(reviewData.all.length>1?'s':'')+' pra revisar</div></div>';
     rc.onclick=function(){window._rightPanelMode='resumo';switchToStudy();setTimeout(function(){window._fcReviewMode=true;window._fcDeck=reviewData.all.slice();window._fcIndex=0;window._fcRevealed=false;setStudyTab('flashcards');},300);};
     main.appendChild(rc);
   }
@@ -2384,11 +2384,16 @@ function switchCal(calId){
   var rightPanel=document.getElementById('rightPanel');
   var workDiv=document.getElementById('workApp');
   var studyDiv=document.getElementById('studyApp');
+  var goalsDiv=document.getElementById('goalsApp');
+  var finDiv=document.getElementById('finWeekApp');
+  // Hide all modules first
+  if(workDiv)workDiv.style.display='none';
+  if(studyDiv)studyDiv.style.display='none';
+  if(goalsDiv)goalsDiv.style.display='none';
+  if(finDiv)finDiv.style.display='none';
   if(calId==='main'){
     if(centerCol)centerCol.style.display='flex';
     if(rightPanel)rightPanel.style.display='flex';
-    if(workDiv)workDiv.style.display='none';
-    if(studyDiv)studyDiv.style.display='none';
   } else {
     if(centerCol)centerCol.style.display='none';
     if(rightPanel)rightPanel.style.display='none';
@@ -5014,19 +5019,19 @@ function renderFinWeekView(){
   var mn=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 
   // Palette
-  var P={paid:'#586357',paidBg:'#eef0ee',paidBorder:'#a8b3a6',
-    today:'#734141',todayBg:'#f5eeed',todayBorder:'#d4a8a8',
-    overdue:'#3D0000',overdueBg:'#f2e6e6',
-    future:'#d4d0ca',futureBg:'#FFF2E6',
-    pending:'#734141',pendingBg:'#FFF2E6',pendingBorder:'#d4a8a8',
-    btnDark:'#280D08',btnDarkText:'#FFF2E6'};
+  var P={paid:'#486068',paidBg:'#e8edf0',paidBorder:'#a8b8be',
+    today:'#486068',todayBg:'#e8edf0',todayBorder:'#85979D',
+    overdue:'#B3907F',overdueBg:'#f5eeea',
+    future:'#C5CED0',futureBg:'#f0f3f4',
+    pending:'#B3907F',pendingBg:'#f5eeea',pendingBorder:'#d4b8ad',
+    btnDark:'#131F28',btnDarkText:'#C5CED0'};
 
   var tb=document.createElement('div');
   tb.style.cssText='padding:14px 20px;background:white;border-bottom:0.5px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;flex-shrink:0';
   // Count pending for dot
   var allTasks=(window._finTasks||[]).filter(function(t){var d=t.dueDate||t.date||'';if(!d)return false;var td=new Date(d+'T12:00:00');return td>=range.start&&td<=range.end;});
   var pendingCount=allTasks.filter(function(t){return t.calStatus!=='concluido';}).length;
-  tb.innerHTML='<div><div style="display:flex;align-items:center;gap:8px"><div style="font-size:16px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">Contas da semana</div>'+(pendingCount?'<div style="width:8px;height:8px;border-radius:50%;background:'+P.today+'"></div>':'')+'</div><div style="font-size:10px;color:#9ca3af;margin-top:2px;font-family:Montserrat,sans-serif">'+startStr+' - '+endStr+' '+mn[range.start.getMonth()]+' '+range.start.getFullYear()+'</div></div>';
+  tb.innerHTML='<div><div style="display:flex;align-items:center;gap:8px"><div style="font-size:16px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">Contas da semana</div>'+(pendingCount?'<div style="width:8px;height:8px;border-radius:50%;background:#B3907F"></div>':'')+'</div><div style="font-size:10px;color:#9ca3af;margin-top:2px;font-family:Montserrat,sans-serif">'+startStr+' - '+endStr+' '+mn[range.start.getMonth()]+' '+range.start.getFullYear()+'</div></div>';
   var navDiv=document.createElement('div');
   navDiv.style.cssText='display:flex;gap:6px;align-items:center';
   var prevBtn=document.createElement('div');
@@ -5058,9 +5063,9 @@ function renderFinWeekView(){
 
   var metrics=document.createElement('div');
   metrics.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px';
-  metrics.innerHTML='<div style="background:#111827;border-radius:12px;padding:14px;text-align:center"><div style="font-size:11px;color:rgba(255,255,255,.5);font-family:Montserrat,sans-serif">Total</div><div style="font-size:22px;font-weight:500;color:white;margin-top:4px;font-family:Montserrat,sans-serif">'+formatBRL(totalAmount)+'</div><div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px;font-family:Montserrat,sans-serif">'+tasks.length+' conta'+(tasks.length!==1?'s':'')+'</div></div>'
-    +'<div style="background:#586357;border-radius:12px;padding:14px;text-align:center"><div style="font-size:11px;color:rgba(255,255,255,.6);font-family:Montserrat,sans-serif">Quitado</div><div style="font-size:22px;font-weight:500;color:white;margin-top:4px;font-family:Montserrat,sans-serif">'+formatBRL(paidAmount)+'</div><div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px;font-family:Montserrat,sans-serif">'+paidCount+' conta'+(paidCount!==1?'s':'')+'</div></div>'
-    +'<div style="background:#734141;border-radius:12px;padding:14px;text-align:center"><div style="font-size:11px;color:rgba(255,255,255,.6);font-family:Montserrat,sans-serif">Pendente</div><div style="font-size:22px;font-weight:500;color:white;margin-top:4px;font-family:Montserrat,sans-serif">'+formatBRL(pendingAmount)+'</div><div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px;font-family:Montserrat,sans-serif">'+pendCount+' conta'+(pendCount!==1?'s':'')+'</div></div>';
+  metrics.innerHTML='<div style="background:#131F28;border-radius:12px;padding:14px;text-align:center"><div style="font-size:11px;color:rgba(255,255,255,.5);font-family:Montserrat,sans-serif">Total</div><div style="font-size:22px;font-weight:500;color:white;margin-top:4px;font-family:Montserrat,sans-serif">'+formatBRL(totalAmount)+'</div><div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px;font-family:Montserrat,sans-serif">'+tasks.length+' conta'+(tasks.length!==1?'s':'')+'</div></div>'
+    +'<div style="background:#486068;border-radius:12px;padding:14px;text-align:center"><div style="font-size:11px;color:rgba(255,255,255,.6);font-family:Montserrat,sans-serif">Quitado</div><div style="font-size:22px;font-weight:500;color:white;margin-top:4px;font-family:Montserrat,sans-serif">'+formatBRL(paidAmount)+'</div><div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px;font-family:Montserrat,sans-serif">'+paidCount+' conta'+(paidCount!==1?'s':'')+'</div></div>'
+    +'<div style="background:#B3907F;border-radius:12px;padding:14px;text-align:center"><div style="font-size:11px;color:rgba(255,255,255,.6);font-family:Montserrat,sans-serif">Pendente</div><div style="font-size:22px;font-weight:500;color:white;margin-top:4px;font-family:Montserrat,sans-serif">'+formatBRL(pendingAmount)+'</div><div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px;font-family:Montserrat,sans-serif">'+pendCount+' conta'+(pendCount!==1?'s':'')+'</div></div>';
   main.appendChild(metrics);
 
   if(!tasks.length){
@@ -5158,7 +5163,7 @@ function checkFinSundayReminder(){
   if(finBtn&&!finBtn.querySelector('.fin-dot')){
     var dot=document.createElement('div');
     dot.className='fin-dot';
-    dot.style.cssText='position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;background:#734141;border:1.5px solid #1a1a1a';
+    dot.style.cssText='position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;background:#B3907F;border:1.5px solid #1a1a1a';
     var iconWrap=finBtn.querySelector('div');
     if(iconWrap){iconWrap.style.position='relative';iconWrap.appendChild(dot);}
   }
@@ -5178,7 +5183,7 @@ function showFinSundayModal(pending){
 
   var hdr=document.createElement('div');
   hdr.style.cssText='padding:16px 20px;border-bottom:0.5px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between';
-  hdr.innerHTML='<div><div style="font-size:14px;font-weight:500;color:#111827">Contas pendentes da semana</div><div style="font-size:10px;color:#9ca3af;margin-top:2px">Domingo, '+new Date().getDate()+'/'+(new Date().getMonth()+1).toString().padStart(2,'0')+' . 18:00</div></div><div style="display:flex;align-items:center;gap:8px"><div style="padding:3px 8px;border-radius:8px;background:#f5eeed;font-size:10px;color:#734141;font-weight:500">'+pending.length+' pendente'+(pending.length>1?'s':'')+'</div><div id="finSunClose" style="font-size:14px;color:#9ca3af;cursor:pointer;padding:2px 4px">x</div></div>';
+  hdr.innerHTML='<div><div style="font-size:14px;font-weight:500;color:#111827">Contas pendentes da semana</div><div style="font-size:10px;color:#9ca3af;margin-top:2px">Domingo, '+new Date().getDate()+'/'+(new Date().getMonth()+1).toString().padStart(2,'0')+' . 18:00</div></div><div style="display:flex;align-items:center;gap:8px"><div style="padding:3px 8px;border-radius:8px;background:#f5eeea;font-size:10px;color:#B3907F;font-weight:500">'+pending.length+' pendente'+(pending.length>1?'s':'')+'</div><div id="finSunClose" style="font-size:14px;color:#9ca3af;cursor:pointer;padding:2px 4px">x</div></div>';
   modal.appendChild(hdr);
 
   var body=document.createElement('div');
@@ -5194,7 +5199,7 @@ function showFinSundayModal(pending){
     btns.style.cssText='display:flex;gap:4px';
 
     var payBtn=document.createElement('div');
-    payBtn.style.cssText='padding:4px 10px;border-radius:6px;background:#280D08;color:#FFF2E6;font-size:10px;font-weight:500;cursor:pointer';
+    payBtn.style.cssText='padding:4px 10px;border-radius:6px;background:#131F28;color:#C5CED0;font-size:10px;font-weight:500;cursor:pointer';
     payBtn.textContent='Pagar';
     payBtn.onclick=(function(docId,idx){return function(){markFinPaid(docId);var r=document.getElementById('finSunRow'+idx);if(r){r.style.opacity='.3';r.style.pointerEvents='none';}showToast('Marcada como paga!');};})(t._docId,i);
     btns.appendChild(payBtn);
@@ -5317,9 +5322,13 @@ function switchToStudy(){
   var rightPanel=document.getElementById('rightPanel');
   var workDiv=document.getElementById('workApp');
   var studyDiv=document.getElementById('studyApp');
+  var goalsDiv=document.getElementById('goalsApp');
+  var finDiv=document.getElementById('finWeekApp');
   if(centerCol)centerCol.style.display='none';
   if(rightPanel)rightPanel.style.display='none';
   if(workDiv)workDiv.style.display='none';
+  if(goalsDiv)goalsDiv.style.display='none';
+  if(finDiv)finDiv.style.display='none';
   if(studyDiv)studyDiv.style.display='flex';
   renderStudyView();
   renderCalSwitcher();
@@ -5347,7 +5356,7 @@ function renderStudyView(){
     +'<div style="display:flex;gap:2px;background:#f0ede8;border-radius:9px;padding:3px">'
     +'<button onclick="setStudyTab(\'vocab\')" id="stab-vocab" style="padding:4px 14px;border:none;border-radius:7px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;background:'+(
       _studyTab==='vocab'?'#1a1a1a':'transparent')+';color:'+(_studyTab==='vocab'?'#f5f3ef':'#9a9590')+'">Vocabulario</button>'
-    +'<button onclick="setStudyTab(\'flashcards\')" id="stab-flash" style="padding:4px 14px;border:none;border-radius:7px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;background:'+(_studyTab==='flashcards'?'#1a1a1a':'transparent')+';color:'+(_studyTab==='flashcards'?'#f5f3ef':'#9a9590')+'">'+(function(){var r=getWordsToReview();return r.all.length?'Praticar <span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:50%;background:#E24B4A;color:white;font-size:9px;font-weight:500;margin-left:4px">'+r.all.length+'</span>':'Praticar';})()+'</button>'
+    +'<button onclick="setStudyTab(\'flashcards\')" id="stab-flash" style="padding:4px 14px;border:none;border-radius:7px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;background:'+(_studyTab==='flashcards'?'#1a1a1a':'transparent')+';color:'+(_studyTab==='flashcards'?'#f5f3ef':'#9a9590')+'">'+(function(){var r=getWordsToReview();return r.all.length?'Praticar <span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:50%;background:#B3907F;color:white;font-size:9px;font-weight:500;margin-left:4px">'+r.all.length+'</span>':'Praticar';})()+'</button>'
     +'<button onclick="setStudyTab(\'quiz\')" id="stab-quiz" style="padding:4px 14px;border:none;border-radius:7px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;background:'+(_studyTab==='quiz'?'#1a1a1a':'transparent')+';color:'+(_studyTab==='quiz'?'#f5f3ef':'#9a9590')+'">Quiz</button>'
     +'<button onclick="setStudyTab(\'progress\')" id="stab-progress" style="padding:4px 14px;border:none;border-radius:7px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;background:'+(_studyTab==='progress'?'#1a1a1a':'transparent')+';color:'+(_studyTab==='progress'?'#f5f3ef':'#9a9590')+'">Progresso</button>'
     +'<button onclick="setStudyTab(\'notes\')" id="stab-notes" style="padding:4px 14px;border:none;border-radius:7px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;background:'+(
@@ -5369,15 +5378,15 @@ function renderStudyView(){
     var rc=document.createElement('div');
     rc.style.cssText='background:white;border:0.5px solid #e5e7eb;border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:14px;margin-bottom:12px';
     var rcIcon=document.createElement('div');
-    rcIcon.style.cssText='width:40px;height:40px;border-radius:50%;background:#FAEEDA;display:flex;align-items:center;justify-content:center;flex-shrink:0';
-    rcIcon.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+    rcIcon.style.cssText='width:40px;height:40px;border-radius:50%;background:#eef1f2;display:flex;align-items:center;justify-content:center;flex-shrink:0';
+    rcIcon.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#85979D" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
     rc.appendChild(rcIcon);
     var rcInfo=document.createElement('div');
     rcInfo.style.cssText='flex:1';
-    rcInfo.innerHTML='<div style="font-size:12px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+reviewData.all.length+' palavra'+(reviewData.all.length>1?'s':'')+' para revisar hoje</div><div style="font-size:10px;color:#9ca3af;margin-top:2px;font-family:Montserrat,sans-serif">'+(reviewData.hard.length?reviewData.hard.length+' dificei'+(reviewData.hard.length>1?'s':'l'):'')+(reviewData.hard.length&&reviewData.medium.length?', ':'')+(reviewData.medium.length?reviewData.medium.length+' media'+(reviewData.medium.length>1?'s':''):'')+'</div>';
+    rcInfo.innerHTML='<div style="font-size:12px;font-weight:500;color:#131F28;font-family:Montserrat,sans-serif">'+reviewData.all.length+' palavra'+(reviewData.all.length>1?'s':'')+' para revisar hoje</div><div style="font-size:10px;color:#85979D;margin-top:2px;font-family:Montserrat,sans-serif">'+(reviewData.hard.length?reviewData.hard.length+' dificei'+(reviewData.hard.length>1?'s':'l'):'')+(reviewData.hard.length&&reviewData.medium.length?', ':'')+(reviewData.medium.length?reviewData.medium.length+' media'+(reviewData.medium.length>1?'s':''):'')+'</div>';
     rc.appendChild(rcInfo);
     var rcBtn=document.createElement('div');
-    rcBtn.style.cssText='padding:8px 16px;background:#111827;color:white;border-radius:8px;font-size:10px;font-weight:500;cursor:pointer;flex-shrink:0;font-family:Montserrat,sans-serif';
+    rcBtn.style.cssText='padding:8px 16px;background:#131F28;color:#C5CED0;border-radius:8px;font-size:10px;font-weight:500;cursor:pointer;flex-shrink:0;font-family:Montserrat,sans-serif';
     rcBtn.textContent='Revisar agora';
     rcBtn.onclick=function(){window._fcReviewMode=true;window._fcDeck=reviewData.all.slice();window._fcIndex=0;window._fcRevealed=false;setStudyTab('flashcards');};
     rc.appendChild(rcBtn);
@@ -5788,8 +5797,8 @@ function renderFlashcards(parent){
   // Progress bar
   if(window._fcReviewMode){
     var rmLabel=document.createElement('div');
-    rmLabel.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:10px;padding:6px 10px;background:#FAEEDA;border-radius:8px';
-    rmLabel.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><div style="font-size:10px;color:#854F0B;font-family:Montserrat,sans-serif;font-weight:500">Modo revisao</div><div style="font-size:10px;color:#854F0B;font-family:Montserrat,sans-serif;margin-left:auto;cursor:pointer" onclick="window._fcReviewMode=false;window._fcDeck=[];renderStudyView();">Sair</div>';
+    rmLabel.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:10px;padding:6px 10px;background:#eef1f2;border-radius:8px';
+    rmLabel.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#486068" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><div style="font-size:10px;color:#486068;font-family:Montserrat,sans-serif;font-weight:500">Modo revisao</div><div style="font-size:10px;color:#486068;font-family:Montserrat,sans-serif;margin-left:auto;cursor:pointer" onclick="window._fcReviewMode=false;window._fcDeck=[];renderStudyView();">Sair</div>';
     parent.appendChild(rmLabel);
   }
   var progWrap=document.createElement('div');
@@ -5813,7 +5822,7 @@ function renderFlashcards(parent){
     fc.innerHTML='<div style="font-size:28px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif;margin-bottom:8px">'+eh(card.word)+'</div>'
       +(card.pronunciation?'<div style="font-size:13px;color:#7a9bae;font-family:Montserrat,sans-serif">/'+eh(card.pronunciation)+'/</div>':'')
       +(card.category?'<div style="font-size:9px;color:#d1d5db;font-family:Montserrat,sans-serif;margin-top:12px">'+eh(card.category)+'</div>':'')
-      +(card.fcDifficulty?'<div style="margin-top:6px"><span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:9px;font-weight:500;'+(card.fcDifficulty===3?'background:#FCEBEB;color:#791F1F':card.fcDifficulty===2?'background:#FAEEDA;color:#854F0B':'background:#E1F5EE;color:#085041')+'">'+(card.fcDifficulty===3?'dificil':card.fcDifficulty===2?'media':'facil')+'</span></div>':'')
+      +(card.fcDifficulty?'<div style="margin-top:6px"><span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:9px;font-weight:500;'+(card.fcDifficulty===3?'background:#f5f0ec;color:#B3907F':card.fcDifficulty===2?'background:#eef1f2;color:#85979D':'background:#e8edf0;color:#486068')+'">'+(card.fcDifficulty===3?'dificil':card.fcDifficulty===2?'media':'facil')+'</span></div>':'')
       +'<div style="font-size:10px;color:#d1d5db;margin-top:20px;font-family:Montserrat,sans-serif">Toque pra revelar</div>';
   } else {
     fc.innerHTML='<div style="font-size:28px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif;margin-bottom:8px">'+eh(card.word)+'</div>'
@@ -5828,7 +5837,7 @@ function renderFlashcards(parent){
   if(window._fcRevealed){
     var btns=document.createElement('div');
     btns.style.cssText='display:flex;justify-content:center;gap:10px;margin-top:20px';
-    var diffData=[{label:'Dificil',bg:'#FCEBEB',color:'#791F1F',val:3},{label:'Medio',bg:'#FAEEDA',color:'#854F0B',val:2},{label:'Facil',bg:'#E1F5EE',color:'#085041',val:1}];
+    var diffData=[{label:'Dificil',bg:'#f5f0ec',color:'#B3907F',val:3},{label:'Medio',bg:'#eef1f2',color:'#85979D',val:2},{label:'Facil',bg:'#e8edf0',color:'#486068',val:1}];
     diffData.forEach(function(d){
       var b=document.createElement('div');
       b.style.cssText='padding:10px 24px;border-radius:10px;font-size:11px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;background:'+d.bg+';color:'+d.color+';transition:transform .1s';
@@ -5875,7 +5884,7 @@ function renderFFQuiz(parent){
     var fin=document.createElement('div');
     fin.style.cssText='background:white;border:0.5px solid #e5e7eb;border-radius:16px;padding:36px 24px;text-align:center';
     fin.innerHTML='<div style="font-size:14px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif;margin-bottom:16px">Quiz finalizado!</div>'
-      +'<div style="font-size:42px;font-weight:500;color:'+(pct>=70?'#0F6E56':'#A32D2D')+';font-family:Montserrat,sans-serif;margin-bottom:6px">'+pct+'%</div>'
+      +'<div style="font-size:42px;font-weight:500;color:'+(pct>=70?'#486068':'#B3907F')+';font-family:Montserrat,sans-serif;margin-bottom:6px">'+pct+'%</div>'
       +'<div style="font-size:11px;color:#9ca3af;font-family:Montserrat,sans-serif;margin-bottom:24px">'+window._quizScore+' de '+window._quizTotal+' corretas</div>'
       +'<div id="quizRestart" style="padding:10px 24px;background:#111827;color:white;border-radius:10px;font-size:11px;font-weight:500;cursor:pointer;display:inline-block;font-family:Montserrat,sans-serif">Jogar de novo</div>';
     parent.appendChild(fin);
@@ -5928,7 +5937,7 @@ function renderFFQuiz(parent){
     var btn=document.createElement('div');
     if(window._quizAnswered){
       if(opt.isCorrect){
-        btn.style.cssText='padding:12px 16px;border-radius:10px;font-size:12px;font-family:Montserrat,sans-serif;background:#E1F5EE;border:0.5px solid #0F6E56;color:#0F6E56;font-weight:500';
+        btn.style.cssText='padding:12px 16px;border-radius:10px;font-size:12px;font-family:Montserrat,sans-serif;background:#e8edf0;border:0.5px solid #486068;color:#486068;font-weight:500';
         btn.textContent=letter+') '+opt.text+' ✓';
       } else {
         btn.style.cssText='padding:12px 16px;border-radius:10px;font-size:12px;font-family:Montserrat,sans-serif;background:#f7f8fa;border:0.5px solid #e5e7eb;color:#9ca3af';
@@ -5954,9 +5963,9 @@ function renderFFQuiz(parent){
   if(window._quizAnswered){
     var expl=document.createElement('div');
     expl.style.cssText='margin-top:20px;padding:14px;background:#f7f8fa;border-radius:10px';
-    expl.innerHTML='<div style="font-size:10px;color:#A32D2D;font-weight:500;font-family:Montserrat,sans-serif;margin-bottom:6px">Cuidado com o false friend!</div>'
+    expl.innerHTML='<div style="font-size:10px;color:#B3907F;font-weight:500;font-family:Montserrat,sans-serif;margin-bottom:6px">Cuidado com o false friend!</div>'
       +'<div style="font-size:12px;color:#111827;font-family:Montserrat,sans-serif;line-height:1.6"><strong>'+eh(item.en)+'</strong> NAO significa "'+eh(item.trap)+'"</div>'
-      +'<div style="font-size:12px;color:#0F6E56;font-family:Montserrat,sans-serif;margin-top:4px;line-height:1.6">Significa: <strong>'+eh(item.correct)+'</strong></div>';
+      +'<div style="font-size:12px;color:#486068;font-family:Montserrat,sans-serif;margin-top:4px;line-height:1.6">Significa: <strong>'+eh(item.correct)+'</strong></div>';
     qCard.appendChild(expl);
 
     var nextBtn=document.createElement('div');
@@ -6292,11 +6301,11 @@ function renderStudyProgress(parent){
   });
   var total=vocab.length||1;
   diffCard.innerHTML='<div style="font-size:12px;font-weight:500;color:#111827;margin-bottom:12px;font-family:Montserrat,sans-serif">Dominio do vocabulario</div>'
-    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="width:8px;height:8px;border-radius:50%;background:#E24B4A;flex-shrink:0"></div><div style="flex:1;font-size:10px;color:#6b7280;font-family:Montserrat,sans-serif">Dificil</div><div style="font-size:12px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+hard+'</div></div>'
-    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="width:8px;height:8px;border-radius:50%;background:#EF9F27;flex-shrink:0"></div><div style="flex:1;font-size:10px;color:#6b7280;font-family:Montserrat,sans-serif">Media</div><div style="font-size:12px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+med+'</div></div>'
-    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="width:8px;height:8px;border-radius:50%;background:#0F6E56;flex-shrink:0"></div><div style="flex:1;font-size:10px;color:#6b7280;font-family:Montserrat,sans-serif">Facil</div><div style="font-size:12px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+easy+'</div></div>'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="width:8px;height:8px;border-radius:50%;background:#B3907F;flex-shrink:0"></div><div style="flex:1;font-size:10px;color:#6b7280;font-family:Montserrat,sans-serif">Dificil</div><div style="font-size:12px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+hard+'</div></div>'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="width:8px;height:8px;border-radius:50%;background:#85979D;flex-shrink:0"></div><div style="flex:1;font-size:10px;color:#6b7280;font-family:Montserrat,sans-serif">Media</div><div style="font-size:12px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+med+'</div></div>'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="width:8px;height:8px;border-radius:50%;background:#486068;flex-shrink:0"></div><div style="flex:1;font-size:10px;color:#6b7280;font-family:Montserrat,sans-serif">Facil</div><div style="font-size:12px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+easy+'</div></div>'
     +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><div style="width:8px;height:8px;border-radius:50%;background:#d1d5db;flex-shrink:0"></div><div style="flex:1;font-size:10px;color:#6b7280;font-family:Montserrat,sans-serif">Nao praticada</div><div style="font-size:12px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+unpracticed+'</div></div>'
-    +'<div style="height:6px;background:#f0f2f5;border-radius:3px;overflow:hidden;display:flex"><div style="width:'+Math.round(hard/total*100)+'%;background:#E24B4A"></div><div style="width:'+Math.round(med/total*100)+'%;background:#EF9F27"></div><div style="width:'+Math.round(easy/total*100)+'%;background:#0F6E56"></div><div style="width:'+Math.round(unpracticed/total*100)+'%;background:#d1d5db"></div></div>';
+    +'<div style="height:6px;background:#f0f2f5;border-radius:3px;overflow:hidden;display:flex"><div style="width:'+Math.round(hard/total*100)+'%;background:#B3907F"></div><div style="width:'+Math.round(med/total*100)+'%;background:#85979D"></div><div style="width:'+Math.round(easy/total*100)+'%;background:#486068"></div><div style="width:'+Math.round(unpracticed/total*100)+'%;background:#d1d5db"></div></div>';
   gridRow.appendChild(diffCard);
 
   // Quiz stats
@@ -6354,7 +6363,7 @@ function renderStudyProgress(parent){
     var bar=document.createElement('div');
     bar.style.cssText='flex:1;display:flex;flex-direction:column;align-items:center;gap:3px';
     bar.innerHTML='<div style="font-size:9px;color:#9ca3af;font-family:Montserrat,sans-serif">'+cnt+'</div>'
-      +'<div style="width:100%;background:'+(cnt>0?'#0F6E56':'#f0f2f5')+';border-radius:4px 4px 0 0;height:'+barH+'px"></div>'
+      +'<div style="width:100%;background:'+(cnt>0?'#486068':'#f0f2f5')+';border-radius:4px 4px 0 0;height:'+barH+'px"></div>'
       +'<div style="font-size:9px;color:#9ca3af;font-family:Montserrat,sans-serif">'+dayNames[i]+'</div>';
     bars.appendChild(bar);
   });
@@ -6374,13 +6383,10 @@ window._goalsPeriod='';
 
 function switchToGoals(){
   var wa=document.getElementById('workApp');if(wa)wa.style.display='none';
-  var cc=document.getElementById('centerCol');if(!cc)cc=document.querySelector('.center-col');
-  if(cc)cc.style.display='none';
+  var cc=document.querySelector('.center-col');if(cc)cc.style.display='none';
   var rp=document.getElementById('rightPanel');if(rp)rp.style.display='none';
   var sa=document.getElementById('studyApp');if(sa)sa.style.display='none';
-  var goa=document.getElementById('goalsApp');if(goa)goa.style.display='none';
-  var fwa=document.getElementById('finWeekApp');if(fwa)fwa.style.display='none';
-  var fwa3=document.getElementById('finWeekApp');if(fwa3)fwa3.style.display='none';
+  var fw=document.getElementById('finWeekApp');if(fw)fw.style.display='none';
   var ga=document.getElementById('goalsApp');if(ga)ga.style.display='flex';
   activeCal='goals';
   renderGoalsView();
@@ -6423,7 +6429,7 @@ function renderGoalsView(){
   periods.forEach(function(p){
     var pill=document.createElement('div');
     var active=p===period;
-    pill.style.cssText='padding:4px 12px;border-radius:16px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;'+(active?'background:#374151;color:white':'border:0.5px solid #e5e7eb;color:#6b7280');
+    pill.style.cssText='padding:4px 12px;border-radius:16px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;'+(active?'background:#131F28;color:#C5CED0':'border:0.5px solid #e5e7eb;color:#6b7280');
     pill.textContent=p;
     pill.onclick=(function(pp){return function(){window._goalsPeriod=pp;renderGoalsView();};})(p);
     tbRight.appendChild(pill);
@@ -6452,7 +6458,7 @@ function renderGoalsView(){
     mRow.style.cssText='display:flex;gap:10px;margin-bottom:20px';
     // Ring progress
     var ringCard=document.createElement('div');
-    ringCard.style.cssText='flex:1;background:#374151;border-radius:12px;padding:16px;display:flex;align-items:center;gap:14px';
+    ringCard.style.cssText='flex:1;background:#131F28;border-radius:12px;padding:16px;display:flex;align-items:center;gap:14px';
     var dashOffset=Math.round(119.4*(1-overallPct/100));
     ringCard.innerHTML='<div style="position:relative;width:48px;height:48px;flex-shrink:0"><svg viewBox="0 0 48 48" width="48" height="48"><circle cx="24" cy="24" r="19" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="3.5"/><circle cx="24" cy="24" r="19" fill="none" stroke="#FFF2E6" stroke-width="3.5" stroke-dasharray="119.4" stroke-dashoffset="'+dashOffset+'" stroke-linecap="round" transform="rotate(-90 24 24)"/></svg><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+overallPct+'%</div></div>'
       +'<div><div style="font-size:13px;font-weight:500;color:white;font-family:Montserrat,sans-serif">Progresso geral</div><div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:2px;font-family:Montserrat,sans-serif">'+doneKR+' de '+totalKR+' KRs concluidos</div></div>';
@@ -6495,14 +6501,14 @@ var GOAL_CAT_ICONS={
   'estudo':'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="CCC" stroke-width="2" stroke-linecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>'
 };
 var GOAL_CAT_COLORS={
-  'profissional':{bg:'#f5eeed',stroke:'#734141'},'pessoal':{bg:'#eef0ee',stroke:'#586357'},
-  'saude':{bg:'#f2e6e6',stroke:'#3D0000'},'financeiro':{bg:'#FFF2E6',stroke:'#AD7556'},
-  'estudo':{bg:'#f0ede8',stroke:'#280D08'}
+  'profissional':{bg:'#e8edf0',stroke:'#486068'},'pessoal':{bg:'#f5eeea',stroke:'#B3907F'},
+  'saude':{bg:'#e8edf0',stroke:'#131F28'},'financeiro':{bg:'#f5eeea',stroke:'#B3907F'},
+  'estudo':{bg:'#e8edf0',stroke:'#486068'}
 };
 
 function getGoalCatVisual(cat){
   var key=(cat||'').toLowerCase();
-  var col=GOAL_CAT_COLORS[key]||{bg:'#FFF2E6',stroke:'#734141'};
+  var col=GOAL_CAT_COLORS[key]||{bg:'#e8edf0',stroke:'#486068'};
   var icon=GOAL_CAT_ICONS[key]||'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="CCC" stroke-width="2" stroke-linecap="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-4"/></svg>';
   icon=icon.replace(/CCC/g,col.stroke);
   return{bg:col.bg,stroke:col.stroke,icon:icon};
@@ -6536,14 +6542,14 @@ function buildObjCard(obj){
     var krPct=kr.target>0?Math.round(kr.current/kr.target*100):0;
     var isDone=krPct>=100;
     var isAtRisk=krPct<50&&!isDone;
-    var barColor=isDone?'#586357':isAtRisk?'#734141':'#AD7556';
-    var numColor=isDone?'#586357':isAtRisk?'#734141':'#AD7556';
+    var barColor=isDone?'#486068':isAtRisk?'#B3907F':'#85979D';
+    var numColor=isDone?'#486068':isAtRisk?'#B3907F':'#85979D';
 
     var row=document.createElement('div');
     row.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f7f8fa;border-radius:8px;cursor:pointer';
 
     var statusHtml='';
-    if(isDone)statusHtml='<div style="width:14px;height:14px;border-radius:50%;background:#586357;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="8" height="6" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></div>';
+    if(isDone)statusHtml='<div style="width:14px;height:14px;border-radius:50%;background:#486068;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="8" height="6" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></div>';
     else if(krPct>0)statusHtml='<div style="width:14px;height:14px;border-radius:50%;border:1.5px solid '+barColor+';flex-shrink:0;overflow:hidden;position:relative"><div style="position:absolute;left:0;top:0;width:'+Math.min(krPct,100)+'%;height:100%;background:'+barColor+'"></div></div>';
     else statusHtml='<div style="width:14px;height:14px;border-radius:50%;border:1.5px solid #d1d5db;flex-shrink:0"></div>';
 
@@ -6860,7 +6866,7 @@ setTimeout(adjustMobilePadding,500);
   </div>
   <div class="mob-tab" data-mobtab="finance" onclick="mobNavTo('finance')" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:6px 0;flex:1;position:relative">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.8" stroke-linecap="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-    <div id="mobFinDot" style="display:none;position:absolute;top:2px;right:calc(50% - 14px);width:7px;height:7px;border-radius:50%;background:#734141;border:1.5px solid white"></div>
+    <div id="mobFinDot" style="display:none;position:absolute;top:2px;right:calc(50% - 14px);width:7px;height:7px;border-radius:50%;background:#B3907F;border:1.5px solid white"></div>
     <div style="font-size:9px;color:#9ca3af">Contas</div>
   </div>
   <div class="mob-tab" data-mobtab="goals" onclick="mobNavTo('goals')" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:6px 0;flex:1">
