@@ -6072,11 +6072,22 @@ function buildObjCard(obj){
     else statusHtml='<div style="width:14px;height:14px;border-radius:50%;border:1.5px solid #d1d5db;flex-shrink:0"></div>';
 
     row.innerHTML=statusHtml
-      +'<div style="flex:1;font-size:11px;color:'+(isAtRisk&&!isDone?'#791F1F':'#111827')+';font-family:Montserrat,sans-serif">'+eh(kr.title)+'</div>'
+      +'<div style="flex:1;min-width:0"><div style="font-size:11px;color:'+(isAtRisk&&!isDone?'#791F1F':'#111827')+';font-family:Montserrat,sans-serif">'+eh(kr.title)+'</div>'+(kr.mode==='auto'?'<div style="font-size:8px;color:#9ca3af;font-family:Montserrat,sans-serif;margin-top:1px">auto: '+eh(getAutoSourceLabel(kr))+'</div>':'')+'</div>'
       +'<div style="font-size:11px;font-weight:500;color:'+(isDone?'#0F6E56':isAtRisk?'#A32D2D':'#854F0B')+';font-family:Montserrat,sans-serif">'+kr.current+'/'+kr.target+'</div>'
       +(isAtRisk&&!isDone?'<div style="font-size:9px;padding:2px 6px;border-radius:8px;background:#FCEBEB;color:#A32D2D;font-weight:500;font-family:Montserrat,sans-serif">at risk</div>':'');
 
     row.onclick=(function(objId,krId){return function(){updateKRValue(objId,krId);};})(obj.id,kr.id);
+    var delKR=document.createElement('div');
+    delKR.style.cssText='font-size:10px;color:#d1d5db;cursor:pointer;padding:2px 4px;flex-shrink:0';
+    delKR.textContent='\u2715';
+    delKR.onclick=(function(objId,krId){return function(e){
+      e.stopPropagation();
+      if(!confirm('Excluir este key result?'))return;
+      var o=window.goalsData.objectives.find(function(x){return x.id===objId;});
+      if(o)o.keyResults=o.keyResults.filter(function(k){return k.id!==krId;});
+      fbSaveGoals();renderGoalsView();
+    };})(obj.id,kr.id);
+    row.appendChild(delKR);
     krList.appendChild(row);
   });
   card.appendChild(krList);
@@ -6133,12 +6144,23 @@ function addKeyResult(objId){
   var title=prompt('Key result:');
   if(!title||!title.trim())return;
   var target=prompt('Meta numerica (ex: 5, 200, 12):','1');
-  var mode=prompt('Atualizacao:\n1. Manual\n2. Auto: contar palavras ENG Study\n3. Auto: contar tarefas concluidas com titulo contendo...');
+  var mode=prompt('Atualizacao:\n1. Manual\n2. Auto: contar palavras ENG Study\n3. Auto: tarefas concluidas com titulo contendo...\n4. Auto: tarefas concluidas com tag...\n5. Auto: contar false friends cadastrados\n6. Auto: contar regras de pronuncia\n7. Auto: contar aulas de ingles (tag aula)\n8. Auto: contar tarefas concluidas no Work Calendar com cliente...');
   var kr={id:gid(),title:title.trim(),target:parseInt(target)||1,current:0,mode:'manual',autoSource:'',autoFilter:''};
   if(mode==='2'){kr.mode='auto';kr.autoSource='vocab_count';}
   else if(mode==='3'){
     var filter=prompt('Titulo da tarefa contendo:');
-    kr.mode='auto';kr.autoSource='task_done_count';kr.autoFilter=(filter||'').trim();
+    kr.mode='auto';kr.autoSource='task_done_title';kr.autoFilter=(filter||'').trim();
+  }
+  else if(mode==='4'){
+    var tag=prompt('Tag da tarefa:');
+    kr.mode='auto';kr.autoSource='task_done_tag';kr.autoFilter=(tag||'').trim();
+  }
+  else if(mode==='5'){kr.mode='auto';kr.autoSource='ff_count';}
+  else if(mode==='6'){kr.mode='auto';kr.autoSource='pron_count';}
+  else if(mode==='7'){kr.mode='auto';kr.autoSource='task_done_tag';kr.autoFilter='aula';}
+  else if(mode==='8'){
+    var client=prompt('Nome do cliente:');
+    kr.mode='auto';kr.autoSource='wc_done_client';kr.autoFilter=(client||'').trim();
   }
   obj.keyResults.push(kr);
   fbSaveGoals();
@@ -6151,7 +6173,7 @@ function updateKRValue(objId,krId){
   if(!obj)return;
   var kr=obj.keyResults.find(function(k){return k.id===krId;});
   if(!kr)return;
-  if(kr.mode==='auto'){showToast('Este KR atualiza automaticamente.');return;}
+  if(kr.mode==='auto'){showToast('Este KR atualiza automaticamente ('+getAutoSourceLabel(kr)+').');return;}
   var val=prompt('Valor atual de "'+kr.title+'" (meta: '+kr.target+'):',String(kr.current));
   if(val===null)return;
   kr.current=parseFloat(val)||0;
@@ -6160,27 +6182,75 @@ function updateKRValue(objId,krId){
 }
 
 // Auto-update KRs
+
+function getAutoSourceLabel(kr){
+  var src=kr.autoSource||'';
+  if(src==='vocab_count')return 'palavras ENG Study';
+  if(src==='ff_count')return 'false friends';
+  if(src==='pron_count')return 'regras pronuncia';
+  if(src==='task_done_title')return 'tarefas com "'+kr.autoFilter+'"';
+  if(src==='task_done_tag')return 'tarefas tag: '+kr.autoFilter;
+  if(src==='wc_done_client')return 'WC cliente: '+kr.autoFilter;
+  if(src==='task_done_count')return 'tarefas com "'+kr.autoFilter+'"';
+  return src;
+}
+
 function updateAutoKRs(){
   var changed=false;
   (window.goalsData.objectives||[]).forEach(function(obj){
     (obj.keyResults||[]).forEach(function(kr){
       if(kr.mode!=='auto')return;
       var newVal=0;
+      var filter=(kr.autoFilter||'').toLowerCase();
+
       if(kr.autoSource==='vocab_count'){
         newVal=(window.studyVocab||[]).length;
-      } else if(kr.autoSource==='task_done_count'){
-        // Count done tasks in main calendar matching filter
-        var filter=(kr.autoFilter||'').toLowerCase();
+
+      } else if(kr.autoSource==='ff_count'){
+        newVal=(window.studyFalseFriends||[]).length;
+
+      } else if(kr.autoSource==='pron_count'){
+        newVal=(window.studyPronunRules||[]).length;
+
+      } else if(kr.autoSource==='task_done_title'){
         (window.evs||[]).forEach(function(ev){
           if(ev.done&&filter&&(ev.title||'').toLowerCase().indexOf(filter)>=0)newVal++;
         });
-        // Also count from work calendar
         (window.workCals||[]).forEach(function(cal){
           (window.workEvs[cal.id]||[]).forEach(function(ev){
             if(ev.progress==='done'&&filter&&(ev.title||'').toLowerCase().indexOf(filter)>=0)newVal++;
           });
         });
+
+      } else if(kr.autoSource==='task_done_tag'){
+        (window.evs||[]).forEach(function(ev){
+          if(ev.done&&filter){
+            var tags=(ev.tags||[]).map(function(t){return t.toLowerCase();});
+            if(tags.indexOf(filter)>=0)newVal++;
+          }
+        });
+        (window.workCals||[]).forEach(function(cal){
+          (window.workEvs[cal.id]||[]).forEach(function(ev){
+            if(ev.progress==='done'&&filter){
+              var tags=(ev.tags||[]).map(function(t){return t.toLowerCase();});
+              if(tags.indexOf(filter)>=0)newVal++;
+            }
+          });
+        });
+
+      } else if(kr.autoSource==='wc_done_client'){
+        (window.workCals||[]).forEach(function(cal){
+          (window.workEvs[cal.id]||[]).forEach(function(ev){
+            if(ev.progress==='done'&&filter&&(ev.client||'').toLowerCase().indexOf(filter)>=0)newVal++;
+          });
+        });
+
+      } else if(kr.autoSource==='task_done_count'){
+        (window.evs||[]).forEach(function(ev){
+          if(ev.done&&filter&&(ev.title||'').toLowerCase().indexOf(filter)>=0)newVal++;
+        });
       }
+
       if(newVal!==kr.current){kr.current=newVal;changed=true;}
     });
   });
