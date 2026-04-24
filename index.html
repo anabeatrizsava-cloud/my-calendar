@@ -2879,7 +2879,7 @@ function renderWorkDay(calId){
     if(tasks.length){
       var taskHdr=document.createElement('div');
       taskHdr.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:12px';
-      taskHdr.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><div style="font-size:10px;font-weight:600;color:#0F6E56;letter-spacing:1px;text-transform:uppercase;font-family:Montserrat,sans-serif">Tarefas</div><div style="font-size:9px;color:#9ca3af;padding:1px 6px;background:white;border-radius:8px;border:0.5px solid #e5e7eb">'+tasks.length+'</div>';
+      taskHdr.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#486068" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><div style="font-size:10px;font-weight:600;color:#486068;letter-spacing:1px;text-transform:uppercase;font-family:Montserrat,sans-serif">Tarefas</div><div style="font-size:9px;color:#9ca3af;padding:1px 6px;background:white;border-radius:8px;border:0.5px solid #e5e7eb">'+tasks.length+'</div>';
       main.appendChild(taskHdr);
 
       var grid=document.createElement('div');
@@ -2946,7 +2946,7 @@ function buildWorkRightPanel(calId,ds,wevs){
   // Summary
   var sm=document.createElement('div');sm.style.cssText='background:white;border-radius:10px;padding:12px;border:0.5px solid #e5e7eb';
   var totalT=wevs?wevs.length:0;var doneT=wevs?wevs.filter(function(e){return e.progress==='done';}).length:0;
-  sm.innerHTML='<div style="font-size:11px;font-weight:600;color:#111827;margin-bottom:8px;font-family:Montserrat,sans-serif">Resumo do dia</div><div style="display:flex;gap:12px"><div style="text-align:center;flex:1;padding:8px;background:#f0f2f5;border-radius:8px"><div style="font-size:20px;font-weight:600;color:#111827;font-family:Montserrat,sans-serif">'+totalT+'</div><div style="font-size:9px;color:#6b7280;font-family:Montserrat,sans-serif">Total</div></div><div style="text-align:center;flex:1;padding:8px;background:#dcfce7;border-radius:8px"><div style="font-size:20px;font-weight:600;color:#16a34a;font-family:Montserrat,sans-serif">'+doneT+'</div><div style="font-size:9px;color:#6b7280;font-family:Montserrat,sans-serif">Concluidas</div></div></div>';
+  sm.innerHTML='<div style="font-size:11px;font-weight:600;color:#111827;margin-bottom:8px;font-family:Montserrat,sans-serif">Resumo do dia</div><div style="display:flex;gap:12px"><div style="text-align:center;flex:1;padding:8px;background:#f0f2f5;border-radius:8px"><div style="font-size:20px;font-weight:600;color:#111827;font-family:Montserrat,sans-serif">'+totalT+'</div><div style="font-size:9px;color:#6b7280;font-family:Montserrat,sans-serif">Total</div></div><div style="text-align:center;flex:1;padding:8px;background:#486068;border-radius:8px"><div style="font-size:20px;font-weight:600;color:white;font-family:Montserrat,sans-serif">'+doneT+'</div><div style="font-size:9px;color:rgba(255,255,255,.6);font-family:Montserrat,sans-serif">Concluidas</div></div></div>';
   rp.appendChild(sm);
   // Tomorrow
   var tm=document.createElement('div');tm.style.cssText='background:white;border-radius:10px;padding:12px;border:0.5px solid #e5e7eb';
