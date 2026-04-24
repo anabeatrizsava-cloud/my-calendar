@@ -4880,7 +4880,7 @@ function renderStudyView(){
     +'<div style="display:flex;gap:2px;background:#f0ede8;border-radius:9px;padding:3px">'
     +'<button onclick="setStudyTab(\'vocab\')" id="stab-vocab" style="padding:4px 14px;border:none;border-radius:7px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;background:'+(
       _studyTab==='vocab'?'#1a1a1a':'transparent')+';color:'+(_studyTab==='vocab'?'#f5f3ef':'#9a9590')+'">Vocabulario</button>'
-    +'<button onclick="setStudyTab(\'flashcards\')" id="stab-flash" style="padding:4px 14px;border:none;border-radius:7px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;background:'+(_studyTab==='flashcards'?'#1a1a1a':'transparent')+';color:'+(_studyTab==='flashcards'?'#f5f3ef':'#9a9590')+'">Praticar</button>'
+    +'<button onclick="setStudyTab(\'flashcards\')" id="stab-flash" style="padding:4px 14px;border:none;border-radius:7px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;background:'+(_studyTab==='flashcards'?'#1a1a1a':'transparent')+';color:'+(_studyTab==='flashcards'?'#f5f3ef':'#9a9590')+'">'+(function(){var r=getWordsToReview();return r.all.length?'Praticar <span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:50%;background:#E24B4A;color:white;font-size:9px;font-weight:500;margin-left:4px">'+r.all.length+'</span>':'Praticar';})()+'</button>'
     +'<button onclick="setStudyTab(\'quiz\')" id="stab-quiz" style="padding:4px 14px;border:none;border-radius:7px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;background:'+(_studyTab==='quiz'?'#1a1a1a':'transparent')+';color:'+(_studyTab==='quiz'?'#f5f3ef':'#9a9590')+'">Quiz</button>'
     +'<button onclick="setStudyTab(\'notes\')" id="stab-notes" style="padding:4px 14px;border:none;border-radius:7px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;background:'+(
       _studyTab==='notes'?'#1a1a1a':'transparent')+';color:'+(_studyTab==='notes'?'#f5f3ef':'#9a9590')+'">Anotacoes</button>'
@@ -4894,6 +4894,27 @@ function renderStudyView(){
   // main content
   var main=document.createElement('div');
   main.style.cssText='flex:1;overflow-y:auto;padding:20px 24px;background:#faf9f7;display:flex;flex-direction:column;gap:16px';
+
+  // review card
+  var reviewData=getWordsToReview();
+  if(reviewData.all.length){
+    var rc=document.createElement('div');
+    rc.style.cssText='background:white;border:0.5px solid #e5e7eb;border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:14px;margin-bottom:12px';
+    var rcIcon=document.createElement('div');
+    rcIcon.style.cssText='width:40px;height:40px;border-radius:50%;background:#FAEEDA;display:flex;align-items:center;justify-content:center;flex-shrink:0';
+    rcIcon.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+    rc.appendChild(rcIcon);
+    var rcInfo=document.createElement('div');
+    rcInfo.style.cssText='flex:1';
+    rcInfo.innerHTML='<div style="font-size:12px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+reviewData.all.length+' palavra'+(reviewData.all.length>1?'s':'')+' para revisar hoje</div><div style="font-size:10px;color:#9ca3af;margin-top:2px;font-family:Montserrat,sans-serif">'+(reviewData.hard.length?reviewData.hard.length+' dificei'+(reviewData.hard.length>1?'s':'l'):'')+(reviewData.hard.length&&reviewData.medium.length?', ':'')+(reviewData.medium.length?reviewData.medium.length+' media'+(reviewData.medium.length>1?'s':''):'')+'</div>';
+    rc.appendChild(rcInfo);
+    var rcBtn=document.createElement('div');
+    rcBtn.style.cssText='padding:8px 16px;background:#111827;color:white;border-radius:8px;font-size:10px;font-weight:500;cursor:pointer;flex-shrink:0;font-family:Montserrat,sans-serif';
+    rcBtn.textContent='Revisar agora';
+    rcBtn.onclick=function(){window._fcReviewMode=true;window._fcDeck=reviewData.all.slice();window._fcIndex=0;window._fcRevealed=false;setStudyTab('flashcards');};
+    rc.appendChild(rcBtn);
+    main.appendChild(rc);
+  }
 
   // stats
   var stats=document.createElement('div');
@@ -5216,8 +5237,30 @@ function openPronunModal(item){
 
 
 
+
+// ── SMART REVIEW ─────────────────────────────────────────
+function getWordsToReview(){
+  var today=new Date();var todayStr=today.toISOString().split('T')[0];
+  var result={hard:[],medium:[],all:[]};
+  (window.studyVocab||[]).forEach(function(v){
+    if(!v.fcDifficulty||!v.lastReviewed)return;
+    var last=new Date(v.lastReviewed+'T00:00:00');
+    var diffDays=Math.floor((today-last)/86400000);
+    var needsReview=false;
+    if(v.fcDifficulty===3&&diffDays>=1)needsReview=true;
+    else if(v.fcDifficulty===2&&diffDays>=3)needsReview=true;
+    else if(v.fcDifficulty===1&&diffDays>=7)needsReview=true;
+    if(needsReview){
+      result.all.push(v);
+      if(v.fcDifficulty===3)result.hard.push(v);
+      else if(v.fcDifficulty===2)result.medium.push(v);
+    }
+  });
+  return result;
+}
+
 // ── FLASHCARDS ───────────────────────────────────────────
-window._fcIndex=0;window._fcRevealed=false;window._fcDeck=[];window._fcCatFilter='';
+window._fcIndex=0;window._fcRevealed=false;window._fcDeck=[];window._fcCatFilter='';window._fcReviewMode=false;
 
 function buildFlashcardDeck(){
   var list=(window.studyVocab||[]).slice();
@@ -5273,6 +5316,12 @@ function renderFlashcards(parent){
   var card=deck[idx];
 
   // Progress bar
+  if(window._fcReviewMode){
+    var rmLabel=document.createElement('div');
+    rmLabel.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:10px;padding:6px 10px;background:#FAEEDA;border-radius:8px';
+    rmLabel.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><div style="font-size:10px;color:#854F0B;font-family:Montserrat,sans-serif;font-weight:500">Modo revisao</div><div style="font-size:10px;color:#854F0B;font-family:Montserrat,sans-serif;margin-left:auto;cursor:pointer" onclick="window._fcReviewMode=false;window._fcDeck=[];renderStudyView();">Sair</div>';
+    parent.appendChild(rmLabel);
+  }
   var progWrap=document.createElement('div');
   progWrap.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:14px';
   progWrap.innerHTML='<div style="font-size:9px;color:#9ca3af;font-family:Montserrat,sans-serif">'+(idx+1)+' de '+deck.length+'</div>'
@@ -5294,6 +5343,7 @@ function renderFlashcards(parent){
     fc.innerHTML='<div style="font-size:28px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif;margin-bottom:8px">'+eh(card.word)+'</div>'
       +(card.pronunciation?'<div style="font-size:13px;color:#7a9bae;font-family:Montserrat,sans-serif">/'+eh(card.pronunciation)+'/</div>':'')
       +(card.category?'<div style="font-size:9px;color:#d1d5db;font-family:Montserrat,sans-serif;margin-top:12px">'+eh(card.category)+'</div>':'')
+      +(card.fcDifficulty?'<div style="margin-top:6px"><span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:9px;font-weight:500;'+(card.fcDifficulty===3?'background:#FCEBEB;color:#791F1F':card.fcDifficulty===2?'background:#FAEEDA;color:#854F0B':'background:#E1F5EE;color:#085041')+'">'+(card.fcDifficulty===3?'dificil':card.fcDifficulty===2?'media':'facil')+'</span></div>':'')
       +'<div style="font-size:10px;color:#d1d5db;margin-top:20px;font-family:Montserrat,sans-serif">Toque pra revelar</div>';
   } else {
     fc.innerHTML='<div style="font-size:28px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif;margin-bottom:8px">'+eh(card.word)+'</div>'
@@ -5318,7 +5368,7 @@ function renderFlashcards(parent){
       b.onclick=(function(val){return function(e){
         e.stopPropagation();
         var v=(window.studyVocab||[]).find(function(x){return x.id===card.id;});
-        if(v)v.fcDifficulty=val;
+        if(v){v.fcDifficulty=val;v.lastReviewed=new Date().toISOString().split('T')[0];}
         fbSaveStudy();
         window._fcIndex++;
         window._fcRevealed=false;
