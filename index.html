@@ -518,6 +518,12 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
     </div>
     <span style="font-size:7px;color:rgba(255,255,255,.35);letter-spacing:.3px;font-family:Montserrat,sans-serif">ENG</span>
   </div>
+  <div onclick="switchToNotebook()" title="Cadernos" id="sbNotebookBtn" style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;opacity:.55;transition:opacity .15s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.55'">
+    <div style="width:22px;height:22px;border-radius:6px;border:1.5px solid rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    </div>
+    <span style="font-size:7px;color:rgba(255,255,255,.35);letter-spacing:.3px;font-family:Montserrat,sans-serif">LIVRE</span>
+  </div>
   <div class="sb-divider"></div>
   <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
     <span class="sync-dot" id="syncDot"></span>
@@ -581,6 +587,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 <div id="studyApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
 <div id="goalsApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
 <div id="finWeekApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
+<div id="notebookApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
 
 </div><!-- main-layout -->
 </div><!-- app -->
@@ -962,6 +969,7 @@ onAuthStateChanged(auth,user=>{
     if(su)su();su=onSnapshot(doc(db,'users',uid,'config','stickies'),snap=>{if(snap.exists()){window.stickies=snap.data().stickies||[];}else{window.stickies=[];}if(window.view==='sticky')renderView();else renderStickies();});
     onSnapshot(doc(db,'users',uid,'config','calAutoSettings'),snap=>{if(snap.exists()){var d=snap.data();window.calAutoSettings=Object.assign(window.calAutoSettings||{},d);window.calCustomRules=d.customRules||[];console.log('Loaded custom rules:',window.calCustomRules.length);setTimeout(function(){runCalAutomations();},2000);}});
     onSnapshot(doc(db,'users',uid,'config','goalsData'),snap=>{if(snap.exists())window.goalsData=snap.data();updateAutoKRs();});
+    onSnapshot(doc(db,'users',uid,'config','notebookData'),snap=>{if(snap.exists())window.notebookData=snap.data();});
     if(!window.appInited){window.appInited=true;window._firebaseReady=true;if(typeof initFinanceIntegration==='function')initFinanceIntegration();if(window._domReady)initApp();}
   }else{document.getElementById('loginScreen').style.display='flex';document.getElementById('mainApp').style.display='none';}
 });
@@ -1952,7 +1960,7 @@ function toggleRPModeDropdown(){
   var dd=document.createElement('div');
   dd.id='rpModeDropdown';
   dd.style.cssText='position:absolute;right:0;top:28px;width:130px;background:white;border:0.5px solid #e5e7eb;border-radius:8px;overflow:hidden;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,.06);font-family:Montserrat,sans-serif';
-  var modes=[{id:'resumo',label:'Resumo'},{id:'contas',label:'Contas'},{id:'metas',label:'Metas'},{id:'eng',label:'English Study'}];
+  var modes=[{id:'resumo',label:'Resumo'},{id:'contas',label:'Contas'},{id:'metas',label:'Metas'},{id:'eng',label:'English Study'},{id:'cadernos',label:'Cadernos'}];
   modes.forEach(function(m){
     var item=document.createElement('div');
     item.style.cssText='padding:8px 12px;font-size:11px;cursor:pointer;border-top:0.5px solid #f0f2f5;'+(window._rightPanelMode===m.id?'color:#111827;font-weight:500;background:#f7f8fa':'color:#6b7280');
@@ -1984,6 +1992,33 @@ function rpDropdownHeader(rp,activeLabel){
   wrap.appendChild(btn);
   hdr.appendChild(wrap);
   return hdr;
+}
+
+
+function renderRPNotebook(rp){
+  rp.innerHTML='';
+  rp.appendChild(rpDropdownHeader(rp,'Cadernos'));
+  var main=document.createElement('div');
+  main.style.cssText='flex:1;overflow-y:auto;padding:0 14px 14px';
+  var notebooks=window.notebookData.notebooks||[];
+  if(!notebooks.length){
+    main.innerHTML='<div style="text-align:center;color:#9ca3af;padding:30px 0;font-size:11px;font-family:Montserrat,sans-serif">Nenhum caderno criado.</div>';
+    rp.appendChild(main);return;
+  }
+  notebooks.forEach(function(nb){
+    var card=document.createElement('div');
+    card.style.cssText='background:white;border-radius:8px;border:0.5px solid #e5e7eb;padding:10px;margin-bottom:8px;cursor:pointer';
+    card.onclick=function(){window._rightPanelMode='resumo';window._activeNotebook=nb.id;switchToNotebook();};
+    card.innerHTML='<div style="font-size:11px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+eh(nb.name)+'</div>'
+      +'<div style="font-size:10px;color:#9ca3af;margin-top:2px;font-family:Montserrat,sans-serif">'+(nb.rows||[]).length+' linha'+(nb.rows&&nb.rows.length!==1?'s':'')+' . '+(nb.columns||[]).length+' coluna'+(nb.columns&&nb.columns.length!==1?'s':'')+'</div>';
+    main.appendChild(card);
+  });
+  var link=document.createElement('div');
+  link.style.cssText='margin-top:8px;padding:8px;background:#f7f8fa;border-radius:8px;text-align:center;font-size:10px;color:#6b7280;cursor:pointer;font-family:Montserrat,sans-serif';
+  link.textContent='Abrir Cadernos completo';
+  link.onclick=function(){window._rightPanelMode='resumo';switchToNotebook();};
+  main.appendChild(link);
+  rp.appendChild(main);
 }
 
 function renderRPFinance(rp){
@@ -2113,6 +2148,7 @@ function renderRightPanel(){
   const rp=document.getElementById('rightPanel');if(!rp)return;
   // If mode is not resumo, render the module instead
   if(window._rightPanelMode==='contas'){renderRPFinance(rp);return;}
+  if(window._rightPanelMode==='cadernos'){renderRPNotebook(rp);return;}
   if(window._rightPanelMode==='metas'){renderRPGoals(rp);return;}
   if(window._rightPanelMode==='eng'){renderRPEng(rp);return;}
   const ds=tds(cd);
@@ -2387,12 +2423,12 @@ function switchCal(calId){
   var workDiv=document.getElementById('workApp');
   var studyDiv=document.getElementById('studyApp');
   var goalsDiv=document.getElementById('goalsApp');
-  var finDiv=document.getElementById('finWeekApp');
+  var finDiv=document.getElementById('finWeekApp');var nbDiv=document.getElementById('notebookApp');
   // Hide all modules first
   if(workDiv)workDiv.style.display='none';
   if(studyDiv)studyDiv.style.display='none';
   if(goalsDiv)goalsDiv.style.display='none';
-  if(finDiv)finDiv.style.display='none';
+  if(finDiv)finDiv.style.display='none';if(nbDiv)nbDiv.style.display='none';
   if(calId==='main'){
     if(centerCol)centerCol.style.display='flex';
     if(rightPanel)rightPanel.style.display='flex';
@@ -4990,6 +5026,212 @@ function markFinPaid(docId){
   try{window.firestore.updateDoc(window.firestore.doc(window.db,'finance_tasks',docId),{calStatus:'concluido',paidAt:new Date().toISOString(),paidFrom:'my-calendar'}).then(function(){showToast('Despesa marcada como paga!');});}catch(e){console.error('markFinPaid error:',e);}
 }
 
+
+// ── NOTEBOOK MODULE ──────────────────────────────────────
+window.notebookData=window.notebookData||{notebooks:[]};
+window._activeNotebook='';
+
+function switchToNotebook(){
+  var wa=document.getElementById('workApp');if(wa)wa.style.display='none';
+  var cc=document.querySelector('.center-col');if(cc)cc.style.display='none';
+  var rp=document.getElementById('rightPanel');if(rp)rp.style.display='none';
+  var sa=document.getElementById('studyApp');if(sa)sa.style.display='none';
+  var ga=document.getElementById('goalsApp');if(ga)ga.style.display='none';
+  var fw=document.getElementById('finWeekApp');if(fw)fw.style.display='none';
+  var nb=document.getElementById('notebookApp');if(nb)nb.style.display='flex';
+  activeCal='notebook';
+  renderNotebookView();
+}
+
+function fbSaveNotebooks(){
+  if(!window.auth||!window.auth.currentUser)return;
+  try{var uid=window.auth.currentUser.uid;
+  window.firestore.setDoc(window.firestore.doc(window.db,'users',uid,'config','notebookData'),window.notebookData);
+  }catch(e){}
+}
+
+function renderNotebookView(){
+  var app=document.getElementById('notebookApp');if(!app)return;
+  app.innerHTML='';
+  app.style.cssText='display:flex;flex:1;overflow:hidden;flex-direction:column;background:#f7f8fa';
+  var notebooks=window.notebookData.notebooks||[];
+  var active=notebooks.find(function(n){return n.id===window._activeNotebook;})||notebooks[0]||null;
+
+  // Topbar
+  var tb=document.createElement('div');
+  tb.style.cssText='padding:14px 24px;background:white;border-bottom:0.5px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;flex-shrink:0';
+  var tbLeft=document.createElement('div');
+  tbLeft.innerHTML='<div style="font-size:16px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">Cadernos</div><div style="font-size:10px;color:#9ca3af;margin-top:2px;font-family:Montserrat,sans-serif">'+notebooks.length+' caderno'+(notebooks.length!==1?'s':'')+'</div>';
+  tb.appendChild(tbLeft);
+  var addNb=document.createElement('div');
+  addNb.style.cssText='padding:6px 14px;background:#131F28;color:#C5CED0;border-radius:8px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif';
+  addNb.textContent='+ Novo caderno';
+  addNb.onclick=function(){createNotebook();};
+  tb.appendChild(addNb);
+  app.appendChild(tb);
+
+  // Main
+  var main=document.createElement('div');
+  main.style.cssText='flex:1;overflow-y:auto;padding:20px 24px';
+
+  // Notebook tabs
+  if(notebooks.length){
+    var tabs=document.createElement('div');
+    tabs.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px';
+    notebooks.forEach(function(n){
+      var pill=document.createElement('div');
+      var isActive=active&&n.id===active.id;
+      pill.style.cssText='padding:4px 12px;border-radius:16px;font-size:11px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;'+(isActive?'background:#131F28;color:#C5CED0':'border:0.5px solid #e5e7eb;color:#6b7280');
+      pill.textContent=n.name;
+      pill.onclick=(function(nid){return function(){window._activeNotebook=nid;renderNotebookView();};})(n.id);
+      tabs.appendChild(pill);
+    });
+    main.appendChild(tabs);
+  }
+
+  if(!active){
+    main.innerHTML+='<div style="text-align:center;color:#9ca3af;padding:60px 0;font-size:12px;font-family:Montserrat,sans-serif">Crie seu primeiro caderno pra comecar.</div>';
+    app.appendChild(main);return;
+  }
+
+  window._activeNotebook=active.id;
+
+  // Action bar
+  var actions=document.createElement('div');
+  actions.style.cssText='display:flex;gap:8px;margin-bottom:12px;align-items:center';
+  var addRow=document.createElement('div');
+  addRow.style.cssText='padding:5px 12px;background:#486068;color:#C5CED0;border-radius:8px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif';
+  addRow.textContent='+ Adicionar linha';
+  addRow.onclick=function(){addNotebookRow(active.id);};
+  actions.appendChild(addRow);
+  var addCol=document.createElement('div');
+  addCol.style.cssText='padding:5px 12px;border:0.5px solid #C5CED0;color:#85979D;border-radius:8px;font-size:10px;cursor:pointer;font-family:Montserrat,sans-serif';
+  addCol.textContent='+ Coluna';
+  addCol.onclick=function(){addNotebookColumn(active.id);};
+  actions.appendChild(addCol);
+  var editNb=document.createElement('div');
+  editNb.style.cssText='font-size:10px;color:#9ca3af;cursor:pointer;font-family:Montserrat,sans-serif;margin-left:auto';
+  editNb.textContent='Renomear';
+  editNb.onclick=function(){renameNotebook(active.id);};
+  actions.appendChild(editNb);
+  var delNb=document.createElement('div');
+  delNb.style.cssText='font-size:10px;color:#d1d5db;cursor:pointer;font-family:Montserrat,sans-serif';
+  delNb.textContent='Excluir caderno';
+  delNb.onclick=function(){if(!confirm('Excluir "'+active.name+'" e todos os dados?'))return;window.notebookData.notebooks=window.notebookData.notebooks.filter(function(n){return n.id!==active.id;});window._activeNotebook='';fbSaveNotebooks();renderNotebookView();};
+  actions.appendChild(delNb);
+  main.appendChild(actions);
+
+  // Table
+  var cols=active.columns||[];
+  var rows=active.rows||[];
+
+  if(!cols.length){
+    main.innerHTML+='<div style="text-align:center;color:#9ca3af;padding:30px 0;font-size:12px;font-family:Montserrat,sans-serif">Adicione colunas pra definir a estrutura do caderno.</div>';
+    app.appendChild(main);return;
+  }
+
+  var table=document.createElement('div');
+  table.style.cssText='background:white;border-radius:12px;border:0.5px solid #e5e7eb;overflow:hidden';
+
+  // Header row
+  var gridCols=cols.map(function(){return '1fr';}).join(' ')+' 40px';
+  var hdrRow=document.createElement('div');
+  hdrRow.style.cssText='display:grid;grid-template-columns:'+gridCols+';border-bottom:0.5px solid #e5e7eb;padding:8px 12px;background:#f7f8fa';
+  cols.forEach(function(c){
+    var cell=document.createElement('div');
+    cell.style.cssText='font-size:11px;font-weight:500;color:#486068;font-family:Montserrat,sans-serif;cursor:pointer';
+    cell.textContent=c.name;
+    cell.onclick=(function(colId){return function(){
+      var opts=prompt('Coluna "'+c.name+'":\n1. Renomear\n2. Excluir');
+      if(opts==='1'){var nn=prompt('Novo nome:',c.name);if(nn&&nn.trim())c.name=nn.trim();fbSaveNotebooks();renderNotebookView();}
+      if(opts==='2'){if(!confirm('Excluir coluna "'+c.name+'"?'))return;active.columns=active.columns.filter(function(x){return x.id!==colId;});(active.rows||[]).forEach(function(r){delete r.data[colId];});fbSaveNotebooks();renderNotebookView();}
+    };})(c.id);
+    hdrRow.appendChild(cell);
+  });
+  var hdrAct=document.createElement('div');
+  hdrAct.style.cssText='font-size:9px;color:#d1d5db';
+  hdrRow.appendChild(hdrAct);
+  table.appendChild(hdrRow);
+
+  // Data rows
+  rows.forEach(function(row,ri){
+    var dataRow=document.createElement('div');
+    dataRow.style.cssText='display:grid;grid-template-columns:'+gridCols+';padding:6px 12px;border-bottom:0.5px solid #f5f5f5;align-items:center';
+    cols.forEach(function(c){
+      var cell=document.createElement('div');
+      cell.style.cssText='font-size:12px;color:#111827;font-family:Montserrat,sans-serif;cursor:text;padding:4px 2px;min-height:24px';
+      cell.textContent=row.data[c.id]||'';
+      cell.onclick=(function(rowIdx,colId){return function(){
+        var val=prompt('Valor:',row.data[colId]||'');
+        if(val===null)return;
+        row.data[colId]=val;
+        fbSaveNotebooks();renderNotebookView();
+      };})(ri,c.id);
+      dataRow.appendChild(cell);
+    });
+    var delRow=document.createElement('div');
+    delRow.style.cssText='font-size:10px;color:#d1d5db;cursor:pointer;text-align:center';
+    delRow.textContent='x';
+    delRow.onclick=(function(rowId){return function(){active.rows=active.rows.filter(function(r){return r.id!==rowId;});fbSaveNotebooks();renderNotebookView();};})(row.id);
+    dataRow.appendChild(delRow);
+    table.appendChild(dataRow);
+  });
+
+  // Add row inline
+  var addRowInline=document.createElement('div');
+  addRowInline.style.cssText='padding:8px 12px;font-size:11px;color:#85979D;cursor:pointer;font-family:Montserrat,sans-serif';
+  addRowInline.textContent='+ Adicionar linha';
+  addRowInline.onclick=function(){addNotebookRow(active.id);};
+  table.appendChild(addRowInline);
+
+  main.appendChild(table);
+  app.appendChild(main);
+}
+
+function createNotebook(){
+  var name=prompt('Nome do caderno:');
+  if(!name||!name.trim())return;
+  var nb={id:gid(),name:name.trim(),columns:[],rows:[]};
+  // Ask for initial columns
+  var colStr=prompt('Defina as colunas separadas por virgula:\nEx: Refeicao, Horario, Proteina, Calorias');
+  if(colStr&&colStr.trim()){
+    colStr.split(',').forEach(function(c){
+      if(c.trim())nb.columns.push({id:gid(),name:c.trim()});
+    });
+  }
+  window.notebookData.notebooks.push(nb);
+  window._activeNotebook=nb.id;
+  fbSaveNotebooks();
+  renderNotebookView();
+  showToast('Caderno "'+nb.name+'" criado!');
+}
+
+function addNotebookColumn(nbId){
+  var nb=window.notebookData.notebooks.find(function(n){return n.id===nbId;});
+  if(!nb)return;
+  var name=prompt('Nome da coluna:');
+  if(!name||!name.trim())return;
+  nb.columns.push({id:gid(),name:name.trim()});
+  fbSaveNotebooks();renderNotebookView();
+}
+
+function addNotebookRow(nbId){
+  var nb=window.notebookData.notebooks.find(function(n){return n.id===nbId;});
+  if(!nb)return;
+  var row={id:gid(),data:{},date:new Date().toISOString()};
+  nb.rows.push(row);
+  fbSaveNotebooks();renderNotebookView();
+}
+
+function renameNotebook(nbId){
+  var nb=window.notebookData.notebooks.find(function(n){return n.id===nbId;});
+  if(!nb)return;
+  var name=prompt('Novo nome:',nb.name);
+  if(!name||!name.trim())return;
+  nb.name=name.trim();
+  fbSaveNotebooks();renderNotebookView();
+}
+
 // ── FINANCE WEEKLY VIEW ──────────────────────────────────
 window._finWeekOffset=0;
 
@@ -4999,6 +5241,7 @@ function switchToFinWeek(){
   var rp=document.getElementById('rightPanel');if(rp)rp.style.display='none';
   var sa=document.getElementById('studyApp');if(sa)sa.style.display='none';
   var ga=document.getElementById('goalsApp');if(ga)ga.style.display='none';
+  var nb=document.getElementById('notebookApp');if(nb)nb.style.display='none';
   var fw=document.getElementById('finWeekApp');if(fw)fw.style.display='flex';
   activeCal='finweek';
   renderFinWeekView();
@@ -5327,12 +5570,12 @@ function switchToStudy(){
   var workDiv=document.getElementById('workApp');
   var studyDiv=document.getElementById('studyApp');
   var goalsDiv=document.getElementById('goalsApp');
-  var finDiv=document.getElementById('finWeekApp');
+  var finDiv=document.getElementById('finWeekApp');var nbDiv=document.getElementById('notebookApp');
   if(centerCol)centerCol.style.display='none';
   if(rightPanel)rightPanel.style.display='none';
   if(workDiv)workDiv.style.display='none';
   if(goalsDiv)goalsDiv.style.display='none';
-  if(finDiv)finDiv.style.display='none';
+  if(finDiv)finDiv.style.display='none';if(nbDiv)nbDiv.style.display='none';
   if(studyDiv)studyDiv.style.display='flex';
   renderStudyView();
   renderCalSwitcher();
@@ -6391,6 +6634,7 @@ function switchToGoals(){
   var rp=document.getElementById('rightPanel');if(rp)rp.style.display='none';
   var sa=document.getElementById('studyApp');if(sa)sa.style.display='none';
   var fw=document.getElementById('finWeekApp');if(fw)fw.style.display='none';
+  var nb=document.getElementById('notebookApp');if(nb)nb.style.display='none';
   var ga=document.getElementById('goalsApp');if(ga)ga.style.display='flex';
   activeCal='goals';
   renderGoalsView();
