@@ -496,6 +496,12 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
     </div>
     <span style="font-size:7px;color:rgba(255,255,255,.35);letter-spacing:.3px;font-family:Montserrat,sans-serif">CAL</span>
   </div>
+  <div onclick="switchToFinWeek()" title="Contas da semana" id="sbFinBtn" style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;opacity:.55;transition:opacity .15s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.55'">
+    <div style="width:22px;height:22px;border-radius:6px;border:1.5px solid rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="2" stroke-linecap="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    </div>
+    <span style="font-size:7px;color:rgba(255,255,255,.35);letter-spacing:.3px;font-family:Montserrat,sans-serif">FIN</span>
+  </div>
   <div onclick="switchToGoals()" title="Metas & OKRs" id="sbGoalsBtn" style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;opacity:.55;transition:opacity .15s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.55'">
     <div style="width:22px;height:22px;border-radius:6px;border:1.5px solid rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="2" stroke-linecap="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-4"/></svg>
@@ -570,6 +576,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 <!-- STUDY VIEW -->
 <div id="studyApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
 <div id="goalsApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
+<div id="finWeekApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
 
 </div><!-- main-layout -->
 </div><!-- app -->
@@ -4793,6 +4800,166 @@ function markFinPaid(docId){
   if(!window.firestore||!window.db)return;
   try{window.firestore.updateDoc(window.firestore.doc(window.db,'finance_tasks',docId),{calStatus:'concluido',paidAt:new Date().toISOString(),paidFrom:'my-calendar'}).then(function(){showToast('Despesa marcada como paga!');});}catch(e){console.error('markFinPaid error:',e);}
 }
+
+// ── FINANCE WEEKLY VIEW ──────────────────────────────────
+window._finWeekOffset=0;
+
+function switchToFinWeek(){
+  var wa=document.getElementById('workApp');if(wa)wa.style.display='none';
+  var cc=document.querySelector('.center-col');if(cc)cc.style.display='none';
+  var rp=document.getElementById('rightPanel');if(rp)rp.style.display='none';
+  var sa=document.getElementById('studyApp');if(sa)sa.style.display='none';
+  var ga=document.getElementById('goalsApp');if(ga)ga.style.display='none';
+  var fw=document.getElementById('finWeekApp');if(fw)fw.style.display='flex';
+  activeCal='finweek';
+  renderFinWeekView();
+}
+
+function getWeekRange(offset){
+  var now=new Date();
+  now.setDate(now.getDate()+offset*7);
+  var day=now.getDay();
+  var mon=new Date(now);mon.setDate(now.getDate()-(day===0?6:day-1));
+  mon.setHours(0,0,0,0);
+  var sun=new Date(mon);sun.setDate(mon.getDate()+6);
+  return{start:mon,end:sun};
+}
+
+function renderFinWeekView(){
+  var fw=document.getElementById('finWeekApp');if(!fw)return;
+  fw.innerHTML='';
+  fw.style.cssText='display:flex;flex:1;overflow:hidden;flex-direction:column;background:#f7f8fa';
+
+  var range=getWeekRange(window._finWeekOffset);
+  var startStr=range.start.getDate().toString().padStart(2,'0')+'/'+(range.start.getMonth()+1).toString().padStart(2,'0');
+  var endStr=range.end.getDate().toString().padStart(2,'0')+'/'+(range.end.getMonth()+1).toString().padStart(2,'0');
+  var mn=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+  // Topbar
+  var tb=document.createElement('div');
+  tb.style.cssText='padding:14px 24px;background:white;border-bottom:0.5px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;flex-shrink:0';
+  tb.innerHTML='<div><div style="font-size:16px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">Contas da semana</div><div style="font-size:10px;color:#9ca3af;margin-top:2px;font-family:Montserrat,sans-serif">'+startStr+' - '+endStr+' '+mn[range.start.getMonth()]+' '+range.start.getFullYear()+'</div></div>';
+  var navDiv=document.createElement('div');
+  navDiv.style.cssText='display:flex;gap:8px;align-items:center';
+  var prevBtn=document.createElement('div');
+  prevBtn.style.cssText='padding:4px 10px;border:0.5px solid #e5e7eb;border-radius:8px;font-size:10px;color:#6b7280;cursor:pointer;font-family:Montserrat,sans-serif';
+  prevBtn.textContent='\u2039 anterior';
+  prevBtn.onclick=function(){window._finWeekOffset--;renderFinWeekView();};
+  navDiv.appendChild(prevBtn);
+  if(window._finWeekOffset!==0){
+    var todayBtn=document.createElement('div');
+    todayBtn.style.cssText='padding:4px 10px;background:#111827;color:white;border-radius:8px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif';
+    todayBtn.textContent='Hoje';
+    todayBtn.onclick=function(){window._finWeekOffset=0;renderFinWeekView();};
+    navDiv.appendChild(todayBtn);
+  }
+  var nextBtn=document.createElement('div');
+  nextBtn.style.cssText='padding:4px 10px;border:0.5px solid #e5e7eb;border-radius:8px;font-size:10px;color:#6b7280;cursor:pointer;font-family:Montserrat,sans-serif';
+  nextBtn.textContent='proxima \u203A';
+  nextBtn.onclick=function(){window._finWeekOffset++;renderFinWeekView();};
+  navDiv.appendChild(nextBtn);
+  tb.appendChild(navDiv);
+  fw.appendChild(tb);
+
+  var main=document.createElement('div');
+  main.style.cssText='flex:1;overflow-y:auto;padding:20px 24px';
+
+  // Get tasks for this week
+  var tasks=(window._finTasks||[]).filter(function(t){
+    var d=t.dueDate||t.date||'';if(!d)return false;
+    var td=new Date(d+'T12:00:00');
+    return td>=range.start&&td<=range.end;
+  });
+
+  var totalAmount=0,paidAmount=0,pendingAmount=0;
+  tasks.forEach(function(t){
+    var amt=parseFloat(t.amount)||0;
+    totalAmount+=amt;
+    if(t.calStatus==='concluido')paidAmount+=amt;
+    else pendingAmount+=amt;
+  });
+
+  // Metrics
+  var metrics=document.createElement('div');
+  metrics.style.cssText='display:flex;gap:10px;margin-bottom:20px';
+  metrics.innerHTML='<div style="flex:1;background:white;border-radius:10px;border:0.5px solid #e5e7eb;padding:10px 12px;text-align:center"><div style="font-size:9px;color:#9ca3af;font-family:Montserrat,sans-serif">Total semana</div><div style="font-size:20px;font-weight:500;color:#111827;margin-top:2px;font-family:Montserrat,sans-serif">'+formatBRL(totalAmount)+'</div></div>'
+    +'<div style="flex:1;background:#E1F5EE;border-radius:10px;padding:10px 12px;text-align:center"><div style="font-size:9px;color:#085041;font-family:Montserrat,sans-serif">Pago</div><div style="font-size:20px;font-weight:500;color:#0F6E56;margin-top:2px;font-family:Montserrat,sans-serif">'+formatBRL(paidAmount)+'</div></div>'
+    +'<div style="flex:1;background:#FCEBEB;border-radius:10px;padding:10px 12px;text-align:center"><div style="font-size:9px;color:#791F1F;font-family:Montserrat,sans-serif">Pendente</div><div style="font-size:20px;font-weight:500;color:#A32D2D;margin-top:2px;font-family:Montserrat,sans-serif">'+formatBRL(pendingAmount)+'</div></div>';
+  main.appendChild(metrics);
+
+  if(!tasks.length){
+    var empty=document.createElement('div');
+    empty.style.cssText='text-align:center;color:#9ca3af;padding:40px 0;font-size:12px;font-family:Montserrat,sans-serif';
+    empty.textContent='Nenhuma conta para esta semana.';
+    main.appendChild(empty);
+  } else {
+    // Group by date
+    var dayNames=['Domingo','Segunda','Terca','Quarta','Quinta','Sexta','Sabado'];
+    var grouped={};
+    tasks.forEach(function(t){
+      var d=t.dueDate||t.date||'';
+      if(!grouped[d])grouped[d]=[];
+      grouped[d].push(t);
+    });
+    var sortedDates=Object.keys(grouped).sort();
+    var todayStr=new Date().toISOString().split('T')[0];
+
+    sortedDates.forEach(function(ds){
+      var dt=new Date(ds+'T12:00:00');
+      var isToday=ds===todayStr;
+      var isPast=ds<todayStr;
+      var dayHdr=document.createElement('div');
+      dayHdr.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:8px;margin-top:16px';
+      dayHdr.innerHTML='<div style="font-size:12px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+dayNames[dt.getDay()]+', '+dt.getDate()+'/'+(dt.getMonth()+1).toString().padStart(2,'0')+'</div>'
+        +(isToday?'<div style="font-size:9px;padding:2px 8px;border-radius:8px;background:#FCEBEB;color:#A32D2D;font-weight:500;font-family:Montserrat,sans-serif">hoje</div>':'');
+      main.appendChild(dayHdr);
+
+      grouped[ds].forEach(function(t){
+        var isPaid=t.calStatus==='concluido';
+        var isOverdue=isPast&&!isPaid;
+        var amt=parseFloat(t.amount)||0;
+        var row=document.createElement('div');
+        row.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:6px;border-radius:8px;'
+          +(isOverdue?'background:#FCEBEB;border-left:3px solid #A32D2D;border-radius:0 8px 8px 0'
+          :isPaid?'background:#f7f8fa;opacity:.6'
+          :'background:#f7f8fa');
+
+        var iconBg=isPaid?'#E1F5EE':isOverdue?'#FCEBEB':'#FAEEDA';
+        var iconStroke=isPaid?'#0F6E56':isOverdue?'#A32D2D':'#854F0B';
+
+        row.innerHTML='<div style="width:28px;height:28px;border-radius:8px;background:'+iconBg+';display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="'+iconStroke+'" stroke-width="2" stroke-linecap="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>'
+          +'<div style="flex:1"><div style="font-size:12px;font-weight:500;color:'+(isOverdue?'#791F1F':isPaid?'#9ca3af':'#111827')+';font-family:Montserrat,sans-serif'+(isPaid?';text-decoration:line-through':'')+'">'+eh(t.description||t.title||'Despesa')+'</div>'
+          +'<div style="font-size:10px;color:'+(isOverdue?'#A32D2D':isPaid?'#0F6E56':'#9ca3af')+';font-family:Montserrat,sans-serif">'+(isPaid?'Pago'+(t.paidAt?' em '+(t.paidAt||'').split('T')[0]:''):isOverdue?'Vencida . pendente':'Vence '+(isToday?'hoje':'em '+Math.ceil((dt-new Date(todayStr+'T00:00:00'))/86400000)+' dia'+(Math.ceil((dt-new Date(todayStr+'T00:00:00'))/86400000)>1?'s':'')))+'</div></div>'
+          +'<div style="font-size:13px;font-weight:500;color:'+(isPaid?'#9ca3af':isOverdue?'#A32D2D':'#111827')+';margin-right:8px;font-family:Montserrat,sans-serif'+(isPaid?';text-decoration:line-through':'')+'">'+formatBRL(amt)+'</div>';
+
+        if(isPaid){
+          var badge=document.createElement('div');
+          badge.style.cssText='padding:4px 10px;border-radius:6px;background:#0F6E56;color:white;font-size:10px;font-weight:500;font-family:Montserrat,sans-serif';
+          badge.textContent='Pago';
+          row.appendChild(badge);
+        } else {
+          var payBtn=document.createElement('div');
+          payBtn.style.cssText='padding:4px 10px;border-radius:6px;border:0.5px solid '+(isOverdue?'#A32D2D':'#e5e7eb')+';color:'+(isOverdue?'#A32D2D':'#6b7280')+';font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif';
+          payBtn.textContent='Pagar';
+          payBtn.onclick=(function(docId){return function(e){
+            e.stopPropagation();
+            markFinPaid(docId);
+            setTimeout(renderFinWeekView,500);
+          };})(t._docId);
+          row.appendChild(payBtn);
+        }
+        main.appendChild(row);
+      });
+    });
+  }
+
+  fw.appendChild(main);
+}
+
+function formatBRL(v){
+  return v.toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:0,maximumFractionDigits:0});
+}
+
 // Init work cal
 function initWorkCal(){
   fbLoadWorkData();
@@ -5921,6 +6088,8 @@ function switchToGoals(){
   var rp=document.getElementById('rightPanel');if(rp)rp.style.display='none';
   var sa=document.getElementById('studyApp');if(sa)sa.style.display='none';
   var goa=document.getElementById('goalsApp');if(goa)goa.style.display='none';
+  var fwa=document.getElementById('finWeekApp');if(fwa)fwa.style.display='none';
+  var fwa3=document.getElementById('finWeekApp');if(fwa3)fwa3.style.display='none';
   var ga=document.getElementById('goalsApp');if(ga)ga.style.display='flex';
   activeCal='goals';
   renderGoalsView();
@@ -6318,6 +6487,8 @@ function mobNavTo(tab){
     switchCal('main');
     view='sticky';
     renderView();updTop();
+  } else if(tab==='finance'){
+    switchToFinWeek();
   } else if(tab==='goals'){
     switchToGoals();
   } else if(tab==='more'){
@@ -6395,6 +6566,10 @@ setTimeout(adjustMobilePadding,500);
   <div class="mob-tab" data-mobtab="resumo" onclick="toggleMobRightPanel()" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:6px 0;flex:1">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M12 3v18"/></svg>
     <div style="font-size:8px;color:#9ca3af">Resumo</div>
+  </div>
+  <div class="mob-tab" data-mobtab="finance" onclick="mobNavTo('finance')" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:6px 0;flex:1">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.8" stroke-linecap="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    <div style="font-size:8px;color:#9ca3af">Contas</div>
   </div>
   <div class="mob-tab" data-mobtab="goals" onclick="mobNavTo('goals')" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:6px 0;flex:1">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.8" stroke-linecap="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-4"/></svg>
