@@ -148,7 +148,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 .ec:hover .ec-checkbox{opacity:1!important}
 @media(max-width:768px){
   #finWeekApp,#goalsApp,#studyApp{max-width:100vw;overflow-x:hidden}
-  #finWeekApp>div:first-child,#goalsApp>div:first-child{padding-top:env(safe-area-inset-top,0px)!important}
+  #finWeekApp>div:first-child,#goalsApp>div:first-child,#notebookApp>div:first-child{padding-top:env(safe-area-inset-top,0px)!important}
   #finWeekApp .topbar-like,#goalsApp .topbar-like{padding:10px 16px!important}
 .ec-checkbox{opacity:1!important}}
 .ec.done .ect{text-decoration:line-through}
@@ -588,6 +588,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 <div id="goalsApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
 <div id="finWeekApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
 <div id="notebookApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
+<div id="idealWeekApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
 
 </div><!-- main-layout -->
 </div><!-- app -->
@@ -970,6 +971,7 @@ onAuthStateChanged(auth,user=>{
     onSnapshot(doc(db,'users',uid,'config','calAutoSettings'),snap=>{if(snap.exists()){var d=snap.data();window.calAutoSettings=Object.assign(window.calAutoSettings||{},d);window.calCustomRules=d.customRules||[];console.log('Loaded custom rules:',window.calCustomRules.length);setTimeout(function(){runCalAutomations();},2000);}});
     onSnapshot(doc(db,'users',uid,'config','goalsData'),snap=>{if(snap.exists())window.goalsData=snap.data();updateAutoKRs();});
     onSnapshot(doc(db,'users',uid,'config','notebookData'),snap=>{if(snap.exists()){window.notebookData=snap.data();if(!window.notebookData.notebooks)window.notebookData.notebooks=[];window.notebookData.notebooks.forEach(function(nb){if(!nb.rows)nb.rows=[];if(!nb.columns)nb.columns=[];});}});
+    onSnapshot(doc(db,'users',uid,'config','idealWeekData'),snap=>{if(snap.exists()){window.idealWeekData=snap.data();if(!window.idealWeekData.blocks)window.idealWeekData.blocks=[];}});
     if(!window.appInited){window.appInited=true;window._firebaseReady=true;if(typeof initFinanceIntegration==='function')initFinanceIntegration();if(window._domReady)initApp();}
   }else{document.getElementById('loginScreen').style.display='flex';document.getElementById('mainApp').style.display='none';}
 });
@@ -1773,6 +1775,32 @@ function cancelEvForDay(){if(!eid)return;const ev=evs.find(e=>e.id===eid);if(!ev
 function dupEv(){if(!eid)return;const o=evs.find(e=>e.id===eid);if(!o)return;const cp=JSON.parse(JSON.stringify(o));cp.id=gid();cp.title+=' (copia)';if(window.fbSaveEv)fbSaveEv(cp);closeM();showToast('Duplicado!');}
 function qDup(id){const o=evs.find(e=>e.id===id);if(!o)return;const cp=JSON.parse(JSON.stringify(o));cp.id=gid();cp.title+=' (copia)';if(window.fbSaveEv)fbSaveEv(cp);showToast('Duplicado!');}
 function qDel(id,idate){const ev=evs.find(e=>e.id===id);if(!ev)return;if(ev.repeat&&ev.repeat!=='none'&&idate&&idate!==ev.date){const all=confirm('Excluir TODAS as ocorrencias?\n\nOK = todas   Cancelar = so '+idate);if(all){if(window.fbDelEv)fbDelEv(id);showToast('Todas excluidas.');}else{if(!ev.deletedExceptions)ev.deletedExceptions=[];if(!ev.deletedExceptions.includes(idate))ev.deletedExceptions.push(idate);if(window.fbSaveEv)fbSaveEv(ev);showToast('Dia excluido.');}}else{if(!confirm('Excluir?'))return;if(window.fbDelEv)fbDelEv(id);showToast('Excluido.');}renderView();}
+
+// ── CROSS-MODULE CONNECTIONS ─────────────────────────────
+function triggerCrossModuleUpdate(ev){
+  var title=(ev.title||'').toLowerCase();
+  var tags=(ev.tags||[]).map(function(t){return t.toLowerCase();});
+
+  // 1. English study: if title contains "ingles" or "english" or tag "aula" / "ingles"
+  var isEnglish=title.indexOf('ingles')>=0||title.indexOf('english')>=0||title.indexOf('estudar ingl')>=0||tags.includes('aula')||tags.includes('ingles');
+  if(isEnglish){
+    // Increment lesson count (used by auto KR source "aulas tag")
+    console.log('Cross-module: English lesson detected → KR auto-update will pick it up');
+    showToast('Aula de ingles concluida! KRs atualizados.');
+    setTimeout(function(){if(window.updateAutoKRs)updateAutoKRs();},500);
+  }
+
+  // 2. Treino: if title contains "treino" or "gym" or "hyrox" or tag "treino"
+  var isTreino=title.indexOf('treino')>=0||title.indexOf('gym')>=0||title.indexOf('hyrox')>=0||tags.includes('treino');
+  if(isTreino){
+    console.log('Cross-module: Treino detected → KR auto-update');
+    setTimeout(function(){if(window.updateAutoKRs)updateAutoKRs();},500);
+  }
+
+  // 3. Any done task → auto-update KRs that track "tarefas concluidas"
+  setTimeout(function(){if(window.updateAutoKRs)updateAutoKRs();},800);
+}
+
 function togDone(id,idate){
   // ignore work events shown in main — they're managed in work calendar
   if(id&&id.startsWith('wk_'))return;
@@ -1780,20 +1808,27 @@ function togDone(id,idate){
   if(!ev)return;
   const isRepeated=ev.repeat&&ev.repeat!=='none';
   const instanceDate=idate&&idate!==ev.date?idate:(isRepeated?idate:null);
+  var wasDone=false;
   if(instanceDate&&isRepeated){
     // repeated event — toggle only this specific date
     if(!ev.doneExceptions)ev.doneExceptions={};
+    wasDone=!!ev.doneExceptions[instanceDate];
     ev.doneExceptions[instanceDate]=!ev.doneExceptions[instanceDate];
     if(window.fbSaveEv)fbSaveEv(ev);
   } else if(instanceDate===ev.date||!isRepeated){
     // original date or non-repeated event
+    wasDone=ev.done;
     ev.done=!ev.done;
     if(window.fbSaveEv)fbSaveEv(ev);
   } else {
     // fallback
+    wasDone=ev.done;
     ev.done=!ev.done;
     if(window.fbSaveEv)fbSaveEv(ev);
   }
+  // ── CROSS-MODULE CONNECTIONS ──
+  var nowDone=!wasDone;
+  if(nowDone)triggerCrossModuleUpdate(ev);
   updProgress();renderView();showToast('Atualizado!');
 }
 
@@ -1960,7 +1995,7 @@ function toggleRPModeDropdown(){
   var dd=document.createElement('div');
   dd.id='rpModeDropdown';
   dd.style.cssText='position:absolute;right:0;top:28px;width:130px;background:white;border:0.5px solid #e5e7eb;border-radius:8px;overflow:hidden;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,.06);font-family:Montserrat,sans-serif';
-  var modes=[{id:'resumo',label:'Resumo'},{id:'contas',label:'Contas'},{id:'metas',label:'Metas'},{id:'eng',label:'English Study'},{id:'cadernos',label:'Cadernos'}];
+  var modes=[{id:'resumo',label:'Resumo'},{id:'contas',label:'Contas'},{id:'metas',label:'Metas'},{id:'eng',label:'English Study'},{id:'cadernos',label:'Cadernos'},{id:'idealweek',label:'Semana Ideal'}];
   modes.forEach(function(m){
     var item=document.createElement('div');
     item.style.cssText='padding:8px 12px;font-size:11px;cursor:pointer;border-top:0.5px solid #f0f2f5;'+(window._rightPanelMode===m.id?'color:#111827;font-weight:500;background:#f7f8fa':'color:#6b7280');
@@ -1994,6 +2029,39 @@ function rpDropdownHeader(rp,activeLabel){
   return hdr;
 }
 
+
+
+function renderRPIdealWeek(rp){
+  rp.innerHTML='';
+  rp.appendChild(rpDropdownHeader(rp,'Semana Ideal'));
+  var main=document.createElement('div');
+  main.style.cssText='flex:1;overflow-y:auto;padding:0 14px 14px';
+  var blocks=window.idealWeekData.blocks||[];
+  if(!blocks.length){
+    main.innerHTML='<div style="text-align:center;color:#9ca3af;padding:30px 0;font-size:11px;font-family:Montserrat,sans-serif">Nenhum bloco cadastrado.</div>';
+    rp.appendChild(main);return;
+  }
+  // Show today's ideal blocks
+  var today=new Date().getDay();var dayIdx=today===0?6:today-1;
+  var todayBlocks=blocks.filter(function(b){return b.days&&b.days.includes(dayIdx);}).sort(function(a,b){return(a.time||'').localeCompare(b.time||'');});
+  var lbl=document.createElement('div');
+  lbl.style.cssText='font-size:10px;color:#85979D;margin-bottom:6px;font-family:Montserrat,sans-serif';
+  lbl.textContent='Hoje ('+IW_DAYS[dayIdx]+') — '+todayBlocks.length+' bloco'+(todayBlocks.length!==1?'s':'');
+  main.appendChild(lbl);
+  todayBlocks.forEach(function(b){
+    var colorObj=IW_COLORS.find(function(c){return c.id===b.category;})||IW_COLORS[0];
+    var row=document.createElement('div');
+    row.style.cssText='background:'+colorObj.bg+';border-left:2px solid '+colorObj.border+';border-radius:0 6px 6px 0;padding:6px 8px;margin-bottom:4px';
+    row.innerHTML='<div style="font-size:11px;font-weight:500;color:'+colorObj.text+';font-family:Montserrat,sans-serif">'+eh(b.name)+'</div>'+(b.time?'<div style="font-size:10px;color:#C5CED0;font-family:Montserrat,sans-serif">'+eh(b.time)+'</div>':'');
+    main.appendChild(row);
+  });
+  var link=document.createElement('div');
+  link.style.cssText='margin-top:10px;padding:8px;background:#f7f8fa;border-radius:8px;text-align:center;font-size:10px;color:#6b7280;cursor:pointer;font-family:Montserrat,sans-serif';
+  link.textContent='Abrir Semana Ideal';
+  link.onclick=function(){window._rightPanelMode='resumo';switchToIdealWeek();};
+  main.appendChild(link);
+  rp.appendChild(main);
+}
 
 function renderRPNotebook(rp){
   rp.innerHTML='';
@@ -2149,6 +2217,7 @@ function renderRightPanel(){
   // If mode is not resumo, render the module instead
   if(window._rightPanelMode==='contas'){renderRPFinance(rp);return;}
   if(window._rightPanelMode==='cadernos'){renderRPNotebook(rp);return;}
+  if(window._rightPanelMode==='idealweek'){renderRPIdealWeek(rp);return;}
   if(window._rightPanelMode==='metas'){renderRPGoals(rp);return;}
   if(window._rightPanelMode==='eng'){renderRPEng(rp);return;}
   const ds=tds(cd);
@@ -2428,7 +2497,7 @@ function switchCal(calId){
   if(workDiv)workDiv.style.display='none';
   if(studyDiv)studyDiv.style.display='none';
   if(goalsDiv)goalsDiv.style.display='none';
-  if(finDiv)finDiv.style.display='none';if(nbDiv)nbDiv.style.display='none';
+  if(finDiv)finDiv.style.display='none';var iwDiv=document.getElementById('idealWeekApp');if(iwDiv)iwDiv.style.display='none';if(nbDiv)nbDiv.style.display='none';
   if(calId==='main'){
     if(centerCol)centerCol.style.display='flex';
     if(rightPanel)rightPanel.style.display='flex';
@@ -2601,6 +2670,9 @@ function toggleMeetDone(calId,evId,idate){
   }
   fbSaveWorkEvs(calId);
   renderWorkDay(calId);
+  // Cross-module: update KRs when task marked done
+  var isDone2=(ev.repeat&&ev.repeat!=='none'&&idate)?(ev.progressExceptions[idate]==='done'):(ev.progress==='done');
+  if(isDone2)setTimeout(function(){if(window.updateAutoKRs)updateAutoKRs();},500);
 }
 function cycleWProg(calId,evId,idate,el){
   var list=window.workEvs[calId]||[];
@@ -5023,7 +5095,7 @@ function renderFinanceOverlay(){
 }
 function markFinPaid(docId){
   if(!window.firestore||!window.db)return;
-  try{window.firestore.updateDoc(window.firestore.doc(window.db,'finance_tasks',docId),{calStatus:'concluido',paidAt:new Date().toISOString(),paidFrom:'my-calendar'}).then(function(){showToast('Despesa marcada como paga!');});}catch(e){console.error('markFinPaid error:',e);}
+  try{window.firestore.updateDoc(window.firestore.doc(window.db,'finance_tasks',docId),{calStatus:'concluido',paidAt:new Date().toISOString(),paidFrom:'my-calendar'}).then(function(){showToast('Despesa marcada como paga!');setTimeout(function(){if(window.updateAutoKRs)updateAutoKRs();},500);});}catch(e){console.error('markFinPaid error:',e);}
 }
 
 
@@ -5038,6 +5110,7 @@ function switchToNotebook(){
   var sa=document.getElementById('studyApp');if(sa)sa.style.display='none';
   var ga=document.getElementById('goalsApp');if(ga)ga.style.display='none';
   var fw=document.getElementById('finWeekApp');if(fw)fw.style.display='none';
+  var iw=document.getElementById('idealWeekApp');if(iw)iw.style.display='none';
   var nb=document.getElementById('notebookApp');if(nb)nb.style.display='flex';
   activeCal='notebook';
   renderNotebookView();
@@ -5256,6 +5329,297 @@ function renameNotebook(nbId){
   fbSaveNotebooks();renderNotebookView();
 }
 
+
+// ── IDEAL WEEK MODULE ────────────────────────────────────
+window.idealWeekData=window.idealWeekData||{blocks:[]};
+window._iwTab='setup';
+var IW_DAYS=['Seg','Ter','Qua','Qui','Sex','Sab','Dom'];
+var IW_COLORS=[
+  {id:'work',label:'Trabalho',bg:'#f0f3f4',border:'#131F28',text:'#131F28'},
+  {id:'study',label:'Estudo',bg:'#eef1f2',border:'#85979D',text:'#85979D'},
+  {id:'health',label:'Saude',bg:'#e8edf0',border:'#486068',text:'#486068'},
+  {id:'personal',label:'Pessoal',bg:'#f5f0ec',border:'#B3907F',text:'#B3907F'},
+  {id:'rest',label:'Descanso',bg:'#f7f8fa',border:'#C5CED0',text:'#85979D'}
+];
+
+function switchToIdealWeek(){
+  var wa=document.getElementById('workApp');if(wa)wa.style.display='none';
+  var cc=document.querySelector('.center-col');if(cc)cc.style.display='none';
+  var rp=document.getElementById('rightPanel');if(rp)rp.style.display='none';
+  var sa=document.getElementById('studyApp');if(sa)sa.style.display='none';
+  var ga=document.getElementById('goalsApp');if(ga)ga.style.display='none';
+  var fw=document.getElementById('finWeekApp');if(fw)fw.style.display='none';
+  var nb=document.getElementById('notebookApp');if(nb)nb.style.display='none';
+  var iw=document.getElementById('idealWeekApp');if(iw)iw.style.display='flex';
+  activeCal='idealweek';
+  renderIdealWeekView();
+}
+
+function fbSaveIdealWeek(){
+  if(!window.auth||!window.auth.currentUser)return;
+  try{var uid=window.auth.currentUser.uid;
+  var data=JSON.parse(JSON.stringify(window.idealWeekData));
+  if(!data.blocks)data.blocks=[];
+  window.firestore.setDoc(window.firestore.doc(window.db,'users',uid,'config','idealWeekData'),data);
+  }catch(e){console.error('IdealWeek save error:',e);}
+}
+
+function renderIdealWeekView(){
+  var app=document.getElementById('idealWeekApp');if(!app)return;
+  app.innerHTML='';
+  app.style.cssText='display:flex;flex:1;overflow:hidden;flex-direction:column;background:#f7f8fa';
+
+  // Topbar
+  var tb=document.createElement('div');
+  tb.style.cssText='padding:14px 24px;background:white;border-bottom:0.5px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;flex-shrink:0';
+  var tbLeft=document.createElement('div');
+  tbLeft.innerHTML='<div style="font-size:16px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">Semana Ideal</div>';
+  tb.appendChild(tbLeft);
+
+  var tbRight=document.createElement('div');
+  tbRight.style.cssText='display:flex;gap:6px;align-items:center';
+
+  // Tab pills
+  var tabs=[{id:'setup',label:'Minha semana ideal'},{id:'compare',label:'Comparar'}];
+  tabs.forEach(function(t){
+    var pill=document.createElement('div');
+    pill.style.cssText='padding:4px 12px;border-radius:16px;font-size:11px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;'+(window._iwTab===t.id?'background:#131F28;color:#C5CED0':'border:0.5px solid #e5e7eb;color:#6b7280');
+    pill.textContent=t.label;
+    pill.onclick=(function(tid){return function(){window._iwTab=tid;renderIdealWeekView();};})(t.id);
+    tbRight.appendChild(pill);
+  });
+
+  if(window._iwTab==='setup'){
+    var addBtn=document.createElement('div');
+    addBtn.style.cssText='padding:5px 14px;background:#131F28;color:#C5CED0;border-radius:8px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;margin-left:6px';
+    addBtn.textContent='+ Novo bloco';
+    addBtn.onclick=function(){showAddIWBlockModal();};
+    tbRight.appendChild(addBtn);
+  }
+  tb.appendChild(tbRight);
+  app.appendChild(tb);
+
+  var main=document.createElement('div');
+  main.style.cssText='flex:1;overflow-y:auto;padding:20px 24px';
+
+  if(window._iwTab==='setup')renderIWSetup(main);
+  else renderIWCompare(main);
+
+  app.appendChild(main);
+}
+
+function renderIWSetup(main){
+  var blocks=window.idealWeekData.blocks||[];
+  // 7-column grid
+  var grid=document.createElement('div');
+  grid.style.cssText='display:grid;grid-template-columns:repeat(7,1fr);gap:6px';
+
+  // Day headers
+  IW_DAYS.forEach(function(d){
+    var hdr=document.createElement('div');
+    hdr.style.cssText='text-align:center;font-size:11px;color:#85979D;padding:4px 0;font-family:Montserrat,sans-serif';
+    hdr.textContent=d;
+    grid.appendChild(hdr);
+  });
+
+  // Day columns
+  for(var di=0;di<7;di++){
+    var col=document.createElement('div');
+    col.style.cssText='background:white;border-radius:10px;border:0.5px solid #e5e7eb;padding:6px;min-height:250px;display:flex;flex-direction:column;gap:3px';
+
+    var dayBlocks=blocks.filter(function(b){return b.days&&b.days.includes(di);}).sort(function(a,b){return(a.time||'').localeCompare(b.time||'');});
+
+    dayBlocks.forEach(function(block){
+      var colorObj=IW_COLORS.find(function(c){return c.id===block.category;})||IW_COLORS[0];
+      var bEl=document.createElement('div');
+      bEl.style.cssText='background:'+colorObj.bg+';border-radius:0 6px 6px 0;padding:5px 8px;border-left:2px solid '+colorObj.border+';cursor:pointer';
+      bEl.innerHTML='<div style="font-size:11px;font-weight:500;color:'+colorObj.text+';font-family:Montserrat,sans-serif">'+eh(block.name)+'</div>'
+        +(block.time?'<div style="font-size:11px;color:#C5CED0;font-family:Montserrat,sans-serif">'+eh(block.time)+'</div>':'');
+      bEl.onclick=(function(bid){return function(){editIWBlock(bid);};})(block.id);
+      col.appendChild(bEl);
+    });
+
+    // Add block for this day
+    var addDay=document.createElement('div');
+    addDay.style.cssText='margin-top:auto;padding:4px;text-align:center;font-size:11px;color:#C5CED0;cursor:pointer;font-family:Montserrat,sans-serif';
+    addDay.textContent='+';
+    addDay.onclick=(function(dayIdx){return function(){showAddIWBlockModal(dayIdx);};})(di);
+    col.appendChild(addDay);
+
+    grid.appendChild(col);
+  }
+  main.appendChild(grid);
+}
+
+function renderIWCompare(main){
+  var blocks=window.idealWeekData.blocks||[];
+  if(!blocks.length){
+    main.innerHTML='<div style="text-align:center;color:#9ca3af;padding:60px 0;font-size:12px;font-family:Montserrat,sans-serif">Monte sua semana ideal primeiro.</div>';
+    return;
+  }
+  // Get current week's events
+  var now=new Date();
+  var monday=new Date(now);monday.setDate(monday.getDate()-(monday.getDay()||7)+1);
+  var totalIdeal=0,totalDone=0;
+  var activityStats={};
+  var gaps=[];
+
+  for(var di=0;di<7;di++){
+    var dayDate=new Date(monday);dayDate.setDate(dayDate.getDate()+di);
+    var ds=tds(dayDate);
+    var dayEvs=getEvs(ds);
+    var dayBlocks=blocks.filter(function(b){return b.days&&b.days.includes(di);});
+
+    dayBlocks.forEach(function(block){
+      totalIdeal++;
+      if(!activityStats[block.name])activityStats[block.name]={total:0,done:0,category:block.category};
+      activityStats[block.name].total++;
+
+      // Check if there's a matching event (by title similarity)
+      var matched=dayEvs.some(function(ev){
+        var evTitle=(ev.title||'').toLowerCase();
+        var blockName=block.name.toLowerCase();
+        return evTitle.indexOf(blockName)>=0||blockName.indexOf(evTitle)>=0||ev.done;
+      });
+      // Also check if any event with done=true has a similar name
+      var matchedDone=dayEvs.some(function(ev){
+        var evTitle=(ev.title||'').toLowerCase();
+        var blockName=block.name.toLowerCase();
+        return ev.done&&(evTitle.indexOf(blockName)>=0||blockName.indexOf(evTitle)>=0);
+      });
+      // Simple: if the day has passed, check if event existed. If today/future, count as pending
+      var isPast=dayDate<new Date(new Date().setHours(0,0,0,0));
+      if(matchedDone||(matched&&isPast)){
+        totalDone++;
+        activityStats[block.name].done++;
+      } else if(isPast){
+        gaps.push({day:IW_DAYS[di],name:block.name,category:block.category});
+      }
+    });
+  }
+
+  var pct=totalIdeal?Math.round(totalDone/totalIdeal*100):0;
+
+  // Metrics
+  var metrics=document.createElement('div');
+  metrics.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px';
+  metrics.innerHTML='<div style="background:#131F28;border-radius:12px;padding:14px;text-align:center"><div style="font-size:11px;color:rgba(255,255,255,.5);font-family:Montserrat,sans-serif">Aderencia</div><div style="font-size:22px;font-weight:500;color:white;margin-top:4px;font-family:Montserrat,sans-serif">'+pct+'%</div></div>'
+    +'<div style="background:#486068;border-radius:12px;padding:14px;text-align:center"><div style="font-size:11px;color:rgba(255,255,255,.5);font-family:Montserrat,sans-serif">Cumpridos</div><div style="font-size:22px;font-weight:500;color:white;margin-top:4px;font-family:Montserrat,sans-serif">'+totalDone+'</div><div style="font-size:11px;color:rgba(255,255,255,.35);font-family:Montserrat,sans-serif">de '+totalIdeal+' blocos</div></div>'
+    +'<div style="background:#B3907F;border-radius:12px;padding:14px;text-align:center"><div style="font-size:11px;color:rgba(255,255,255,.5);font-family:Montserrat,sans-serif">Gaps</div><div style="font-size:22px;font-weight:500;color:white;margin-top:4px;font-family:Montserrat,sans-serif">'+gaps.length+'</div><div style="font-size:11px;color:rgba(255,255,255,.35);font-family:Montserrat,sans-serif">nao realizados</div></div>';
+  main.appendChild(metrics);
+
+  // Activity bars
+  var actCard=document.createElement('div');
+  actCard.style.cssText='background:white;border-radius:12px;border:0.5px solid #e5e7eb;padding:14px;margin-bottom:10px';
+  actCard.innerHTML='<div style="font-size:12px;font-weight:500;color:#111827;margin-bottom:10px;font-family:Montserrat,sans-serif">Aderencia por atividade</div>';
+  Object.keys(activityStats).forEach(function(name){
+    var st=activityStats[name];
+    var colorObj=IW_COLORS.find(function(c){return c.id===st.category;})||IW_COLORS[0];
+    var barPct=st.total?Math.round(st.done/st.total*100):0;
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:8px';
+    row.innerHTML='<div style="font-size:11px;color:#6b7280;width:70px;text-align:right;font-family:Montserrat,sans-serif">'+eh(name)+'</div>'
+      +'<div style="flex:1;height:14px;background:#f0f2f5;border-radius:4px;overflow:hidden"><div style="width:'+barPct+'%;height:100%;background:'+colorObj.border+';border-radius:4px"></div></div>'
+      +'<div style="font-size:11px;font-weight:500;color:'+colorObj.text+';width:40px;font-family:Montserrat,sans-serif">'+st.done+'/'+st.total+'</div>';
+    actCard.appendChild(row);
+  });
+  main.appendChild(actCard);
+
+  // Gaps list
+  if(gaps.length){
+    var gapCard=document.createElement('div');
+    gapCard.style.cssText='background:white;border-radius:12px;border:0.5px solid #e5e7eb;padding:14px';
+    gapCard.innerHTML='<div style="font-size:12px;font-weight:500;color:#111827;margin-bottom:10px;font-family:Montserrat,sans-serif">Gaps da semana</div>';
+    gaps.forEach(function(g){
+      var row=document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:8px;padding:6px 8px;background:#f5f0ec;border-radius:6px;margin-bottom:4px';
+      row.innerHTML='<div style="width:6px;height:6px;border-radius:50%;background:#B3907F;flex-shrink:0"></div><div style="font-size:11px;color:#B3907F;font-family:Montserrat,sans-serif">'+g.day+' — '+eh(g.name)+' nao realizado</div>';
+      gapCard.appendChild(row);
+    });
+    main.appendChild(gapCard);
+  }
+}
+
+function showAddIWBlockModal(preDay){
+  var overlay=document.createElement('div');
+  overlay.className='mo open';
+  overlay.id='iwBlockModal';
+  overlay.onclick=function(e){if(e.target===this)this.remove();};
+  var modal=document.createElement('div');
+  modal.className='modal';
+  modal.style.cssText='width:380px;padding:20px';
+  modal.onclick=function(e){e.stopPropagation();};
+
+  modal.innerHTML='<div style="font-size:14px;font-weight:500;color:#111827;margin-bottom:14px;font-family:Montserrat,sans-serif">Novo bloco</div>'
+    +'<div style="margin-bottom:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:4px;font-family:Montserrat,sans-serif">Nome da atividade</div><input id="iwbName" class="inp" placeholder="Ex: Treino, Ingles, Slice..." style="font-family:Montserrat,sans-serif"/></div>'
+    +'<div style="margin-bottom:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:4px;font-family:Montserrat,sans-serif">Horario (opcional)</div><input id="iwbTime" class="inp" placeholder="Ex: 06:00 ou 09-18h" style="font-family:Montserrat,sans-serif"/></div>'
+    +'<div style="margin-bottom:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:4px;font-family:Montserrat,sans-serif">Categoria</div><div id="iwbCatWrap" style="display:flex;gap:6px;flex-wrap:wrap"></div></div>'
+    +'<div style="margin-bottom:14px"><div style="font-size:10px;color:#6b7280;margin-bottom:4px;font-family:Montserrat,sans-serif">Dias da semana</div><div id="iwbDaysWrap" style="display:flex;gap:4px"></div></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end"><div id="iwbCancelBtn" style="padding:6px 14px;border:0.5px solid #e5e7eb;border-radius:8px;font-size:11px;color:#6b7280;cursor:pointer;font-family:Montserrat,sans-serif">Cancelar</div><div id="iwbSaveBtn" style="padding:6px 14px;background:#131F28;color:#C5CED0;border-radius:8px;font-size:11px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif">Salvar</div></div>';
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  document.getElementById('iwbCancelBtn').onclick=function(){document.getElementById('iwBlockModal').remove();};
+  // Category pills
+  var catWrap=document.getElementById('iwbCatWrap');
+  var selectedCat='work';
+  IW_COLORS.forEach(function(c){
+    var pill=document.createElement('div');
+    pill.dataset.cat=c.id;
+    pill.style.cssText='padding:4px 10px;border-radius:14px;font-size:10px;cursor:pointer;font-family:Montserrat,sans-serif;border:0.5px solid '+c.border+';color:'+c.text+(c.id===selectedCat?';background:'+c.bg:'');
+    pill.textContent=c.label;
+    pill.onclick=function(){
+      selectedCat=this.dataset.cat;
+      catWrap.querySelectorAll('div').forEach(function(p){
+        var co=IW_COLORS.find(function(x){return x.id===p.dataset.cat;});
+        p.style.background=p.dataset.cat===selectedCat?co.bg:'transparent';
+      });
+    };
+    catWrap.appendChild(pill);
+  });
+
+  // Day toggles
+  var daysWrap=document.getElementById('iwbDaysWrap');
+  var selectedDays=preDay!==undefined?[preDay]:[];
+  IW_DAYS.forEach(function(d,i){
+    var pill=document.createElement('div');
+    pill.dataset.day=String(i);
+    pill.style.cssText='width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;font-family:Montserrat,sans-serif;'+(selectedDays.includes(i)?'background:#131F28;color:#C5CED0':'border:0.5px solid #e5e7eb;color:#6b7280');
+    pill.textContent=d.substring(0,1);
+    pill.onclick=function(){
+      var dayIdx=parseInt(this.dataset.day);
+      var idx2=selectedDays.indexOf(dayIdx);
+      if(idx2>=0)selectedDays.splice(idx2,1);else selectedDays.push(dayIdx);
+      this.style.cssText='width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;font-family:Montserrat,sans-serif;'+(selectedDays.includes(dayIdx)?'background:#131F28;color:#C5CED0':'border:0.5px solid #e5e7eb;color:#6b7280');
+    };
+    daysWrap.appendChild(pill);
+  });
+
+  // Save
+  document.getElementById('iwbSaveBtn').onclick=function(){
+    var name=document.getElementById('iwbName').value.trim();
+    if(!name){showToast('Digite um nome.');return;}
+    var time=document.getElementById('iwbTime').value.trim();
+    if(!selectedDays.length){showToast('Selecione pelo menos um dia.');return;}
+    if(!window.idealWeekData.blocks)window.idealWeekData.blocks=[];
+    window.idealWeekData.blocks.push({id:gid(),name:name,time:time,category:selectedCat,days:selectedDays});
+    fbSaveIdealWeek();
+    document.getElementById('iwBlockModal').remove();
+    renderIdealWeekView();
+    showToast('Bloco adicionado!');
+  };
+}
+
+function editIWBlock(blockId){
+  var block=(window.idealWeekData.blocks||[]).find(function(b){return b.id===blockId;});
+  if(!block)return;
+  var action=prompt('Bloco "'+block.name+'":\n1. Editar nome\n2. Editar horario\n3. Excluir');
+  if(action==='1'){var nn=prompt('Novo nome:',block.name);if(nn&&nn.trim()){block.name=nn.trim();fbSaveIdealWeek();renderIdealWeekView();}}
+  if(action==='2'){var nt=prompt('Novo horario:',block.time||'');if(nt!==null){block.time=nt.trim();fbSaveIdealWeek();renderIdealWeekView();}}
+  if(action==='3'){if(!confirm('Excluir "'+block.name+'"?'))return;window.idealWeekData.blocks=window.idealWeekData.blocks.filter(function(b){return b.id!==blockId;});fbSaveIdealWeek();renderIdealWeekView();}
+}
+
 // ── FINANCE WEEKLY VIEW ──────────────────────────────────
 window._finWeekOffset=0;
 
@@ -5266,6 +5630,7 @@ function switchToFinWeek(){
   var sa=document.getElementById('studyApp');if(sa)sa.style.display='none';
   var ga=document.getElementById('goalsApp');if(ga)ga.style.display='none';
   var nb=document.getElementById('notebookApp');if(nb)nb.style.display='none';
+  var iw=document.getElementById('idealWeekApp');if(iw)iw.style.display='none';
   var fw=document.getElementById('finWeekApp');if(fw)fw.style.display='flex';
   activeCal='finweek';
   renderFinWeekView();
@@ -5599,7 +5964,7 @@ function switchToStudy(){
   if(rightPanel)rightPanel.style.display='none';
   if(workDiv)workDiv.style.display='none';
   if(goalsDiv)goalsDiv.style.display='none';
-  if(finDiv)finDiv.style.display='none';if(nbDiv)nbDiv.style.display='none';
+  if(finDiv)finDiv.style.display='none';var iwDiv=document.getElementById('idealWeekApp');if(iwDiv)iwDiv.style.display='none';if(nbDiv)nbDiv.style.display='none';
   if(studyDiv)studyDiv.style.display='flex';
   renderStudyView();
   renderCalSwitcher();
@@ -6659,6 +7024,7 @@ function switchToGoals(){
   var sa=document.getElementById('studyApp');if(sa)sa.style.display='none';
   var fw=document.getElementById('finWeekApp');if(fw)fw.style.display='none';
   var nb=document.getElementById('notebookApp');if(nb)nb.style.display='none';
+  var iw=document.getElementById('idealWeekApp');if(iw)iw.style.display='none';
   var ga=document.getElementById('goalsApp');if(ga)ga.style.display='flex';
   activeCal='goals';
   renderGoalsView();
@@ -7042,6 +7408,8 @@ function mobNavTo(tab){
     switchToFinWeek();
   } else if(tab==='goals'){
     switchToGoals();
+  } else if(tab==='notebook'){
+    switchToNotebook();
   } else if(tab==='more'){
     showCalAutomationPanel();
   }
@@ -7108,6 +7476,8 @@ function adjustMobilePadding(){
     if(ga)ga.style.paddingBottom='70px';
     var sa=document.getElementById('studyApp');
     if(sa)sa.style.paddingBottom='70px';
+    var nba=document.getElementById('notebookApp');
+    if(nba)nba.style.paddingBottom='70px';
     // Update finance pending dot
     updateMobFinDot();
   }
@@ -7134,6 +7504,10 @@ setTimeout(adjustMobilePadding,500);
   <div class="mob-tab" data-mobtab="goals" onclick="mobNavTo('goals')" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:6px 0;flex:1">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.8" stroke-linecap="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-4"/></svg>
     <div style="font-size:9px;color:#9ca3af">Metas</div>
+  </div>
+  <div class="mob-tab" data-mobtab="notebook" onclick="mobNavTo('notebook')" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:6px 0;flex:1">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.8" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    <div style="font-size:9px;color:#9ca3af">Livre</div>
   </div>
 </div>
 </body>
