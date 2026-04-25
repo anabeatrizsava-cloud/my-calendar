@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="My Calendar">
+<meta name="apple-mobile-web-app-title" content="Mono">
 <meta name="theme-color" content="#faf9f7">
-<title>My Calendar</title>
+<title>Mono</title>
 <link rel="manifest" id="manifestLink">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;1,300&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -468,7 +468,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 
 <div class="login-screen" id="loginScreen">
   <div class="login-box">
-    <div class="login-logo">My Calendar</div>
+    <div class="login-logo">Mono</div>
     <div class="login-sub">Sua agenda pessoal, sincronizada em todos os dispositivos</div>
     <button class="google-btn" onclick="signInWithGoogle()">
       <svg width="17" height="17" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
@@ -1226,7 +1226,7 @@ function initApp(){mkManifest();buildMDGrid();renderMC();renderView();updTop();r
     updateAutoKRs();
     checkFinSundayReminder();
   },60000);if('Notification' in window && Notification.permission==='granted'){pushEnabled=true;registerSW();}setTimeout(checkEndOfDayReview,3000);setTimeout(function(){runCalAutomations();},5000);}
-function mkManifest(){const m={name:'My Calendar',short_name:'My Calendar',start_url:'./',display:'standalone',background_color:'#2a2320',theme_color:'#2a2320',icons:[{src:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230e0f11'/><text y='.9em' font-size='80'>📅</text></svg>",sizes:'192x192',type:'image/svg+xml'}]};const b=new Blob([JSON.stringify(m)],{type:'application/json'});document.getElementById('manifestLink').href=URL.createObjectURL(b);}
+function mkManifest(){const m={name:'Mono',short_name:'Mono',start_url:'./',display:'standalone',background_color:'#2a2320',theme_color:'#2a2320',icons:[{src:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230e0f11'/><text y='.9em' font-size='80'>📅</text></svg>",sizes:'192x192',type:'image/svg+xml'}]};const b=new Blob([JSON.stringify(m)],{type:'application/json'});document.getElementById('manifestLink').href=URL.createObjectURL(b);}
 function handleAdd(){if(view==='planner')openNewList();else if(view==='sticky')addSticky();else openNew();}
 function updTop(){
   const isPl=view==='planner'||view==='sticky';
