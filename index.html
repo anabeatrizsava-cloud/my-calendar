@@ -2694,6 +2694,7 @@ function cycleWProg(calId,evId,idate,el){
   }
   fbSaveWorkEvs(calId);
   renderWorkDay(calId);
+  setTimeout(function(){if(window.updateAutoKRs)updateAutoKRs();},500);
 }
 
 // Work event card
@@ -6756,6 +6757,7 @@ function addLessonWord(){
   updateLessonCount();
   renderLessonWordList();
   showToast(entry.word+' adicionada!');
+  setTimeout(function(){if(window.updateAutoKRs)updateAutoKRs();},500);
 }
 
 function addLessonFF(){
@@ -6773,6 +6775,7 @@ function addLessonFF(){
   updateLessonCount();
   renderLessonWordList();
   showToast('False friend adicionado!');
+  setTimeout(function(){if(window.updateAutoKRs)updateAutoKRs();},500);
 }
 
 function addLessonPron(){
@@ -6789,6 +6792,7 @@ function addLessonPron(){
   updateLessonCount();
   renderLessonWordList();
   showToast('Regra de pronuncia adicionada!');
+  setTimeout(function(){if(window.updateAutoKRs)updateAutoKRs();},500);
 }
 
 function removeLessonWord(id){
@@ -6881,6 +6885,7 @@ function finishLesson(){
   var total=window._lessonWords.length+window._lessonFF.length+window._lessonPron.length;
   closeLessonModal();
   renderStudyView();
+  setTimeout(function(){if(window.updateAutoKRs)updateAutoKRs();},500);
   if(total)showToast('Aula finalizada! '+total+' ite'+(total>1?'ns':'m')+' salvo'+(total>1?'s':'')+'.');
   else showToast('Aula finalizada.');
 }
