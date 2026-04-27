@@ -1277,7 +1277,8 @@ function getEvs(ds){
   evs.forEach(ev=>{
     if(ev.date===ds){
       if(ev.repeat&&ev.repeat!=='none'){
-        // repeated event on its original date — apply doneExceptions
+        // repeated event on its original date — check deletedExceptions first
+        if(ev.deletedExceptions&&ev.deletedExceptions.includes(ds))return;
         res.push({...ev,_instanceDate:ds,done:ev.doneExceptions&&ev.doneExceptions[ds]!==undefined?ev.doneExceptions[ds]:ev.done});
       } else {
         res.push(ev);
@@ -1773,7 +1774,7 @@ function saveEv(){
   if(window.fbSaveEv)fbSaveEv(ev);closeM();schedRem(ev);showToast(eid?'Atualizado!':'Criado!');
 }
 function delEv(){if(!eid)return;const ev=evs.find(e=>e.id===eid);if(!ev)return;if(ev.repeat&&ev.repeat!=='none'&&editingInstanceDate&&editingInstanceDate!==ev.date){const all=confirm('Excluir TODAS as ocorrencias da tarefa repetida?\n\nOK = excluir todas   Cancelar = excluir so '+editingInstanceDate);if(all){if(window.fbDelEv)fbDelEv(eid);showToast('Todas excluidas.');}else{if(!ev.deletedExceptions)ev.deletedExceptions=[];if(!ev.deletedExceptions.includes(editingInstanceDate))ev.deletedExceptions.push(editingInstanceDate);if(window.fbSaveEv)fbSaveEv(ev);showToast('Dia excluido.');}}else{if(!confirm('Excluir este evento?'))return;if(window.fbDelEv)fbDelEv(eid);showToast('Excluido.');}closeM();}
-function cancelEvForDay(){if(!eid)return;const ev=evs.find(e=>e.id===eid);if(!ev)return;const idate=editingInstanceDate||ev.date;if(ev.repeat&&ev.repeat!=='none'){if(!ev.deletedExceptions)ev.deletedExceptions=[];if(!ev.deletedExceptions.includes(idate))ev.deletedExceptions.push(idate);if(window.fbSaveEv)fbSaveEv(ev);showToast('Tarefa cancelada para '+idate+'.');}else{if(!confirm('Cancelar esta tarefa?'))return;if(window.fbDelEv)fbDelEv(eid);showToast('Tarefa cancelada.');}closeM();renderView();}
+function cancelEvForDay(){if(!eid)return;const ev=evs.find(e=>e.id===eid);if(!ev)return;const idate=editingInstanceDate||ev.date;if(ev.repeat&&ev.repeat!=='none'){if(!ev.deletedExceptions)ev.deletedExceptions=[];if(!ev.deletedExceptions.includes(idate))ev.deletedExceptions.push(idate);if(ev.doneExceptions&&ev.doneExceptions[idate])delete ev.doneExceptions[idate];if(window.fbSaveEv)fbSaveEv(ev);showToast('Tarefa cancelada para '+idate+'.');}else{if(!confirm('Cancelar esta tarefa?'))return;if(window.fbDelEv)fbDelEv(eid);showToast('Tarefa cancelada.');}closeM();renderView();setTimeout(function(){if(window.updateAutoKRs)updateAutoKRs();},500);}
 function dupEv(){if(!eid)return;const o=evs.find(e=>e.id===eid);if(!o)return;const cp=JSON.parse(JSON.stringify(o));cp.id=gid();cp.title+=' (copia)';if(window.fbSaveEv)fbSaveEv(cp);closeM();showToast('Duplicado!');}
 function qDup(id){const o=evs.find(e=>e.id===id);if(!o)return;const cp=JSON.parse(JSON.stringify(o));cp.id=gid();cp.title+=' (copia)';if(window.fbSaveEv)fbSaveEv(cp);showToast('Duplicado!');}
 function qDel(id,idate){const ev=evs.find(e=>e.id===id);if(!ev)return;if(ev.repeat&&ev.repeat!=='none'&&idate&&idate!==ev.date){const all=confirm('Excluir TODAS as ocorrencias?\n\nOK = todas   Cancelar = so '+idate);if(all){if(window.fbDelEv)fbDelEv(id);showToast('Todas excluidas.');}else{if(!ev.deletedExceptions)ev.deletedExceptions=[];if(!ev.deletedExceptions.includes(idate))ev.deletedExceptions.push(idate);if(window.fbSaveEv)fbSaveEv(ev);showToast('Dia excluido.');}}else{if(!confirm('Excluir?'))return;if(window.fbDelEv)fbDelEv(id);showToast('Excluido.');}renderView();}
@@ -7350,8 +7351,9 @@ function updateAutoKRs(){
           if(filter&&(ev.title||'').toLowerCase().indexOf(filter)>=0){
             if(ev.done)newVal++;
             if(ev.doneExceptions){
+              var delEx=ev.deletedExceptions||[];
               Object.keys(ev.doneExceptions).forEach(function(d){
-                if(ev.doneExceptions[d])newVal++;
+                if(ev.doneExceptions[d]&&delEx.indexOf(d)<0)newVal++;
               });
             }
           }
