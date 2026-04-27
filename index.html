@@ -4298,7 +4298,8 @@ function checkEndOfDayReview(){
   var now=new Date();
   if(now.getHours()<18)return;
   var todayStr=tds(now);
-  if(window._endOfDayShownDate===todayStr)return;
+  var eodKey='eodReview_'+todayStr;
+  try{var eodCount=parseInt(localStorage.getItem(eodKey)||'0');if(eodCount>=2)return;localStorage.setItem(eodKey,String(eodCount+1));}catch(e){}
   if(!window.workCals||!window.workCals.length)return;
   // Collect pending events from My Calendar
   var allEvs=getEvs(todayStr);
@@ -4309,7 +4310,6 @@ function checkEndOfDayReview(){
     }
   });
   if(!pending.length)return;
-  window._endOfDayShownDate=todayStr;
   showEndOfDayModal(pending,todayStr);
 }
 
@@ -7347,26 +7347,50 @@ function updateAutoKRs(){
 
       } else if(kr.autoSource==='task_done_title'){
         (window.evs||[]).forEach(function(ev){
-          if(ev.done&&filter&&(ev.title||'').toLowerCase().indexOf(filter)>=0)newVal++;
+          if(filter&&(ev.title||'').toLowerCase().indexOf(filter)>=0){
+            if(ev.done)newVal++;
+            if(ev.doneExceptions){
+              Object.keys(ev.doneExceptions).forEach(function(d){
+                if(ev.doneExceptions[d])newVal++;
+              });
+            }
+          }
         });
         (window.workCals||[]).forEach(function(cal){
           (window.workEvs[cal.id]||[]).forEach(function(ev){
-            if(ev.progress==='done'&&filter&&(ev.title||'').toLowerCase().indexOf(filter)>=0)newVal++;
+            if(filter&&(ev.title||'').toLowerCase().indexOf(filter)>=0){
+              if(ev.progress==='done')newVal++;
+              if(ev.progressExceptions){
+                Object.keys(ev.progressExceptions).forEach(function(d){
+                  if(ev.progressExceptions[d]==='done')newVal++;
+                });
+              }
+            }
           });
         });
 
       } else if(kr.autoSource==='task_done_tag'){
         (window.evs||[]).forEach(function(ev){
-          if(ev.done&&filter){
-            var tags=(ev.tags||[]).map(function(t){return t.toLowerCase();});
-            if(tags.indexOf(filter)>=0)newVal++;
+          var tags=(ev.tags||[]).map(function(t){return t.toLowerCase();});
+          if(tags.indexOf(filter)<0)return;
+          if(ev.done)newVal++;
+          // Count doneExceptions for repeating tasks
+          if(ev.doneExceptions){
+            Object.keys(ev.doneExceptions).forEach(function(d){
+              if(ev.doneExceptions[d])newVal++;
+            });
           }
         });
         (window.workCals||[]).forEach(function(cal){
           (window.workEvs[cal.id]||[]).forEach(function(ev){
-            if(ev.progress==='done'&&filter){
-              var tags=(ev.tags||[]).map(function(t){return t.toLowerCase();});
-              if(tags.indexOf(filter)>=0)newVal++;
+            var tags=(ev.tags||[]).map(function(t){return t.toLowerCase();});
+            if(tags.indexOf(filter)>=0){
+              if(ev.progress==='done')newVal++;
+              if(ev.progressExceptions){
+                Object.keys(ev.progressExceptions).forEach(function(d){
+                  if(ev.progressExceptions[d]==='done')newVal++;
+                });
+              }
             }
           });
         });
@@ -7374,13 +7398,27 @@ function updateAutoKRs(){
       } else if(kr.autoSource==='wc_done_client'){
         (window.workCals||[]).forEach(function(cal){
           (window.workEvs[cal.id]||[]).forEach(function(ev){
-            if(ev.progress==='done'&&filter&&(ev.client||'').toLowerCase().indexOf(filter)>=0)newVal++;
+            if(filter&&(ev.client||'').toLowerCase().indexOf(filter)>=0){
+              if(ev.progress==='done')newVal++;
+              if(ev.progressExceptions){
+                Object.keys(ev.progressExceptions).forEach(function(d){
+                  if(ev.progressExceptions[d]==='done')newVal++;
+                });
+              }
+            }
           });
         });
 
       } else if(kr.autoSource==='task_done_count'){
         (window.evs||[]).forEach(function(ev){
-          if(ev.done&&filter&&(ev.title||'').toLowerCase().indexOf(filter)>=0)newVal++;
+          if(filter&&(ev.title||'').toLowerCase().indexOf(filter)>=0){
+            if(ev.done)newVal++;
+            if(ev.doneExceptions){
+              Object.keys(ev.doneExceptions).forEach(function(d){
+                if(ev.doneExceptions[d])newVal++;
+              });
+            }
+          }
         });
       }
 
