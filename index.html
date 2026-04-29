@@ -5052,11 +5052,253 @@ function initFinanceIntegration(){
       console.log('Finance: '+window._finTasks.length+' tasks from Firestore');
       clearTimeout(window._finOvTimer);
       window._finOvTimer=setTimeout(renderFinanceOverlay,200);
+      setTimeout(renderMundanaOverlay,400);
       setTimeout(checkFinSundayReminder,2000);
       setTimeout(updateMobFinDot,500);
     },function(err){console.error('Finance error:',err);});
   }catch(e){console.error('Finance init error:',e);}
 }
+
+// ── MUNDANA INTEGRATION ──────────────────────────────────
+var MUNDANA_SB_URL='https://ffutgdqhmtjmooayxyxr.supabase.co';
+var MUNDANA_SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZmdXRnZHFobXRqbW9vYXl4eXhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzEyNDYsImV4cCI6MjA4OTYwNzI0Nn0.reSkQscPVXQ5ntfKzgANrpe1LhtY7oFnq5i7QVAbZuI';
+window._mundanaTasks=[];
+
+async function fetchMundanaData(){
+  try{
+    var headers={'apikey':MUNDANA_SB_KEY,'Authorization':'Bearer '+MUNDANA_SB_KEY,'Content-Type':'application/json'};
+    var [pagarRes,pedidosRes,receberRes,stockmpRes,stockpaRes,formulasRes]=await Promise.all([
+      fetch(MUNDANA_SB_URL+'/rest/v1/pagar?select=*',{headers}).then(r=>r.json()).catch(()=>[]),
+      fetch(MUNDANA_SB_URL+'/rest/v1/pedidos?select=*',{headers}).then(r=>r.json()).catch(()=>[]),
+      fetch(MUNDANA_SB_URL+'/rest/v1/receber?select=*',{headers}).then(r=>r.json()).catch(()=>[]),
+      fetch(MUNDANA_SB_URL+'/rest/v1/stockmp?select=*',{headers}).then(r=>r.json()).catch(()=>[]),
+      fetch(MUNDANA_SB_URL+'/rest/v1/stockpa?select=*',{headers}).then(r=>r.json()).catch(()=>[]),
+      fetch(MUNDANA_SB_URL+'/rest/v1/formulas?select=*',{headers}).then(r=>r.json()).catch(()=>[])
+    ]);
+    // Parse JSON store tables
+    var pagar=Array.isArray(pagarRes)?pagarRes:[];
+    var pedidos=Array.isArray(pedidosRes)?pedidosRes.map(function(r){try{return typeof r.name==='string'?JSON.parse(r.name):r;}catch(e){return r;}}):[];
+    var receber=Array.isArray(receberRes)?receberRes:[];
+    var stockmp=Array.isArray(stockmpRes)?stockmpRes.map(function(r){try{return typeof r.name==='string'?JSON.parse(r.name):r;}catch(e){return r;}}):[];
+    var stockpa=Array.isArray(stockpaRes)?stockpaRes.map(function(r){try{return typeof r.name==='string'?JSON.parse(r.name):r;}catch(e){return r;}}):[];
+    var formulas=Array.isArray(formulasRes)?formulasRes.map(function(r){try{return typeof r.name==='string'?JSON.parse(r.name):r;}catch(e){return r;}}):[];
+
+    buildMundanaTasks(pagar,pedidos,receber,stockmp,stockpa,formulas);
+    renderMundanaOverlay();
+    console.log('Mundana:',window._mundanaTasks.length,'tarefas carregadas');
+  }catch(e){console.error('Mundana fetch error:',e);}
+}
+
+function buildMundanaTasks(pagar,pedidos,receber,stockmp,stockpa,formulas){
+  var tasks=[];
+  var todayStr=tds(new Date());
+  var now=new Date();
+
+  // 1. URGENTES — Pagamentos vencidos
+  pagar.filter(function(p){return p.status!=='pago'&&p.vencimento&&p.vencimento<todayStr;}).forEach(function(p){
+    var days=Math.ceil((now-new Date(p.vencimento+'T12:00:00'))/(1000*60*60*24));
+    tasks.push({priority:1,type:'urgente',cat:'Financeiro',text:(p.descricao||'Despesa')+' — R$ '+(parseFloat(p.valor)||0).toFixed(0),sub:'Venceu ha '+days+' dia'+(days!==1?'s':''),action:'pago',actionId:p.id,taskId:'pag_'+p.id});
+  });
+
+  // 2. URGENTES — Pedidos para despachar
+  pedidos.filter(function(p){return p.status==='preparando';}).forEach(function(p){
+    tasks.push({priority:1,type:'urgente',cat:'Vendas',text:'Despachar pedido #'+(p.numero||'?')+' — '+(p.cliente||''),sub:(p.itens||[]).map(function(it){return it.qty+'x '+it.name;}).join(', '),action:'feito',actionId:p.id,actionStatus:p.status,taskId:'ped_desp_'+p.id});
+  });
+
+  // 3. Pagamentos do dia
+  pagar.filter(function(p){return p.status!=='pago'&&p.vencimento===todayStr;}).forEach(function(p){
+    tasks.push({priority:2,type:'hoje',cat:'Financeiro',text:(p.descricao||'Despesa')+' — R$ '+(parseFloat(p.valor)||0).toFixed(0),sub:'Vence hoje',action:'pago',actionId:p.id,taskId:'pag_hoje_'+p.id});
+  });
+
+  // 4. Pedidos novos
+  pedidos.filter(function(p){return p.status==='novo';}).forEach(function(p){
+    tasks.push({priority:2,type:'hoje',cat:'Vendas',text:'Preparar pedido #'+(p.numero||'?')+' — '+(p.cliente||''),sub:(p.itens||[]).map(function(it){return it.qty+'x '+it.name;}).join(', '),action:'feito',actionId:p.id,actionStatus:p.status,taskId:'ped_new_'+p.id});
+  });
+
+  // 5. A Receber pendente
+  receber.filter(function(r){return r.status!=='recebido'&&r.vencimento&&r.vencimento<=todayStr;}).slice(0,3).forEach(function(r){
+    var days2=Math.ceil((now-new Date(r.vencimento+'T12:00:00'))/(1000*60*60*24));
+    tasks.push({priority:3,type:'hoje',cat:'Financeiro',text:'Cobrar '+(r.descricao||'')+' — R$ '+(parseFloat(r.valor)||0).toFixed(0),sub:'Pendente'+(r.vencimento<todayStr?' ha '+days2+' dias':''),action:'recebido',actionId:r.id,taskId:'rec_'+r.id});
+  });
+
+  // 6. Estoque MP critico
+  var cMap={};formulas.forEach(function(f){(f.ingredients||[]).forEach(function(ing){var n=(ing.name||'').toLowerCase().trim();if(n)cMap[n]=(cMap[n]||0)+(parseFloat(ing.qtyLot)||0);});});
+  stockmp.filter(function(s){var n=(s.name||'').toLowerCase().trim();var q=parseFloat(s.quantity)||0;var c=cMap[n]||0;return c>0&&q<=(c*0.3);}).slice(0,3).forEach(function(s){
+    var n=(s.name||'').toLowerCase().trim();var pct=cMap[n]>0?Math.round(((parseFloat(s.quantity)||0)/cMap[n])*100):0;
+    tasks.push({priority:3,type:'atencao',cat:'Estoque',text:'Repor '+(s.name||'')+' — '+pct+'% restante',sub:'Materia-prima critica',taskId:'stock_'+s.id});
+  });
+
+  // 7. Lotes com validade proxima
+  stockpa.filter(function(i){var d=new Date(i.validade);var diff=Math.ceil((d-now)/(1000*60*60*24));return diff<=90&&diff>0&&i.status==='disponivel';}).slice(0,3).forEach(function(i){
+    var diff=Math.ceil((new Date(i.validade)-now)/(1000*60*60*24));
+    tasks.push({priority:4,type:'atencao',cat:'Estoque',text:(i.name||'')+' — lote '+(i.lotNumber||'?')+' vence em '+diff+' dias',sub:(i.quantity||0)+' un em estoque',taskId:'val_'+i.id});
+  });
+
+  // 8. Sugestoes — Producao
+  formulas.forEach(function(f){
+    var totalPA=stockpa.filter(function(i){return i.name===f.name&&i.status==='disponivel';}).reduce(function(s,i){return s+(parseInt(i.quantity)||0);},0);
+    var unitsLot=0;try{var yi=parseFloat(f.yieldUnits||f.unitsLot||0);unitsLot=yi>0?yi:0;}catch(e){}
+    if(unitsLot>0&&totalPA<unitsLot){
+      var mpOk=true;
+      (f.ingredients||[]).forEach(function(ing){
+        var ingName=(ing.name||'').toLowerCase().trim();var needed=parseFloat(ing.qtyLot)||0;
+        var avail=stockmp.filter(function(s){return(s.name||'').toLowerCase().trim()===ingName;}).reduce(function(s,x){return s+(parseFloat(x.quantity)||0);},0);
+        if(avail<needed)mpOk=false;
+      });
+      tasks.push({priority:10,type:'sugestao',cat:'Producao',text:'Produzir '+(f.name||''),sub:'Estoque: '+totalPA+' un — Lote rende '+unitsLot+' un'+(mpOk?' — MP disponivel':' — MP insuficiente'),taskId:'sug_'+f.id});
+    }
+  });
+
+  tasks.sort(function(a,b){return a.priority-b.priority;});
+  window._mundanaTasks=tasks;
+}
+
+
+async function mundanaMarkPago(id){
+  try{
+    await fetch(MUNDANA_SB_URL+'/rest/v1/pagar?id=eq.'+id,{
+      method:'PATCH',
+      headers:{'apikey':MUNDANA_SB_KEY,'Authorization':'Bearer '+MUNDANA_SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({status:'pago'})
+    });
+    showToast('Marcado como pago no Mundana!');
+    fetchMundanaData();
+  }catch(e){showToast('Erro ao atualizar');console.error(e);}
+}
+
+async function mundanaMarkFeito(id,currentStatus){
+  // pedido: novo→preparando→despachar→entregue
+  // receber: pendente→recebido
+  var nextStatus='';
+  if(currentStatus==='novo')nextStatus='preparando';
+  else if(currentStatus==='preparando')nextStatus='enviado';
+  else if(currentStatus==='enviado')nextStatus='entregue';
+  else nextStatus='done';
+
+  try{
+    // Try pedidos first
+    await fetch(MUNDANA_SB_URL+'/rest/v1/pedidos?id=eq.'+id,{
+      method:'PATCH',
+      headers:{'apikey':MUNDANA_SB_KEY,'Authorization':'Bearer '+MUNDANA_SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({status:nextStatus})
+    });
+    showToast('Status atualizado no Mundana!');
+    fetchMundanaData();
+  }catch(e){showToast('Erro ao atualizar');console.error(e);}
+}
+
+async function mundanaMarkRecebido(id){
+  try{
+    await fetch(MUNDANA_SB_URL+'/rest/v1/receber?id=eq.'+id,{
+      method:'PATCH',
+      headers:{'apikey':MUNDANA_SB_KEY,'Authorization':'Bearer '+MUNDANA_SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({status:'recebido'})
+    });
+    showToast('Marcado como recebido no Mundana!');
+    fetchMundanaData();
+  }catch(e){showToast('Erro ao atualizar');console.error(e);}
+}
+
+function mundanaDispensarHoje(taskId){
+  var key='mundana_dispensar_'+tds(new Date());
+  try{
+    var dismissed=JSON.parse(localStorage.getItem(key)||'[]');
+    if(!dismissed.includes(taskId))dismissed.push(taskId);
+    localStorage.setItem(key,JSON.stringify(dismissed));
+    showToast('Dispensada por hoje.');
+    renderMundanaOverlay();
+  }catch(e){}
+}
+
+function renderMundanaOverlay(){
+  document.querySelectorAll('.mundana-wrap').forEach(function(el){el.remove();});
+  var tasks=window._mundanaTasks||[];
+  // Filter out dismissed tasks
+  var dismissKey='mundana_dispensar_'+tds(new Date());
+  try{var dismissed=JSON.parse(localStorage.getItem(dismissKey)||'[]');
+  tasks=tasks.filter(function(t){return!t.taskId||dismissed.indexOf(t.taskId)<0;});}catch(e){}
+  if(!tasks.length)return;
+  var dv=document.querySelector('.dv .del');if(!dv)return;
+
+  var section=document.createElement('div');section.className='mundana-wrap';
+  section.style.cssText='margin-top:16px;padding-top:14px;border-top:1px dashed var(--border)';
+
+  var card=document.createElement('div');
+  card.style.cssText='background:#B3907F;border-radius:12px;padding:14px 16px;overflow:hidden';
+
+  var hdr=document.createElement('div');
+  hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:10px';
+  hdr.innerHTML='<div style="display:flex;align-items:center;gap:6px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg><div style="font-size:10px;font-weight:500;color:white;letter-spacing:0.5px;font-family:Montserrat,sans-serif">MUNDANA</div></div>'
+    +'<div style="font-size:10px;color:rgba(255,255,255,.5);font-family:Montserrat,sans-serif">'+tasks.length+' tarefa'+(tasks.length!==1?'s':'')+'</div>';
+  card.appendChild(hdr);
+
+  var typeColors={
+    urgente:{bg:'rgba(255,255,255,.15)',border:'#131F28',badge:'background:#131F28;color:#B3907F'},
+    hoje:{bg:'rgba(255,255,255,.1)',border:'#486068',badge:'border:0.5px solid rgba(255,255,255,.4);color:white'},
+    atencao:{bg:'rgba(255,255,255,.08)',border:'#85979D',badge:'border:0.5px solid rgba(255,255,255,.3);color:rgba(255,255,255,.7)'},
+    sugestao:{bg:'rgba(255,255,255,.05)',border:'rgba(255,255,255,.25)',badge:'border:0.5px solid rgba(255,255,255,.2);color:rgba(255,255,255,.5)'}
+  };
+
+  tasks.slice(0,8).forEach(function(t){
+    var tc=typeColors[t.type]||typeColors.hoje;
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:8px;padding:6px 8px;background:'+tc.bg+';border-radius:0 6px 6px 0;margin-bottom:4px;border-left:2px solid '+tc.border;
+    var rowLeft=document.createElement('div');
+    rowLeft.style.cssText='flex:1;min-width:0';
+    rowLeft.innerHTML='<div style="font-size:12px;font-weight:500;color:white;font-family:Montserrat,sans-serif">'+eh(t.text)+'</div><div style="font-size:10px;color:rgba(255,255,255,.5);font-family:Montserrat,sans-serif">'+eh(t.sub||'')+' . '+eh(t.cat)+'</div>';
+    row.appendChild(rowLeft);
+
+    var btnWrap=document.createElement('div');
+    btnWrap.style.cssText='display:flex;gap:4px;flex-shrink:0;align-items:center';
+
+    if(t.action==='pago'){
+      var payBtn=document.createElement('div');
+      payBtn.style.cssText='padding:3px 8px;border-radius:4px;background:white;color:#B3907F;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif';
+      payBtn.textContent='Pago';
+      payBtn.onclick=(function(aid){return function(e){e.stopPropagation();mundanaMarkPago(aid);};})(t.actionId);
+      btnWrap.appendChild(payBtn);
+    } else if(t.action==='feito'){
+      var doneBtn=document.createElement('div');
+      doneBtn.style.cssText='padding:3px 8px;border-radius:4px;background:white;color:#B3907F;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif';
+      doneBtn.textContent='Feito';
+      doneBtn.onclick=(function(aid,ast){return function(e){e.stopPropagation();mundanaMarkFeito(aid,ast);};})(t.actionId,t.actionStatus);
+      btnWrap.appendChild(doneBtn);
+    } else if(t.action==='recebido'){
+      var recBtn=document.createElement('div');
+      recBtn.style.cssText='padding:3px 8px;border-radius:4px;background:white;color:#B3907F;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif';
+      recBtn.textContent='Recebido';
+      recBtn.onclick=(function(aid){return function(e){e.stopPropagation();mundanaMarkRecebido(aid);};})(t.actionId);
+      btnWrap.appendChild(recBtn);
+    }
+
+    if(t.taskId){
+      var dismissBtn=document.createElement('div');
+      dismissBtn.style.cssText='padding:3px 6px;border-radius:4px;border:0.5px solid rgba(255,255,255,.25);color:rgba(255,255,255,.5);font-size:10px;cursor:pointer;font-family:Montserrat,sans-serif';
+      dismissBtn.textContent='x';
+      dismissBtn.onclick=(function(tid){return function(e){e.stopPropagation();mundanaDispensarHoje(tid);};})(t.taskId);
+      btnWrap.appendChild(dismissBtn);
+    }
+
+    row.appendChild(btnWrap);
+    card.appendChild(row);
+  });
+
+  if(tasks.length>8){
+    var more=document.createElement('div');
+    more.style.cssText='text-align:center;padding:6px 0;font-size:10px;color:rgba(255,255,255,.4);font-family:Montserrat,sans-serif';
+    more.textContent='+'+(tasks.length-8)+' mais no Mundana';
+    card.appendChild(more);
+  }
+
+  section.appendChild(card);
+  dv.appendChild(section);
+}
+
+// Fetch on load (after auth)
+setTimeout(function(){fetchMundanaData();},3000);
+// Refresh every 5 minutes
+setInterval(function(){fetchMundanaData();},300000);
+
 function renderFinanceOverlay(){
   document.querySelectorAll('.fin-wrap').forEach(function(el){el.remove();});
   var ds=tds(cd);
