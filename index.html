@@ -1270,7 +1270,7 @@ function updProgress(){
 function nav(d){if(view==='day')cd.setDate(cd.getDate()+d);else if(view==='week')cd.setDate(cd.getDate()+d*7);else cd.setMonth(cd.getMonth()+d);updTop();renderView();renderMC();}
 function goToday(){cd=new Date();updTop();renderView();renderMC();}
 function sw(v,el){view=v;document.querySelectorAll('.sbi').forEach(e=>e.classList.remove('act'));if(el&&el.classList)el.classList.add('act');document.querySelectorAll('.vb').forEach(e=>e.classList.remove('act'));const vb=document.getElementById('vb-'+v);if(vb)vb.classList.add('act');updTop();renderView();renderMC();}
-function renderView(){const c=document.getElementById('vc');c.innerHTML='';if(view==='day')rDay(c);else if(view==='week')rWeek(c);else if(view==='month')rMonth(c);else if(view==='planner')rPlanner(c);else rStickyView(c);if(view==='day'){renderDayLoad(tds(cd));if(typeof renderFinanceOverlay==='function')try{renderFinanceOverlay();}catch(e){}if(typeof renderMundanaOverlay==='function')try{renderMundanaOverlay();}catch(e){}}renderRightPanel();}
+function renderView(){const c=document.getElementById('vc');c.innerHTML='';if(view==='day')rDay(c);else if(view==='week')rWeek(c);else if(view==='month')rMonth(c);else if(view==='planner')rPlanner(c);else rStickyView(c);if(view==='day'){renderDayLoad(tds(cd));if(typeof renderFinanceOverlay==='function')try{renderFinanceOverlay();}catch(e){}setTimeout(function(){if(typeof renderMundanaOverlay==='function')try{renderMundanaOverlay();}catch(e){}},600);}renderRightPanel();}
 
 function getEvs(ds){
   const res=[];
@@ -5069,13 +5069,14 @@ async function fetchMundanaData(){
     var headers={'apikey':MUNDANA_SB_KEY,'Authorization':'Bearer '+MUNDANA_SB_KEY,'Content-Type':'application/json'};
     // Regular tables: direct rows from Supabase
     // JSON Store tables (pedidos, stockpa, formulas): stored in app_data table as key/value
-    var [pagarRes,receberRes,stockmpRes,pedidosJson,stockpaJson,formulasJson]=await Promise.all([
+    var [pagarRes,receberRes,stockmpRes,pedidosJson,stockpaJson,formulasJson,lembretesJson]=await Promise.all([
       fetch(MUNDANA_SB_URL+'/rest/v1/pagar?select=*',{headers}).then(r=>r.json()).catch(()=>[]),
       fetch(MUNDANA_SB_URL+'/rest/v1/receber?select=*',{headers}).then(r=>r.json()).catch(()=>[]),
       fetch(MUNDANA_SB_URL+'/rest/v1/stockmp?select=*',{headers}).then(r=>r.json()).catch(()=>[]),
       fetch(MUNDANA_SB_URL+'/rest/v1/app_data?key=eq.pedidos&select=value',{headers}).then(r=>r.json()).catch(()=>[]),
       fetch(MUNDANA_SB_URL+'/rest/v1/app_data?key=eq.stockpa&select=value',{headers}).then(r=>r.json()).catch(()=>[]),
-      fetch(MUNDANA_SB_URL+'/rest/v1/app_data?key=eq.formulas&select=value',{headers}).then(r=>r.json()).catch(()=>[])
+      fetch(MUNDANA_SB_URL+'/rest/v1/app_data?key=eq.formulas&select=value',{headers}).then(r=>r.json()).catch(()=>[]),
+      fetch(MUNDANA_SB_URL+'/rest/v1/app_data?key=eq.lembretes&select=value',{headers}).then(r=>r.json()).catch(()=>[])
     ]);
     // Parse regular tables
     var pagar=Array.isArray(pagarRes)?pagarRes:[];
@@ -5086,16 +5087,32 @@ async function fetchMundanaData(){
     var stockpa=[];try{if(stockpaJson&&stockpaJson[0]&&stockpaJson[0].value){stockpa=typeof stockpaJson[0].value==='string'?JSON.parse(stockpaJson[0].value):stockpaJson[0].value;}if(!Array.isArray(stockpa))stockpa=[];}catch(e){stockpa=[];}
     var formulas=[];try{if(formulasJson&&formulasJson[0]&&formulasJson[0].value){formulas=typeof formulasJson[0].value==='string'?JSON.parse(formulasJson[0].value):formulasJson[0].value;}if(!Array.isArray(formulas))formulas=[];}catch(e){formulas=[];}
 
-    buildMundanaTasks(pagar,pedidos,receber,stockmp,stockpa,formulas);
+    var lembretes=[];try{if(lembretesJson&&lembretesJson[0]&&lembretesJson[0].value){lembretes=typeof lembretesJson[0].value==='string'?JSON.parse(lembretesJson[0].value):lembretesJson[0].value;}if(!Array.isArray(lembretes))lembretes=[];}catch(e){lembretes=[];}
+    buildMundanaTasks(pagar,pedidos,receber,stockmp,stockpa,formulas,lembretes);
     renderMundanaOverlay();
     console.log('Mundana:',window._mundanaTasks.length,'tarefas carregadas');
   }catch(e){console.error('Mundana fetch error:',e);}
 }
 
-function buildMundanaTasks(pagar,pedidos,receber,stockmp,stockpa,formulas){
+function buildMundanaTasks(pagar,pedidos,receber,stockmp,stockpa,formulas,lembretes){
   var tasks=[];
   var todayStr=tds(new Date());
   var now=new Date();
+
+  // 0. LEMBRETES MANUAIS
+  (lembretes||[]).forEach(function(l){
+    if(!l.text)return;
+    var lDate=l.date||todayStr;
+    var show=lDate<=todayStr;
+    if(l.repeat==='daily')show=true;
+    if(l.repeat==='weekly'){var d=new Date(lDate+'T12:00:00');show=d.getDay()===now.getDay();}
+    if(l.repeat==='monthly'){var d2=new Date(lDate+'T12:00:00');show=d2.getDate()===now.getDate();}
+    if(!show)return;
+    var pri=l.priority==='urgente'?1:l.priority==='atencao'?4:2;
+    var type=l.priority==='urgente'?'urgente':l.priority==='atencao'?'atencao':'hoje';
+    var repeatLabel=l.repeat&&l.repeat!=='none'?({daily:'Repete todo dia',weekly:'Repete toda semana',monthly:'Repete todo mes'}[l.repeat]||'')+' . ':'';
+    tasks.push({priority:pri,type:type,cat:'Lembrete',text:l.text,sub:repeatLabel+lDate,taskId:'lembrete_'+l.id});
+  });
 
   // 1. URGENTES — Pagamentos vencidos
   pagar.filter(function(p){return p.status!=='pago'&&p.vencimento&&p.vencimento<todayStr;}).forEach(function(p){
@@ -5151,6 +5168,65 @@ function buildMundanaTasks(pagar,pedidos,receber,stockmp,stockpa,formulas){
       tasks.push({priority:10,type:'sugestao',cat:'Producao',text:'Produzir '+(f.name||''),sub:'Estoque: '+totalPA+' un — Lote rende '+unitsLot+' un'+(mpOk?' — MP disponivel':' — MP insuficiente'),taskId:'sug_'+f.id});
     }
   });
+
+  // 9. Sugestoes — Recompra (pedidos entregues ha 40+ dias)
+  var RECOMPRA_DIAS=40;
+  pedidos.filter(function(p){return p.status==='entregue'&&p.data&&p.cliente;}).forEach(function(p){
+    var entregaDate=new Date(p.data+'T12:00:00');
+    var diasDesdeEntrega=Math.floor((now-entregaDate)/(1000*60*60*24));
+    if(diasDesdeEntrega>=RECOMPRA_DIAS&&diasDesdeEntrega<=90){
+      var itensResumo=(p.itens||[]).map(function(it){return it.qty+'x '+it.name;}).join(', ');
+      tasks.push({priority:11,type:'sugestao',cat:'Recompra',text:'Contatar '+(p.cliente||'cliente')+' — produto acabando',sub:itensResumo+' — entregue ha '+diasDesdeEntrega+' dias'+(p.telefone?' — '+p.telefone:''),taskId:'recompra_'+p.id});
+    }
+  });
+
+  // 10. Sugestoes — Giro lento (60+ dias em estoque)
+  var GIRO_DIAS=60;
+  stockpa.filter(function(i){return i.status==='disponivel'&&i.fabricacao&&(parseInt(i.quantity)||0)>0;}).forEach(function(i){
+    var diasEmEstoque=Math.floor((now-new Date(i.fabricacao+'T12:00:00'))/(1000*60*60*24));
+    if(diasEmEstoque>=GIRO_DIAS){
+      tasks.push({priority:12,type:'sugestao',cat:'Giro lento',text:(i.name||'')+' parado ha '+diasEmEstoque+' dias',sub:(i.quantity||0)+' un — lote '+(i.lotNumber||'?')+' — considere promocao',taskId:'giro_'+i.id});
+    }
+  });
+
+  // 11. Sazonalidade (vendas do mesmo mes no ano passado)
+  var curMonth=now.getMonth();var curYear=now.getFullYear();
+  var MO=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  var lastYearMonth=pedidos.filter(function(p){var d=new Date((p.data||'')+'T12:00:00');return p.status!=='cancelado'&&p.data&&d.getMonth()===curMonth&&d.getFullYear()===curYear-1;});
+  var thisMonth=pedidos.filter(function(p){var d=new Date((p.data||'')+'T12:00:00');return p.status!=='cancelado'&&p.data&&d.getMonth()===curMonth&&d.getFullYear()===curYear;});
+  if(lastYearMonth.length>0){
+    var lastByProd={};lastYearMonth.forEach(function(p){(p.itens||[]).forEach(function(it){lastByProd[it.name]=(lastByProd[it.name]||0)+it.qty;});});
+    var thisByProd={};thisMonth.forEach(function(p){(p.itens||[]).forEach(function(it){thisByProd[it.name]=(thisByProd[it.name]||0)+it.qty;});});
+    Object.keys(lastByProd).forEach(function(name){
+      var lastQty=lastByProd[name];var thisQty=thisByProd[name]||0;
+      if(lastQty>=3&&thisQty<lastQty*0.5){
+        tasks.push({priority:13,type:'sugestao',cat:'Sazonalidade',text:name+' vendeu '+lastQty+'un em '+MO[curMonth]+'/'+(curYear-1),sub:'Este mes: '+thisQty+'un — considere campanha',taskId:'sazonal_'+name});
+      }
+      if(lastQty>=3&&thisQty>=lastQty*1.5){
+        tasks.push({priority:13,type:'sugestao',cat:'Sazonalidade',text:name+' em alta: '+thisQty+'un vs '+lastQty+'un',sub:'Garanta estoque e invista em conteudo',taskId:'sazonal_alta_'+name});
+      }
+    });
+  }
+
+  // 12. Escalada de urgencia — tarefas ignoradas 5+ dias sobem pra urgente
+  var ESCALA_DIAS=5;
+  try{
+    var firstSeen=JSON.parse(localStorage.getItem('mono_mundana_firstseen')||'{}');
+    var updated=Object.assign({},firstSeen);
+    tasks.forEach(function(t){
+      if(!t.taskId)return;
+      if(!updated[t.taskId])updated[t.taskId]=todayStr;
+      if(t.type!=='urgente'&&t.type!=='sugestao'){
+        var seenDate=new Date(updated[t.taskId]+'T12:00:00');
+        var diasIgnorado=Math.floor((now-seenDate)/(1000*60*60*24));
+        if(diasIgnorado>=ESCALA_DIAS){
+          t.priority=0;t.type='urgente';
+          t.sub=(t.sub||'')+' — ignorada ha '+diasIgnorado+' dias';
+        }
+      }
+    });
+    localStorage.setItem('mono_mundana_firstseen',JSON.stringify(updated));
+  }catch(e){}
 
   tasks.sort(function(a,b){return a.priority-b.priority;});
   window._mundanaTasks=tasks;
@@ -5219,15 +5295,15 @@ function mundanaDispensarHoje(taskId){
 
 function renderMundanaOverlay(){
   document.querySelectorAll('.mundana-wrap').forEach(function(el){el.remove();});
-  console.log('Mundana render: tasks='+((window._mundanaTasks||[]).length)+', .dv .del='+(document.querySelector('.dv .del')?'found':'NOT FOUND'));
+
   var tasks=window._mundanaTasks||[];
   // Filter out dismissed tasks
   var dismissKey='mundana_dispensar_'+tds(new Date());
   try{var dismissed=JSON.parse(localStorage.getItem(dismissKey)||'[]');
-  console.log('Mundana dismissed:',dismissed.length,'tasks before filter:',tasks.length);
+
   tasks=tasks.filter(function(t){return!t.taskId||dismissed.indexOf(t.taskId)<0;});
-  console.log('Mundana tasks after filter:',tasks.length);}catch(e){console.error('Mundana dismiss error:',e);}
-  if(!tasks.length){console.log('Mundana: no tasks to show');return;}
+  }catch(e){}
+  if(!tasks.length)return;
   var dv=document.querySelector('.dv .del');if(!dv)return;
 
   var section=document.createElement('div');section.className='mundana-wrap';
