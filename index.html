@@ -5295,6 +5295,9 @@ function mundanaDispensarHoje(taskId){
 
 function renderMundanaOverlay(){
   document.querySelectorAll('.mundana-wrap').forEach(function(el){el.remove();});
+  // Only show on today's view
+  var today=new Date();
+  if(cd.toDateString()!==today.toDateString())return;
 
   var tasks=window._mundanaTasks||[];
   // Filter out dismissed tasks
