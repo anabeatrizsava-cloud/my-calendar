@@ -5067,21 +5067,24 @@ window._mundanaTasks=[];
 async function fetchMundanaData(){
   try{
     var headers={'apikey':MUNDANA_SB_KEY,'Authorization':'Bearer '+MUNDANA_SB_KEY,'Content-Type':'application/json'};
-    var [pagarRes,pedidosRes,receberRes,stockmpRes,stockpaRes,formulasRes]=await Promise.all([
+    // Regular tables: direct rows from Supabase
+    // JSON Store tables (pedidos, stockpa, formulas): stored in app_data table as key/value
+    var [pagarRes,receberRes,stockmpRes,pedidosJson,stockpaJson,formulasJson]=await Promise.all([
       fetch(MUNDANA_SB_URL+'/rest/v1/pagar?select=*',{headers}).then(r=>r.json()).catch(()=>[]),
-      fetch(MUNDANA_SB_URL+'/rest/v1/pedidos?select=*',{headers}).then(r=>r.json()).catch(()=>[]),
       fetch(MUNDANA_SB_URL+'/rest/v1/receber?select=*',{headers}).then(r=>r.json()).catch(()=>[]),
       fetch(MUNDANA_SB_URL+'/rest/v1/stockmp?select=*',{headers}).then(r=>r.json()).catch(()=>[]),
-      fetch(MUNDANA_SB_URL+'/rest/v1/stockpa?select=*',{headers}).then(r=>r.json()).catch(()=>[]),
-      fetch(MUNDANA_SB_URL+'/rest/v1/formulas?select=*',{headers}).then(r=>r.json()).catch(()=>[])
+      fetch(MUNDANA_SB_URL+'/rest/v1/app_data?key=eq.pedidos&select=value',{headers}).then(r=>r.json()).catch(()=>[]),
+      fetch(MUNDANA_SB_URL+'/rest/v1/app_data?key=eq.stockpa&select=value',{headers}).then(r=>r.json()).catch(()=>[]),
+      fetch(MUNDANA_SB_URL+'/rest/v1/app_data?key=eq.formulas&select=value',{headers}).then(r=>r.json()).catch(()=>[])
     ]);
-    // Parse JSON store tables
+    // Parse regular tables
     var pagar=Array.isArray(pagarRes)?pagarRes:[];
-    var pedidos=Array.isArray(pedidosRes)?pedidosRes.map(function(r){try{return typeof r.name==='string'?JSON.parse(r.name):r;}catch(e){return r;}}):[];
     var receber=Array.isArray(receberRes)?receberRes:[];
-    var stockmp=Array.isArray(stockmpRes)?stockmpRes.map(function(r){try{return typeof r.name==='string'?JSON.parse(r.name):r;}catch(e){return r;}}):[];
-    var stockpa=Array.isArray(stockpaRes)?stockpaRes.map(function(r){try{return typeof r.name==='string'?JSON.parse(r.name):r;}catch(e){return r;}}):[];
-    var formulas=Array.isArray(formulasRes)?formulasRes.map(function(r){try{return typeof r.name==='string'?JSON.parse(r.name):r;}catch(e){return r;}}):[];
+    var stockmp=Array.isArray(stockmpRes)?stockmpRes:[];
+    // Parse JSON store tables — app_data returns [{value: [...]}]
+    var pedidos=[];try{if(pedidosJson&&pedidosJson[0]&&pedidosJson[0].value){pedidos=typeof pedidosJson[0].value==='string'?JSON.parse(pedidosJson[0].value):pedidosJson[0].value;}if(!Array.isArray(pedidos))pedidos=[];}catch(e){pedidos=[];}
+    var stockpa=[];try{if(stockpaJson&&stockpaJson[0]&&stockpaJson[0].value){stockpa=typeof stockpaJson[0].value==='string'?JSON.parse(stockpaJson[0].value):stockpaJson[0].value;}if(!Array.isArray(stockpa))stockpa=[];}catch(e){stockpa=[];}
+    var formulas=[];try{if(formulasJson&&formulasJson[0]&&formulasJson[0].value){formulas=typeof formulasJson[0].value==='string'?JSON.parse(formulasJson[0].value):formulasJson[0].value;}if(!Array.isArray(formulas))formulas=[];}catch(e){formulas=[];}
 
     buildMundanaTasks(pagar,pedidos,receber,stockmp,stockpa,formulas);
     renderMundanaOverlay();
@@ -5167,8 +5170,6 @@ async function mundanaMarkPago(id){
 }
 
 async function mundanaMarkFeito(id,currentStatus){
-  // pedido: novo→preparando→despachar→entregue
-  // receber: pendente→recebido
   var nextStatus='';
   if(currentStatus==='novo')nextStatus='preparando';
   else if(currentStatus==='preparando')nextStatus='enviado';
@@ -5176,11 +5177,17 @@ async function mundanaMarkFeito(id,currentStatus){
   else nextStatus='done';
 
   try{
-    // Try pedidos first
-    await fetch(MUNDANA_SB_URL+'/rest/v1/pedidos?id=eq.'+id,{
-      method:'PATCH',
-      headers:{'apikey':MUNDANA_SB_KEY,'Authorization':'Bearer '+MUNDANA_SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
-      body:JSON.stringify({status:nextStatus})
+    // pedidos is jsonStore — read full array, modify, write back
+    var headers={'apikey':MUNDANA_SB_KEY,'Authorization':'Bearer '+MUNDANA_SB_KEY,'Content-Type':'application/json'};
+    var res=await fetch(MUNDANA_SB_URL+'/rest/v1/app_data?key=eq.pedidos&select=value',{headers});
+    var rows=await res.json();
+    var pedidos=(rows&&rows[0]&&rows[0].value)?rows[0].value:[];
+    if(typeof pedidos==='string')pedidos=JSON.parse(pedidos);
+    var found=pedidos.find(function(p){return p.id===id;});
+    if(found)found.status=nextStatus;
+    await fetch(MUNDANA_SB_URL+'/rest/v1/app_data?key=eq.pedidos',{
+      method:'PATCH',headers:Object.assign({},headers,{'Prefer':'return=minimal'}),
+      body:JSON.stringify({value:pedidos})
     });
     showToast('Status atualizado no Mundana!');
     fetchMundanaData();
