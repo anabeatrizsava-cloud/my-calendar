@@ -5219,12 +5219,15 @@ function mundanaDispensarHoje(taskId){
 
 function renderMundanaOverlay(){
   document.querySelectorAll('.mundana-wrap').forEach(function(el){el.remove();});
+  console.log('Mundana render: tasks='+((window._mundanaTasks||[]).length)+', .dv .del='+(document.querySelector('.dv .del')?'found':'NOT FOUND'));
   var tasks=window._mundanaTasks||[];
   // Filter out dismissed tasks
   var dismissKey='mundana_dispensar_'+tds(new Date());
   try{var dismissed=JSON.parse(localStorage.getItem(dismissKey)||'[]');
-  tasks=tasks.filter(function(t){return!t.taskId||dismissed.indexOf(t.taskId)<0;});}catch(e){}
-  if(!tasks.length)return;
+  console.log('Mundana dismissed:',dismissed.length,'tasks before filter:',tasks.length);
+  tasks=tasks.filter(function(t){return!t.taskId||dismissed.indexOf(t.taskId)<0;});
+  console.log('Mundana tasks after filter:',tasks.length);}catch(e){console.error('Mundana dismiss error:',e);}
+  if(!tasks.length){console.log('Mundana: no tasks to show');return;}
   var dv=document.querySelector('.dv .del');if(!dv)return;
 
   var section=document.createElement('div');section.className='mundana-wrap';
