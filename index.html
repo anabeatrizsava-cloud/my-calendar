@@ -2305,8 +2305,9 @@ function renderRightPanel(){
   const f=new Date(mcd.getFullYear(),mcd.getMonth(),1);
   const l=new Date(mcd.getFullYear(),mcd.getMonth()+1,0);
   // Dropdown switcher
-  let dropHtml='<div style="padding:10px 14px;display:flex;align-items:center;justify-content:flex-end"><div style="position:relative" id="rpModeWrap"><div onclick="toggleRPModeDropdown()" style="display:flex;align-items:center;gap:4px;padding:3px 10px;border:0.5px solid #e5e7eb;border-radius:6px;cursor:pointer;font-family:Montserrat,sans-serif"><div style="font-size:10px;color:#6b7280">Resumo</div><svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M3 5l3 3 3-3" stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round"/></svg></div></div></div>';
-  let calHtml=dropHtml+'<div style="padding:0 14px 14px"><div style="background:white;border-radius:10px;border:0.5px solid #e5e7eb;padding:14px">';
+  // Use rpDropdownHeader for consistent behavior
+  var dropDiv=rpDropdownHeader(rp,'Resumo');
+  let calHtml='<div style="padding:0 14px 14px"><div style="background:white;border-radius:10px;border:0.5px solid #e5e7eb;padding:14px">';
   calHtml+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
   calHtml+='<div style="font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1.2px;text-transform:uppercase;font-family:Montserrat,sans-serif">'+months2rp[mcd.getMonth()]+' '+mcd.getFullYear()+'</div>';
   calHtml+='<div style="display:flex;gap:4px"><button onclick="mcPrev();renderRightPanel()" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:14px;line-height:1;padding:0 3px">‹</button>';
@@ -2410,7 +2411,7 @@ function renderRightPanel(){
   }
   html+='</div>';
 
-  rp.innerHTML=html;
+  rp.innerHTML='';rp.appendChild(dropDiv);var rpContent=document.createElement('div');rpContent.style.cssText='flex:1;overflow-y:auto';rpContent.innerHTML=html;rp.appendChild(rpContent);
   // build notes section via DOM (avoids quote escaping)
   const rpNotes=rp.querySelector('#rpNotesWrap');
   if(rpNotes) buildRPNotes(rpNotes);
@@ -5686,6 +5687,16 @@ async function mundanaMarkRecebido(id){
   }catch(e){showToast('Erro ao atualizar');console.error(e);}
 }
 
+function mundanaDismissPermanent(taskId){
+  try{
+    var dismissed=JSON.parse(localStorage.getItem('mono_mundana_done')||'[]');
+    if(!dismissed.includes(taskId))dismissed.push(taskId);
+    localStorage.setItem('mono_mundana_done',JSON.stringify(dismissed));
+    showToast('Marcada como feita.');
+    renderMundanaOverlay();
+  }catch(e){}
+}
+
 function mundanaDispensarHoje(taskId){
   var key='mundana_dispensar_'+tds(new Date());
   try{
@@ -5764,10 +5775,21 @@ function renderMundanaOverlay(){
       btnWrap.appendChild(recBtn);
     }
 
+    // "Feito" for tasks without specific action (stock, suggestions, etc)
+    if(!t.action&&t.taskId){
+      var feitoBtn=document.createElement('div');
+      feitoBtn.style.cssText='padding:3px 8px;border-radius:4px;background:white;color:#B3907F;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif';
+      feitoBtn.textContent='Feito';
+      feitoBtn.onclick=(function(tid){return function(e){e.stopPropagation();mundanaDismissPermanent(tid);};})(t.taskId);
+      btnWrap.appendChild(feitoBtn);
+    }
+
+    // "x" dismiss for today (moves to next day)
     if(t.taskId){
       var dismissBtn=document.createElement('div');
       dismissBtn.style.cssText='padding:3px 6px;border-radius:4px;border:0.5px solid rgba(255,255,255,.25);color:rgba(255,255,255,.5);font-size:10px;cursor:pointer;font-family:Montserrat,sans-serif';
       dismissBtn.textContent='x';
+      dismissBtn.title='Dispensar por hoje';
       dismissBtn.onclick=(function(tid){return function(e){e.stopPropagation();mundanaDispensarHoje(tid);};})(t.taskId);
       btnWrap.appendChild(dismissBtn);
     }
@@ -5790,7 +5812,11 @@ function renderMundanaOverlay(){
 // Fetch on load (after auth)
 setTimeout(function(){fetchMundanaData();},3000);
 // Refresh every 5 minutes
-setInterval(function(){fetchMundanaData();},300000);
+setInterval(function(){fetchMundanaData();},120000);
+// Also refresh when window regains focus (user switches from Mundana back to Mono)
+document.addEventListener('visibilitychange',function(){
+  if(!document.hidden&&window._mundanaTasks)setTimeout(fetchMundanaData,500);
+});
 
 
 // ── CYCLE PHASE TAG ON CALENDAR ──────────────────────────
