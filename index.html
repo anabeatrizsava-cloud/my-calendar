@@ -5769,11 +5769,18 @@ function renderMundanaOverlay(){
   if(cd.toDateString()!==today.toDateString())return;
 
   var tasks=window._mundanaTasks||[];
-  // Filter out dismissed tasks
+  // Filter out dismissed AND done tasks
   var dismissKey='mundana_dispensar_'+tds(new Date());
-  try{var dismissed=JSON.parse(localStorage.getItem(dismissKey)||'[]');
-
-  tasks=tasks.filter(function(t){return!t.taskId||dismissed.indexOf(t.taskId)<0;});
+  var doneKey='mundana_mododia_done_'+tds(new Date());
+  try{
+    var dismissed=JSON.parse(localStorage.getItem(dismissKey)||'[]');
+    var doneTasks=JSON.parse(localStorage.getItem(doneKey)||'[]');
+    tasks=tasks.filter(function(t){
+      if(!t.taskId)return true;
+      if(dismissed.indexOf(t.taskId)>=0)return false;
+      if(doneTasks.indexOf(t.taskId)>=0)return false;
+      return true;
+    });
   }catch(e){}
   if(!tasks.length)return;
   var dv=document.querySelector('.dv .del');if(!dv)return;
