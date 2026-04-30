@@ -1027,8 +1027,18 @@ async function renderWeather(ds) {
 
 // ── DAY LOAD INDICATOR ────────────────────────────────────
 function getDayLoad(ds) {
-  const evList = getEvs(ds).filter(e => !e.allDay && !e.done);
-  if (!evList.length) return { level: 'free', label: 'Dia livre', pct: 0, totalMins: 0 };
+  const allEvs = getEvs(ds).filter(e => !e.allDay);
+  const evList = allEvs.filter(e => !e.done);
+  let totalAllMins = 0;
+  allEvs.forEach(ev => {
+    if (ev.startTime && ev.endTime) {
+      const [sh2, sm2] = ev.startTime.split(':').map(Number);
+      const [eh3, em3] = ev.endTime.split(':').map(Number);
+      const d2 = (eh3 * 60 + em3) - (sh2 * 60 + sm2);
+      if (d2 > 0) totalAllMins += d2;
+    } else { totalAllMins += 60; }
+  });
+  if (!evList.length) return { level: 'free', label: 'Dia livre', pct: 0, totalMins: 0, totalAllMins: totalAllMins };
   let totalMins = 0;
   evList.forEach(ev => {
     if (ev.startTime && ev.endTime) {
@@ -1045,7 +1055,7 @@ function getDayLoad(ds) {
   else if (pct <= 65) { level = 'balanced'; label = 'Equilibrado'; }
   else if (pct <= 90) { level = 'busy'; label = 'Dia cheio'; }
   else { level = 'overload'; label = 'Sobrecarregado'; }
-  return { level, label, pct, totalMins };
+  return { level, label, pct, totalMins, totalAllMins };
 }
 
 function renderDayLoad(ds) {
@@ -2350,8 +2360,9 @@ function renderRightPanel(){
   html+='<div style="font-size:9px;color:#aaa89e;margin-top:3px;font-family:Montserrat,sans-serif">'+done+' concluída'+(done!==1?'s':'')+'</div></div>';
   html+='<div style="background:#f7f8fa;border-radius:8px;padding:10px">';
   html+='<div style="font-size:8px;font-weight:600;color:#9ca3af;letter-spacing:.8px;text-transform:uppercase;margin-bottom:5px;font-family:Montserrat,sans-serif">Horas</div>';
-  const h=Math.floor(load.totalMins/60),m=load.totalMins%60;
-  const hStr=load.totalMins>0?(h>0?h+'h':'')+(m>0?m+'m':''):'0h';
+  var allMins=load.totalAllMins||load.totalMins;
+  const h=Math.floor(allMins/60),m=allMins%60;
+  const hStr=allMins>0?(h>0?h+'h':'')+(m>0?m+'m':''):'0h';
   html+='<div style="font-size:26px;font-weight:300;color:#1a1a1a;line-height:1;font-family:Montserrat,sans-serif">'+hStr+'</div>';
   html+='<div style="font-size:9px;color:#aaa89e;margin-top:3px;font-family:Montserrat,sans-serif">agendadas</div></div></div>';
   // carga - thin bar
