@@ -2287,7 +2287,7 @@ function renderRightPanel(){
         +'<div style="display:flex;align-items:center;gap:8px">'
         +'<div style="width:32px;height:32px;border-radius:50%;background:'+(cyPhaseColors[cyInfo.phase]||'#85979D')+';display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l2 2"/></svg></div>'
         +'<div style="flex:1"><div style="font-size:12px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">Dia '+cyInfo.dayOfCycle+' — '+(cyPhaseNames[cyInfo.phase]||'')+'</div>'
-        +'<div style="font-size:10px;color:#85979D;font-family:Montserrat,sans-serif">'+(cyInfo.daysToNext>=0?'Proxima em '+cyInfo.daysToNext+' dias':'')+'</div></div>'
+        +'<div style="font-size:10px;color:'+(cyInfo.isTPM?'#B3907F':'#85979D')+';font-family:Montserrat,sans-serif">'+(cyInfo.isTPM?'Provavel TPM — proxima em '+cyInfo.daysToNext+'d':cyInfo.daysToNext>=0?'Proxima em '+cyInfo.daysToNext+' dias':'')+'</div></div>'
         +'</div></div>';
     }
   }
@@ -2305,7 +2305,7 @@ function renderRightPanel(){
   const f=new Date(mcd.getFullYear(),mcd.getMonth(),1);
   const l=new Date(mcd.getFullYear(),mcd.getMonth()+1,0);
   // Dropdown switcher
-  let dropHtml='<div style="padding:10px 14px;display:flex;align-items:center;justify-content:flex-end"><div style="position:relative" id="rpModeWrap"><div onclick="toggleRPModeDropdown()" style="display:flex;align-items:center;gap:4px;padding:3px 10px;border:0.5px solid #e5e7eb;border-radius:6px;cursor:pointer;font-family:Montserrat,sans-serif"><div style=\"font-size:10px;color:#6b7280\">Resumo</div><svg width=\"8\" height=\"8\" viewBox=\"0 0 12 12\" fill=\"none\"><path d=\"M3 5l3 3 3-3\" stroke=\"#9ca3af\" stroke-width=\"1.5\" stroke-linecap=\"round\"/></svg></div></div></div>';
+  let dropHtml='<div style="padding:10px 14px;display:flex;align-items:center;justify-content:flex-end"><div style="position:relative" id="rpModeWrap"><div onclick="toggleRPModeDropdown()" style="display:flex;align-items:center;gap:4px;padding:3px 10px;border:0.5px solid #e5e7eb;border-radius:6px;cursor:pointer;font-family:Montserrat,sans-serif"><div style="font-size:10px;color:#6b7280">Resumo</div><svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M3 5l3 3 3-3" stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round"/></svg></div></div></div>';
   let calHtml=dropHtml+'<div style="padding:0 14px 14px"><div style="background:white;border-radius:10px;border:0.5px solid #e5e7eb;padding:14px">';
   calHtml+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
   calHtml+='<div style="font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1.2px;text-transform:uppercase;font-family:Montserrat,sans-serif">'+months2rp[mcd.getMonth()]+' '+mcd.getFullYear()+'</div>';
@@ -5178,9 +5178,13 @@ function getCycleInfo(){
   if(dayOfCycle<=avgPeriod)phase='menstruacao';
   else if(dayOfCycle<=fertileStartDay)phase='folicular';
   else if(dayOfCycle<=fertileEndDay)phase='fertil';
+  // TPM prediction: 3-5 days before next period
+  var isTPM=daysToNext>=0&&daysToNext<=5;
+  var tpmDay=isTPM?6-daysToNext:0;
+
   return{dayOfCycle:dayOfCycle,avgCycle:avgCycle,avgPeriod:avgPeriod,nextPeriod:nextStart,daysToNext:daysToNext,
     fertileStart:fertileStartDay,fertileEnd:fertileEndDay,phase:phase,lastStart:last.start,
-    ovDay:ovDay,periods:periods};
+    ovDay:ovDay,periods:periods,isTPM:isTPM,tpmDay:tpmDay};
 }
 
 
@@ -5277,7 +5281,8 @@ function renderCycleView(){
   darkCard.innerHTML='<svg viewBox="0 0 300 60" width="300" height="60" style="display:block;margin:0 auto 16px" preserveAspectRatio="xMidYMid meet"><path d="M20 55 Q75 5 150 5 Q225 5 280 55" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="6" stroke-linecap="round"/><path d="M20 55 Q75 5 150 5 Q225 5 280 55" fill="none" stroke="#B3907F" stroke-width="6" stroke-linecap="round" stroke-dasharray="400" stroke-dashoffset="'+dashOff+'"/></svg>'
     +'<div style="font-size:11px;color:rgba(255,255,255,.35);margin-bottom:4px;font-family:Montserrat,sans-serif">'+now.getDate()+'/'+(now.getMonth()+1)+'/'+now.getFullYear()+'</div>'
     +'<div style="font-size:36px;font-weight:500;color:white;margin-bottom:4px;font-family:Montserrat,sans-serif">'+(info.dayOfCycle>0?'Dia '+info.dayOfCycle:'—')+'</div>'
-    +'<div style="font-size:13px;color:#B3907F;margin-bottom:16px;font-family:Montserrat,sans-serif">'+(phaseNames[info.phase]||'')+'</div>'
+    +'<div style="font-size:13px;color:#B3907F;margin-bottom:'+(info.isTPM?'8':'16')+'px;font-family:Montserrat,sans-serif">'+(phaseNames[info.phase]||'')+'</div>'
+    +(info.isTPM?'<div style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:rgba(179,144,127,.2);border-radius:20px;margin-bottom:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#B3907F" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><div style="font-size:11px;color:#B3907F;font-family:Montserrat,sans-serif">Provavel TPM — menstruacao em '+info.daysToNext+' dia'+(info.daysToNext!==1?'s':'')+'</div></div>':'')
     +'<div style="display:flex;justify-content:center;gap:20px">'
     +'<div><div style="font-size:18px;font-weight:500;color:white;font-family:Montserrat,sans-serif">'+(info.daysToNext!==undefined&&info.daysToNext>=0?info.daysToNext:'—')+'</div><div style="font-size:10px;color:rgba(255,255,255,.35);font-family:Montserrat,sans-serif">dias pra proxima</div></div>'
     +'<div style="width:0.5px;background:rgba(255,255,255,.1)"></div>'
@@ -5793,7 +5798,9 @@ function renderCyclePhaseTag(){
   var tag=document.createElement('div');
   tag.className='cycle-phase-tag';
   tag.style.cssText='display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:'+pc.bg+';color:'+pc.text+';border-radius:12px;font-size:10px;font-weight:500;font-family:Montserrat,sans-serif;margin-bottom:8px;cursor:pointer';
-  tag.innerHTML='<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="'+pc.text+'" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/></svg>Dia '+info.dayOfCycle+' . '+phaseNames[info.phase];
+  var tpmLabel=info.isTPM?' . Provavel TPM':'';
+  tag.innerHTML='<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="'+pc.text+'" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/></svg>Dia '+info.dayOfCycle+' . '+phaseNames[info.phase]+tpmLabel;
+  if(info.isTPM){tag.style.background='#B3907F';tag.style.color='white';}
   tag.onclick=function(){switchToCycle();};
 
   // Insert at the top of the events area
