@@ -2277,21 +2277,6 @@ function renderRightPanel(){
   const load=getDayLoad(ds);
   const pct=load.pct||0;
 
-  // Cycle phase mini card in resumo
-  if(typeof getCycleInfo==='function'){
-    var cyInfo=getCycleInfo();
-    if(cyInfo.dayOfCycle>0){
-      var cyPhaseNames={menstruacao:'Menstruacao',folicular:'Folicular',fertil:'Fertil',lutea:'Lutea'};
-      var cyPhaseColors={menstruacao:'#B3907F',folicular:'#C5CED0',fertil:'#486068',lutea:'#85979D'};
-      html+='<div style="background:white;border-radius:10px;border:0.5px solid #e5e7eb;padding:12px;margin-bottom:12px;cursor:pointer" onclick="switchToCycle()">'
-        +'<div style="display:flex;align-items:center;gap:8px">'
-        +'<div style="width:32px;height:32px;border-radius:50%;background:'+(cyPhaseColors[cyInfo.phase]||'#85979D')+';display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l2 2"/></svg></div>'
-        +'<div style="flex:1"><div style="font-size:12px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">Dia '+cyInfo.dayOfCycle+' — '+(cyPhaseNames[cyInfo.phase]||'')+'</div>'
-        +'<div style="font-size:10px;color:'+(cyInfo.isTPM?'#B3907F':'#85979D')+';font-family:Montserrat,sans-serif">'+(cyInfo.isTPM?'Provavel TPM — proxima em '+cyInfo.daysToNext+'d':cyInfo.daysToNext>=0?'Proxima em '+cyInfo.daysToNext+' dias':'')+'</div></div>'
-        +'</div></div>';
-    }
-  }
-
   // tomorrow
   const tomorrow=new Date(cd);tomorrow.setDate(tomorrow.getDate()+1);
   const tmrDs=tds(tomorrow);
@@ -2362,6 +2347,21 @@ function renderRightPanel(){
   html+='<div style="flex:1;height:4px;background:#e5e7eb;border-radius:2px;overflow:hidden"><div style="width:'+Math.min(pct,100)+'%;height:100%;background:'+cargaColor+';border-radius:2px;transition:width .4s"></div></div>';
   html+='<div style="font-size:8px;color:'+cargaColor+';font-weight:500;flex-shrink:0;font-family:Montserrat,sans-serif">'+pct+'%</div>';
   html+='</div></div></div></div>';
+
+  // Cycle phase mini card in resumo
+  if(typeof getCycleInfo==='function'){
+    var cyInfo=getCycleInfo();
+    if(cyInfo.dayOfCycle>0){
+      var cyPhaseNames={menstruacao:'Menstruacao',folicular:'Folicular',fertil:'Fertil',lutea:'Lutea'};
+      var cyPhaseColors={menstruacao:'#B3907F',folicular:'#C5CED0',fertil:'#486068',lutea:'#85979D'};
+      html+='<div style="padding:0 14px 6px"><div style="background:white;border-radius:10px;border:0.5px solid #e5e7eb;padding:12px;cursor:pointer" onclick="switchToCycle()">'
+        +'<div style="display:flex;align-items:center;gap:8px">'
+        +'<div style="width:32px;height:32px;border-radius:50%;background:'+(cyPhaseColors[cyInfo.phase]||'#85979D')+';display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l2 2"/></svg></div>'
+        +'<div style="flex:1"><div style="font-size:12px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">Dia '+cyInfo.dayOfCycle+' — '+(cyPhaseNames[cyInfo.phase]||'')+'</div>'
+        +'<div style="font-size:10px;color:'+(cyInfo.isTPM?'#B3907F':'#85979D')+';font-family:Montserrat,sans-serif">'+(cyInfo.isTPM?'Provavel TPM — proxima em '+cyInfo.daysToNext+'d':cyInfo.daysToNext>=0?'Proxima em '+cyInfo.daysToNext+' dias':'')+'</div></div>'
+        +'</div></div></div>';
+    }
+  }
 
   // amanhã
   html+='<div style="padding:0 14px 14px"><div style="background:white;border-radius:10px;border:0.5px solid #e5e7eb;padding:12px">';
