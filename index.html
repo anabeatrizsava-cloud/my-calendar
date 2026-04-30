@@ -2562,7 +2562,7 @@ function switchCal(calId){
   if(workDiv)workDiv.style.display='none';
   if(studyDiv)studyDiv.style.display='none';
   if(goalsDiv)goalsDiv.style.display='none';
-  if(finDiv)finDiv.style.display='none';var iwDiv=document.getElementById('idealWeekApp');if(iwDiv)iwDiv.style.display='none';if(nbDiv)nbDiv.style.display='none';
+  if(finDiv)finDiv.style.display='none';var iwDiv=document.getElementById('idealWeekApp');if(iwDiv)iwDiv.style.display='none';var cyDiv=document.getElementById('cycleApp');if(cyDiv)cyDiv.style.display='none';if(nbDiv)nbDiv.style.display='none';
   if(calId==='main'){
     if(centerCol)centerCol.style.display='flex';
     if(rightPanel)rightPanel.style.display='flex';
@@ -6113,6 +6113,7 @@ function switchToIdealWeek(){
   var ga=document.getElementById('goalsApp');if(ga)ga.style.display='none';
   var fw=document.getElementById('finWeekApp');if(fw)fw.style.display='none';
   var nb=document.getElementById('notebookApp');if(nb)nb.style.display='none';
+  var cy=document.getElementById('cycleApp');if(cy)cy.style.display='none';
   var iw=document.getElementById('idealWeekApp');if(iw)iw.style.display='flex';
   activeCal='idealweek';
   renderIdealWeekView();
@@ -6728,7 +6729,7 @@ function switchToStudy(){
   if(rightPanel)rightPanel.style.display='none';
   if(workDiv)workDiv.style.display='none';
   if(goalsDiv)goalsDiv.style.display='none';
-  if(finDiv)finDiv.style.display='none';var iwDiv=document.getElementById('idealWeekApp');if(iwDiv)iwDiv.style.display='none';if(nbDiv)nbDiv.style.display='none';
+  if(finDiv)finDiv.style.display='none';var iwDiv=document.getElementById('idealWeekApp');if(iwDiv)iwDiv.style.display='none';var cyDiv=document.getElementById('cycleApp');if(cyDiv)cyDiv.style.display='none';if(nbDiv)nbDiv.style.display='none';
   if(studyDiv)studyDiv.style.display='flex';
   renderStudyView();
   renderCalSwitcher();
