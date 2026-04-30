@@ -5656,8 +5656,10 @@ async function mundanaMarkPago(id){
       body:JSON.stringify({status:'pago'})
     });
     showToast('Marcado como pago no Mundana!');
-    fetchMundanaData();
-  }catch(e){showToast('Erro ao atualizar');console.error(e);}
+    try{var dismissed=JSON.parse(localStorage.getItem('mono_mundana_done')||'[]');dismissed.push('pag_'+id);dismissed.push('pag_hoje_'+id);localStorage.setItem('mono_mundana_done',JSON.stringify(dismissed));}catch(e2){}
+    renderMundanaOverlay();
+    setTimeout(fetchMundanaData,1000);
+  }catch(e){showToast('Erro ao atualizar: '+e.message);console.error('mundanaMarkPago error:',e);}
 }
 
 async function mundanaMarkFeito(id,currentStatus){
@@ -5681,8 +5683,11 @@ async function mundanaMarkFeito(id,currentStatus){
       body:JSON.stringify({value:pedidos})
     });
     showToast('Status atualizado no Mundana!');
-    fetchMundanaData();
-  }catch(e){showToast('Erro ao atualizar');console.error(e);}
+    // Also dismiss locally for immediate feedback
+    try{var dismissed=JSON.parse(localStorage.getItem('mono_mundana_done')||'[]');dismissed.push('ped_desp_'+id);dismissed.push('ped_new_'+id);localStorage.setItem('mono_mundana_done',JSON.stringify(dismissed));}catch(e2){}
+    renderMundanaOverlay();
+    setTimeout(fetchMundanaData,1000);
+  }catch(e){showToast('Erro ao atualizar: '+e.message);console.error('mundanaMarkFeito error:',e);}
 }
 
 async function mundanaMarkRecebido(id){
@@ -5693,8 +5698,10 @@ async function mundanaMarkRecebido(id){
       body:JSON.stringify({status:'recebido'})
     });
     showToast('Marcado como recebido no Mundana!');
-    fetchMundanaData();
-  }catch(e){showToast('Erro ao atualizar');console.error(e);}
+    try{var dismissed=JSON.parse(localStorage.getItem('mono_mundana_done')||'[]');dismissed.push('rec_'+id);localStorage.setItem('mono_mundana_done',JSON.stringify(dismissed));}catch(e2){}
+    renderMundanaOverlay();
+    setTimeout(fetchMundanaData,1000);
+  }catch(e){showToast('Erro ao atualizar: '+e.message);console.error('mundanaMarkRecebido error:',e);}
 }
 
 async function mundanaDismissPermanent(taskId){
