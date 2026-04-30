@@ -148,7 +148,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 .ec:hover .ec-checkbox{opacity:1!important}
 @media(max-width:768px){
   #finWeekApp,#goalsApp,#studyApp{max-width:100vw;overflow-x:hidden}
-  #finWeekApp>div:first-child,#goalsApp>div:first-child,#notebookApp>div:first-child{padding-top:env(safe-area-inset-top,0px)!important}
+  #finWeekApp>div:first-child,#goalsApp>div:first-child,#notebookApp>div:first-child,#cycleApp>div:first-child{padding-top:env(safe-area-inset-top,0px)!important}
   #notebookApp .nb-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
   #notebookApp .nb-table{min-width:600px}
   #finWeekApp .topbar-like,#goalsApp .topbar-like{padding:10px 16px!important}
@@ -526,6 +526,12 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
     </div>
     <span style="font-size:7px;color:rgba(255,255,255,.35);letter-spacing:.3px;font-family:Montserrat,sans-serif">LIVRE</span>
   </div>
+  <div onclick="switchToCycle()" title="Ciclo" id="sbCycleBtn" style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;opacity:.55;transition:opacity .15s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.55'">
+    <div style="width:22px;height:22px;border-radius:6px;border:1.5px solid rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l2 2"/></svg>
+    </div>
+    <span style="font-size:7px;color:rgba(255,255,255,.35);letter-spacing:.3px;font-family:Montserrat,sans-serif">CICLO</span>
+  </div>
   <div class="sb-divider"></div>
   <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
     <span class="sync-dot" id="syncDot"></span>
@@ -591,6 +597,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 <div id="finWeekApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
 <div id="notebookApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
 <div id="idealWeekApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
+<div id="cycleApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
 
 </div><!-- main-layout -->
 </div><!-- app -->
@@ -974,6 +981,7 @@ onAuthStateChanged(auth,user=>{
     onSnapshot(doc(db,'users',uid,'config','goalsData'),snap=>{if(snap.exists())window.goalsData=snap.data();updateAutoKRs();});
     onSnapshot(doc(db,'users',uid,'config','notebookData'),snap=>{if(snap.exists()){window.notebookData=snap.data();if(!window.notebookData.notebooks)window.notebookData.notebooks=[];window.notebookData.notebooks.forEach(function(nb){if(!nb.rows)nb.rows=[];if(!nb.columns)nb.columns=[];});}});
     onSnapshot(doc(db,'users',uid,'config','idealWeekData'),snap=>{if(snap.exists()){window.idealWeekData=snap.data();if(!window.idealWeekData.blocks)window.idealWeekData.blocks=[];}});
+    onSnapshot(doc(db,'users',uid,'config','cycleData'),snap=>{if(snap.exists()){window.cycleData=snap.data();if(!window.cycleData.periods)window.cycleData.periods=[];}});
     if(!window.appInited){window.appInited=true;window._firebaseReady=true;if(typeof initFinanceIntegration==='function')initFinanceIntegration();if(window._domReady)initApp();}
   }else{document.getElementById('loginScreen').style.display='flex';document.getElementById('mainApp').style.display='none';}
 });
@@ -5059,6 +5067,269 @@ function initFinanceIntegration(){
   }catch(e){console.error('Finance init error:',e);}
 }
 
+
+// ── CYCLE TRACKER MODULE ─────────────────────────────────
+window.cycleData=window.cycleData||{periods:[]};
+window._cycleCalMonth=null;
+window._cycleCalYear=null;
+
+function switchToCycle(){
+  var wa=document.getElementById('workApp');if(wa)wa.style.display='none';
+  var cc=document.querySelector('.center-col');if(cc)cc.style.display='none';
+  var rp=document.getElementById('rightPanel');if(rp)rp.style.display='none';
+  var sa=document.getElementById('studyApp');if(sa)sa.style.display='none';
+  var ga=document.getElementById('goalsApp');if(ga)ga.style.display='none';
+  var fw=document.getElementById('finWeekApp');if(fw)fw.style.display='none';
+  var nb=document.getElementById('notebookApp');if(nb)nb.style.display='none';
+  var iw=document.getElementById('idealWeekApp');if(iw)iw.style.display='none';
+  var cy=document.getElementById('cycleApp');if(cy)cy.style.display='flex';
+  activeCal='cycle';
+  renderCycleView();
+}
+
+function fbSaveCycle(){
+  if(!window.auth||!window.auth.currentUser)return;
+  try{var uid=window.auth.currentUser.uid;
+  var data=JSON.parse(JSON.stringify(window.cycleData));
+  if(!data.periods)data.periods=[];
+  window.firestore.setDoc(window.firestore.doc(window.db,'users',uid,'config','cycleData'),data);
+  }catch(e){console.error('Cycle save error:',e);}
+}
+
+function getCycleInfo(){
+  var periods=(window.cycleData.periods||[]).sort(function(a,b){return b.start.localeCompare(a.start);});
+  if(!periods.length)return{dayOfCycle:0,avgCycle:28,avgPeriod:5,nextPeriod:null,fertileStart:null,fertileEnd:null,phase:'none',lastStart:null};
+  var last=periods[0];
+  var lastStart=new Date(last.start+'T12:00:00');
+  var now=new Date();
+  var dayOfCycle=Math.floor((now-lastStart)/(1000*60*60*24))+1;
+  // Average cycle length
+  var cycleLengths=[];
+  for(var i=0;i<periods.length-1;i++){
+    var d=Math.floor((new Date(periods[i].start+'T12:00:00')-new Date(periods[i+1].start+'T12:00:00'))/(1000*60*60*24));
+    if(d>20&&d<45)cycleLengths.push(d);
+  }
+  var avgCycle=cycleLengths.length?Math.round(cycleLengths.reduce(function(s,v){return s+v;},0)/cycleLengths.length):28;
+  // Average period duration
+  var periodDurations=periods.filter(function(p){return p.end;}).map(function(p){return Math.floor((new Date(p.end+'T12:00:00')-new Date(p.start+'T12:00:00'))/(1000*60*60*24))+1;});
+  var avgPeriod=periodDurations.length?Math.round(periodDurations.reduce(function(s,v){return s+v;},0)/periodDurations.length):5;
+  // Next period
+  var nextStart=new Date(lastStart);nextStart.setDate(nextStart.getDate()+avgCycle);
+  var daysToNext=Math.floor((nextStart-now)/(1000*60*60*24));
+  // Fertile window (ovulation ~14 days before next period)
+  var ovDay=avgCycle-14;
+  var fertileStartDay=ovDay-2;var fertileEndDay=ovDay+2;
+  // Phase
+  var phase='lutea';
+  if(dayOfCycle<=avgPeriod)phase='menstruacao';
+  else if(dayOfCycle<=fertileStartDay)phase='folicular';
+  else if(dayOfCycle<=fertileEndDay)phase='fertil';
+  return{dayOfCycle:dayOfCycle,avgCycle:avgCycle,avgPeriod:avgPeriod,nextPeriod:nextStart,daysToNext:daysToNext,
+    fertileStart:fertileStartDay,fertileEnd:fertileEndDay,phase:phase,lastStart:last.start,
+    ovDay:ovDay,periods:periods};
+}
+
+function renderCycleView(){
+  var app=document.getElementById('cycleApp');if(!app)return;
+  app.innerHTML='';
+  app.style.cssText='display:flex;flex:1;overflow:hidden;flex-direction:column;background:#f7f8fa';
+  var info=getCycleInfo();
+  var now=new Date();
+  if(!window._cycleCalMonth&&window._cycleCalMonth!==0){window._cycleCalMonth=now.getMonth();window._cycleCalYear=now.getFullYear();}
+
+  // Topbar
+  var tb=document.createElement('div');
+  tb.style.cssText='padding:14px 24px;padding-top:max(14px,env(safe-area-inset-top,14px));background:white;border-bottom:0.5px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;flex-shrink:0';
+  tb.innerHTML='<div style="font-size:16px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">Ciclo</div><div style="font-size:11px;color:#85979D;font-family:Montserrat,sans-serif">Media: '+info.avgCycle+' dias</div>';
+  app.appendChild(tb);
+
+  var main=document.createElement('div');
+  main.style.cssText='flex:1;overflow-y:auto;padding:20px 24px';
+
+  // ── DARK CARD WITH ARC ──
+  var darkCard=document.createElement('div');
+  darkCard.style.cssText='background:#131F28;border-radius:16px;padding:24px;text-align:center;margin-bottom:12px';
+
+  var phaseNames={menstruacao:'Menstruacao',folicular:'Folicular',fertil:'Periodo fertil',lutea:'Fase lutea',none:'Sem dados'};
+  var pct=info.avgCycle>0?Math.min(info.dayOfCycle/info.avgCycle,1):0;
+  var dashOff=Math.round(400*(1-pct));
+
+  darkCard.innerHTML='<svg viewBox="0 0 300 60" width="300" height="60" style="display:block;margin:0 auto 16px" preserveAspectRatio="xMidYMid meet"><path d="M20 55 Q75 5 150 5 Q225 5 280 55" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="6" stroke-linecap="round"/><path d="M20 55 Q75 5 150 5 Q225 5 280 55" fill="none" stroke="#B3907F" stroke-width="6" stroke-linecap="round" stroke-dasharray="400" stroke-dashoffset="'+dashOff+'"/></svg>'
+    +'<div style="font-size:11px;color:rgba(255,255,255,.35);margin-bottom:4px;font-family:Montserrat,sans-serif">'+now.getDate()+'/'+(now.getMonth()+1)+'/'+now.getFullYear()+'</div>'
+    +'<div style="font-size:36px;font-weight:500;color:white;margin-bottom:4px;font-family:Montserrat,sans-serif">'+(info.dayOfCycle>0?'Dia '+info.dayOfCycle:'—')+'</div>'
+    +'<div style="font-size:13px;color:#B3907F;margin-bottom:16px;font-family:Montserrat,sans-serif">'+(phaseNames[info.phase]||'')+'</div>'
+    +'<div style="display:flex;justify-content:center;gap:20px">'
+    +'<div><div style="font-size:18px;font-weight:500;color:white;font-family:Montserrat,sans-serif">'+(info.daysToNext!==undefined&&info.daysToNext>=0?info.daysToNext:'—')+'</div><div style="font-size:10px;color:rgba(255,255,255,.35);font-family:Montserrat,sans-serif">dias pra proxima</div></div>'
+    +'<div style="width:0.5px;background:rgba(255,255,255,.1)"></div>'
+    +'<div><div style="font-size:18px;font-weight:500;color:white;font-family:Montserrat,sans-serif">'+info.avgCycle+'d</div><div style="font-size:10px;color:rgba(255,255,255,.35);font-family:Montserrat,sans-serif">ciclo medio</div></div>'
+    +'<div style="width:0.5px;background:rgba(255,255,255,.1)"></div>'
+    +'<div><div style="font-size:18px;font-weight:500;color:white;font-family:Montserrat,sans-serif">'+(info.phase==='fertil'?'Agora':info.dayOfCycle>info.fertileEnd?'Passou':'Em '+Math.max(0,info.fertileStart-info.dayOfCycle)+'d')+'</div><div style="font-size:10px;color:rgba(255,255,255,.35);font-family:Montserrat,sans-serif">periodo fertil</div></div>'
+    +'</div>';
+  main.appendChild(darkCard);
+
+  // ── PHASE BAR ──
+  var phaseBar=document.createElement('div');
+  phaseBar.style.cssText='display:flex;gap:4px;margin-bottom:12px';
+  var pDur=info.avgPeriod||5;var fStart=info.fertileStart||12;var fEnd=info.fertileEnd||16;var cyc=info.avgCycle||28;
+  phaseBar.innerHTML='<div style="flex:'+pDur+';background:#B3907F;border-radius:4px 0 0 4px;height:28px;display:flex;align-items:center;justify-content:center;font-size:10px;color:white;font-weight:500;font-family:Montserrat,sans-serif">'+pDur+'d</div>'
+    +'<div style="flex:'+(fStart-pDur)+';background:#C5CED0;height:28px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#486068;font-family:Montserrat,sans-serif">Folicular</div>'
+    +'<div style="flex:'+(fEnd-fStart)+';background:#486068;height:28px;display:flex;align-items:center;justify-content:center;font-size:10px;color:white;font-weight:500;font-family:Montserrat,sans-serif">Fertil</div>'
+    +'<div style="flex:'+(cyc-fEnd)+';background:#85979D;border-radius:0 4px 4px 0;height:28px;display:flex;align-items:center;justify-content:center;font-size:10px;color:white;font-family:Montserrat,sans-serif">Lutea</div>';
+  main.appendChild(phaseBar);
+
+  // ── REGISTER BUTTON ──
+  var btnWrap=document.createElement('div');
+  btnWrap.style.cssText='display:flex;justify-content:center;margin-bottom:14px';
+  var isInPeriod=info.periods&&info.periods[0]&&!info.periods[0].end;
+  var regBtn=document.createElement('div');
+  regBtn.style.cssText='display:inline-flex;align-items:center;gap:8px;padding:10px 28px;background:'+(isInPeriod?'#486068':'#B3907F')+';color:white;border-radius:24px;font-size:12px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif';
+  regBtn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>'+(isInPeriod?'Finalizar menstruacao':'Registrar menstruacao');
+  regBtn.onclick=function(){
+    if(isInPeriod){
+      // End current period
+      var last=window.cycleData.periods[window.cycleData.periods.length-1]||window.cycleData.periods[0];
+      // Find the one without end
+      var open=window.cycleData.periods.find(function(p){return!p.end;});
+      if(open){open.end=tds(new Date());fbSaveCycle();renderCycleView();showToast('Menstruacao finalizada.');}
+    } else {
+      // Start new period
+      window.cycleData.periods.push({id:gid(),start:tds(new Date()),end:null});
+      fbSaveCycle();renderCycleView();showToast('Menstruacao registrada!');
+    }
+  };
+  btnWrap.appendChild(regBtn);
+  main.appendChild(btnWrap);
+
+  // ── MINI CALENDAR ──
+  var calCard=document.createElement('div');
+  calCard.style.cssText='background:white;border-radius:12px;border:0.5px solid #e5e7eb;padding:14px;margin-bottom:12px';
+  var cm=window._cycleCalMonth;var cy2=window._cycleCalYear;
+  var MO=['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  var calHdr=document.createElement('div');
+  calHdr.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:10px';
+  calHdr.innerHTML='<div style="font-size:12px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+MO[cm]+' '+cy2+'</div>';
+  var navBtns=document.createElement('div');
+  navBtns.style.cssText='display:flex;gap:10px';
+  var prevBtn=document.createElement('div');prevBtn.style.cssText='font-size:14px;color:#85979D;cursor:pointer';prevBtn.textContent='‹';
+  prevBtn.onclick=function(){window._cycleCalMonth--;if(window._cycleCalMonth<0){window._cycleCalMonth=11;window._cycleCalYear--;}renderCycleView();};
+  var nextBtn2=document.createElement('div');nextBtn2.style.cssText='font-size:14px;color:#85979D;cursor:pointer';nextBtn2.textContent='›';
+  nextBtn2.onclick=function(){window._cycleCalMonth++;if(window._cycleCalMonth>11){window._cycleCalMonth=0;window._cycleCalYear++;}renderCycleView();};
+  navBtns.appendChild(prevBtn);navBtns.appendChild(nextBtn2);
+  calHdr.appendChild(navBtns);
+  calCard.appendChild(calHdr);
+
+  // Day headers
+  var dayNames=['D','S','T','Q','Q','S','S'];
+  var grid=document.createElement('div');
+  grid.style.cssText='display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center';
+  dayNames.forEach(function(d){
+    var dh=document.createElement('div');
+    dh.style.cssText='font-size:11px;color:#C5CED0;padding:4px 0;font-family:Montserrat,sans-serif';
+    dh.textContent=d;grid.appendChild(dh);
+  });
+
+  // Build period/fertile date sets for this month
+  var periodDays={};var fertileDays={};
+  var todayStr=tds(now);
+  (info.periods||[]).forEach(function(p){
+    var s=new Date(p.start+'T12:00:00');
+    var e=p.end?new Date(p.end+'T12:00:00'):new Date(s.getTime()+((info.avgPeriod||5)-1)*86400000);
+    for(var d=new Date(s);d<=e;d.setDate(d.getDate()+1)){periodDays[tds(d)]=true;}
+  });
+  // Predicted next period
+  if(info.nextPeriod){
+    for(var dd=0;dd<(info.avgPeriod||5);dd++){
+      var pd=new Date(info.nextPeriod);pd.setDate(pd.getDate()+dd);
+      periodDays[tds(pd)]='predicted';
+    }
+  }
+  // Fertile days (current cycle)
+  if(info.lastStart){
+    var ls=new Date(info.lastStart+'T12:00:00');
+    for(var fd=info.fertileStart;fd<=info.fertileEnd;fd++){
+      var fDate=new Date(ls);fDate.setDate(fDate.getDate()+fd-1);
+      fertileDays[tds(fDate)]=true;
+    }
+  }
+
+  // Calendar days
+  var firstDay=new Date(cy2,cm,1).getDay();
+  var daysInMonth=new Date(cy2,cm+1,0).getDate();
+  var prevMonthDays=new Date(cy2,cm,0).getDate();
+  // Leading empty days
+  for(var i=0;i<firstDay;i++){
+    var ld=document.createElement('div');
+    ld.style.cssText='padding:6px 0;font-size:12px;color:#C5CED0;font-family:Montserrat,sans-serif';
+    ld.textContent=prevMonthDays-firstDay+1+i;
+    grid.appendChild(ld);
+  }
+  for(var d2=1;d2<=daysInMonth;d2++){
+    var ds=cy2+'-'+(cm+1<10?'0':'')+(cm+1)+'-'+(d2<10?'0':'')+d2;
+    var isToday=ds===todayStr;
+    var isPeriod=periodDays[ds];
+    var isFertile=fertileDays[ds];
+    var cell=document.createElement('div');
+    cell.style.cssText='padding:6px 0;font-size:12px;font-family:Montserrat,sans-serif;display:flex;align-items:center;justify-content:center';
+
+    if(isToday){
+      cell.innerHTML='<div style="width:28px;height:28px;border-radius:50%;background:#131F28;color:white;display:flex;align-items:center;justify-content:center;font-weight:500;box-shadow:0 0 0 2px #B3907F">'+d2+'</div>';
+    } else if(isPeriod===true){
+      cell.innerHTML='<div style="width:28px;height:28px;border-radius:50%;background:#B3907F;color:white;display:flex;align-items:center;justify-content:center">'+d2+'</div>';
+    } else if(isPeriod==='predicted'){
+      cell.innerHTML='<div style="width:28px;height:28px;border-radius:50%;background:rgba(179,144,127,.2);color:#B3907F;display:flex;align-items:center;justify-content:center">'+d2+'</div>';
+    } else if(isFertile){
+      cell.innerHTML='<div style="width:28px;height:28px;border-radius:50%;background:#486068;color:white;display:flex;align-items:center;justify-content:center">'+d2+'</div>';
+    } else {
+      cell.style.color='var(--color-text-primary)';
+      cell.textContent=d2;
+    }
+    grid.appendChild(cell);
+  }
+  // Trailing
+  var totalCells=firstDay+daysInMonth;
+  var remaining=7-(totalCells%7);
+  if(remaining<7){for(var t=1;t<=remaining;t++){var td2=document.createElement('div');td2.style.cssText='padding:6px 0;font-size:12px;color:#C5CED0;font-family:Montserrat,sans-serif';td2.textContent=t;grid.appendChild(td2);}}
+  calCard.appendChild(grid);
+
+  // Legend
+  var legend=document.createElement('div');
+  legend.style.cssText='display:flex;justify-content:center;gap:12px;margin-top:10px;flex-wrap:wrap';
+  legend.innerHTML='<div style="display:flex;align-items:center;gap:4px"><div style="width:8px;height:8px;border-radius:50%;background:#B3907F"></div><div style="font-size:11px;color:#85979D;font-family:Montserrat,sans-serif">Menstruacao</div></div>'
+    +'<div style="display:flex;align-items:center;gap:4px"><div style="width:8px;height:8px;border-radius:50%;background:rgba(179,144,127,.3)"></div><div style="font-size:11px;color:#85979D;font-family:Montserrat,sans-serif">Previsao</div></div>'
+    +'<div style="display:flex;align-items:center;gap:4px"><div style="width:8px;height:8px;border-radius:50%;background:#486068"></div><div style="font-size:11px;color:#85979D;font-family:Montserrat,sans-serif">Fertil</div></div>';
+  calCard.appendChild(legend);
+  main.appendChild(calCard);
+
+  // ── HISTORY ──
+  var histCard=document.createElement('div');
+  histCard.style.cssText='background:white;border-radius:12px;border:0.5px solid #e5e7eb;padding:14px';
+  histCard.innerHTML='<div style="font-size:12px;font-weight:500;color:#111827;margin-bottom:10px;font-family:Montserrat,sans-serif">Historico</div>';
+  var periods=info.periods||[];
+  if(!periods.length){
+    histCard.innerHTML+='<div style="text-align:center;color:#9ca3af;padding:20px 0;font-size:11px;font-family:Montserrat,sans-serif">Nenhum ciclo registrado ainda.</div>';
+  }
+  periods.slice(0,6).forEach(function(p,pi){
+    var dur=p.end?Math.floor((new Date(p.end+'T12:00:00')-new Date(p.start+'T12:00:00'))/(1000*60*60*24))+1+'d':'em andamento';
+    var cycLen=pi<periods.length-1?Math.floor((new Date(p.start+'T12:00:00')-new Date(periods[pi+1].start+'T12:00:00'))/(1000*60*60*24))+' dias':'—';
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:8px;padding:6px 0;'+(pi<periods.length-1?'border-bottom:0.5px solid #f5f5f5':'');
+    row.innerHTML='<div style="width:6px;height:6px;border-radius:50%;background:#B3907F;flex-shrink:0"></div>'
+      +'<div style="flex:1;font-size:12px;color:#111827;font-family:Montserrat,sans-serif">'+p.start.split('-').reverse().join('/')+(p.end?' — '+p.end.split('-').reverse().join('/'):' — ...')+'</div>'
+      +'<div style="font-size:11px;color:#85979D;font-family:Montserrat,sans-serif">'+cycLen+' . '+dur+'</div>';
+    // Delete button
+    var del=document.createElement('div');
+    del.style.cssText='font-size:10px;color:#d1d5db;cursor:pointer;padding:2px 4px';
+    del.textContent='x';
+    del.onclick=(function(pid){return function(){if(!confirm('Excluir este registro?'))return;window.cycleData.periods=window.cycleData.periods.filter(function(x){return x.id!==pid;});fbSaveCycle();renderCycleView();};})(p.id);
+    row.appendChild(del);
+    histCard.appendChild(row);
+  });
+  main.appendChild(histCard);
+
+  app.appendChild(main);
+}
+
 // ── MUNDANA INTEGRATION ──────────────────────────────────
 var MUNDANA_SB_URL='https://ffutgdqhmtjmooayxyxr.supabase.co';
 var MUNDANA_SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZmdXRnZHFobXRqbW9vYXl4eXhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzEyNDYsImV4cCI6MjA4OTYwNzI0Nn0.reSkQscPVXQ5ntfKzgANrpe1LhtY7oFnq5i7QVAbZuI';
@@ -5446,6 +5717,7 @@ function switchToNotebook(){
   var ga=document.getElementById('goalsApp');if(ga)ga.style.display='none';
   var fw=document.getElementById('finWeekApp');if(fw)fw.style.display='none';
   var iw=document.getElementById('idealWeekApp');if(iw)iw.style.display='none';
+  var cy=document.getElementById('cycleApp');if(cy)cy.style.display='none';
   var nb=document.getElementById('notebookApp');if(nb)nb.style.display='flex';
   activeCal='notebook';
   renderNotebookView();
@@ -5980,6 +6252,7 @@ function switchToFinWeek(){
   var ga=document.getElementById('goalsApp');if(ga)ga.style.display='none';
   var nb=document.getElementById('notebookApp');if(nb)nb.style.display='none';
   var iw=document.getElementById('idealWeekApp');if(iw)iw.style.display='none';
+  var cy=document.getElementById('cycleApp');if(cy)cy.style.display='none';
   var fw=document.getElementById('finWeekApp');if(fw)fw.style.display='flex';
   activeCal='finweek';
   renderFinWeekView();
@@ -7529,6 +7802,7 @@ function switchToGoals(){
   var fw=document.getElementById('finWeekApp');if(fw)fw.style.display='none';
   var nb=document.getElementById('notebookApp');if(nb)nb.style.display='none';
   var iw=document.getElementById('idealWeekApp');if(iw)iw.style.display='none';
+  var cy=document.getElementById('cycleApp');if(cy)cy.style.display='none';
   var ga=document.getElementById('goalsApp');if(ga)ga.style.display='flex';
   activeCal='goals';
   renderGoalsView();
