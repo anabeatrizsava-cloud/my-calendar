@@ -5493,14 +5493,21 @@ async function fetchMundanaData(){
     var formulas=[];try{if(formulasJson&&formulasJson[0]&&formulasJson[0].value){formulas=typeof formulasJson[0].value==='string'?JSON.parse(formulasJson[0].value):formulasJson[0].value;}if(!Array.isArray(formulas))formulas=[];}catch(e){formulas=[];}
 
     var lembretes=[];try{if(lembretesJson&&lembretesJson[0]&&lembretesJson[0].value){lembretes=typeof lembretesJson[0].value==='string'?JSON.parse(lembretesJson[0].value):lembretesJson[0].value;}if(!Array.isArray(lembretes))lembretes=[];}catch(e){lembretes=[];}
-    // Load done tasks from Supabase
-    var doneRes=await fetch(MUNDANA_SB_URL+'/rest/v1/app_data?key=eq.mono_done_tasks&select=value',{headers}).catch(function(){return null;});
+    // Sync done tasks from Supabase (shared with Mundana backoffice)
+    var todayStr2=tds(new Date());
+    var sbDoneKey='mododia_done_'+todayStr2;
+    var doneRes=await fetch(MUNDANA_SB_URL+'/rest/v1/app_data?key=eq.'+sbDoneKey+'&select=value',{headers}).catch(function(){return null;});
     if(doneRes&&doneRes.ok){
       var doneRows=await doneRes.json().catch(function(){return[];});
       try{
-        var doneList=(doneRows&&doneRows[0]&&doneRows[0].value)?doneRows[0].value:[];
-        if(typeof doneList==='string')doneList=JSON.parse(doneList);
-        if(Array.isArray(doneList))localStorage.setItem('mono_mundana_done',JSON.stringify(doneList));
+        var remoteDone=(doneRows&&doneRows[0]&&doneRows[0].value)?doneRows[0].value:[];
+        if(typeof remoteDone==='string')remoteDone=JSON.parse(remoteDone);
+        if(Array.isArray(remoteDone)){
+          // Merge with local
+          var localDone2=JSON.parse(localStorage.getItem('mundana_mododia_done_'+todayStr2)||'[]');
+          remoteDone.forEach(function(id){if(localDone2.indexOf(id)<0)localDone2.push(id);});
+          localStorage.setItem('mundana_mododia_done_'+todayStr2,JSON.stringify(localDone2));
+        }
       }catch(e){}
     }
     buildMundanaTasks(pagar,pedidos,receber,stockmp,stockpa,formulas,lembretes);
@@ -5656,7 +5663,7 @@ async function mundanaMarkPago(id){
       body:JSON.stringify({status:'pago'})
     });
     showToast('Marcado como pago no Mundana!');
-    try{var dismissed=JSON.parse(localStorage.getItem('mono_mundana_done')||'[]');dismissed.push('pag_'+id);dismissed.push('pag_hoje_'+id);localStorage.setItem('mono_mundana_done',JSON.stringify(dismissed));}catch(e2){}
+    try{var doneKey2='mundana_mododia_done_'+tds(new Date());var doneList2=JSON.parse(localStorage.getItem(doneKey2)||'[]');if(doneList2.indexOf('pag_'+id)<0)doneList2.push('pag_'+id);if(doneList2.indexOf('pag_hoje_'+id)<0)doneList2.push('pag_hoje_'+id);localStorage.setItem(doneKey2,JSON.stringify(doneList2));syncModoDiaDoneToSupabase();}catch(e2){}
     renderMundanaOverlay();
     setTimeout(fetchMundanaData,1000);
   }catch(e){showToast('Erro ao atualizar: '+e.message);console.error('mundanaMarkPago error:',e);}
@@ -5684,7 +5691,7 @@ async function mundanaMarkFeito(id,currentStatus){
     });
     showToast('Status atualizado no Mundana!');
     // Also dismiss locally for immediate feedback
-    try{var dismissed=JSON.parse(localStorage.getItem('mono_mundana_done')||'[]');dismissed.push('ped_desp_'+id);dismissed.push('ped_new_'+id);localStorage.setItem('mono_mundana_done',JSON.stringify(dismissed));}catch(e2){}
+    try{var doneKey2='mundana_mododia_done_'+tds(new Date());var doneList2=JSON.parse(localStorage.getItem(doneKey2)||'[]');if(doneList2.indexOf('ped_desp_'+id)<0)doneList2.push('ped_desp_'+id);if(doneList2.indexOf('ped_new_'+id)<0)doneList2.push('ped_new_'+id);localStorage.setItem(doneKey2,JSON.stringify(doneList2));syncModoDiaDoneToSupabase();}catch(e2){}
     renderMundanaOverlay();
     setTimeout(fetchMundanaData,1000);
   }catch(e){showToast('Erro ao atualizar: '+e.message);console.error('mundanaMarkFeito error:',e);}
@@ -5698,7 +5705,7 @@ async function mundanaMarkRecebido(id){
       body:JSON.stringify({status:'recebido'})
     });
     showToast('Marcado como recebido no Mundana!');
-    try{var dismissed=JSON.parse(localStorage.getItem('mono_mundana_done')||'[]');dismissed.push('rec_'+id);localStorage.setItem('mono_mundana_done',JSON.stringify(dismissed));}catch(e2){}
+    try{var doneKey2='mundana_mododia_done_'+tds(new Date());var doneList2=JSON.parse(localStorage.getItem(doneKey2)||'[]');if(doneList2.indexOf('rec_'+id)<0)doneList2.push('rec_'+id);localStorage.setItem(doneKey2,JSON.stringify(doneList2));syncModoDiaDoneToSupabase();}catch(e2){}
     renderMundanaOverlay();
     setTimeout(fetchMundanaData,1000);
   }catch(e){showToast('Erro ao atualizar: '+e.message);console.error('mundanaMarkRecebido error:',e);}
@@ -5707,30 +5714,41 @@ async function mundanaMarkRecebido(id){
 async function mundanaDismissPermanent(taskId){
   try{
     // Save locally
-    var dismissed=JSON.parse(localStorage.getItem('mono_mundana_done')||'[]');
+    var todayKey='mundana_mododia_done_'+tds(new Date());
+    var dismissed=JSON.parse(localStorage.getItem(todayKey)||'[]');
     if(!dismissed.includes(taskId))dismissed.push(taskId);
-    localStorage.setItem('mono_mundana_done',JSON.stringify(dismissed));
+    localStorage.setItem(todayKey,JSON.stringify(dismissed));
     showToast('Marcada como feita.');
     renderMundanaOverlay();
-    // Also save to Supabase so Mundana backoffice can see it
-    var headers={'apikey':MUNDANA_SB_KEY,'Authorization':'Bearer '+MUNDANA_SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
-    // Read existing done list from app_data
-    var res=await fetch(MUNDANA_SB_URL+'/rest/v1/app_data?key=eq.mono_done_tasks&select=value',{headers:{'apikey':MUNDANA_SB_KEY,'Authorization':'Bearer '+MUNDANA_SB_KEY,'Content-Type':'application/json'}});
+    // Sync to shared Supabase key
+    await syncModoDiaDoneToSupabase();
+  }catch(e){console.error('Mundana done error:',e);}
+}
+
+async function syncModoDiaDoneToSupabase(){
+  try{
+    var todayStr=tds(new Date());
+    var sbKey='mododia_done_'+todayStr;
+    var localDone=JSON.parse(localStorage.getItem('mundana_mododia_done_'+todayStr)||'[]');
+    var headers={'apikey':MUNDANA_SB_KEY,'Authorization':'Bearer '+MUNDANA_SB_KEY,'Content-Type':'application/json'};
+    // Read current from Supabase
+    var res=await fetch(MUNDANA_SB_URL+'/rest/v1/app_data?key=eq.'+sbKey+'&select=value',{headers});
     var rows=await res.json();
-    var existing=[];
-    try{if(rows&&rows[0]&&rows[0].value)existing=typeof rows[0].value==='string'?JSON.parse(rows[0].value):rows[0].value;}catch(e){}
-    if(!Array.isArray(existing))existing=[];
-    if(!existing.includes(taskId))existing.push(taskId);
-    // Upsert
-    var upsertRes=await fetch(MUNDANA_SB_URL+'/rest/v1/app_data?key=eq.mono_done_tasks',{
-      method:'PATCH',headers:headers,body:JSON.stringify({value:existing})
-    });
-    if(!upsertRes.ok||upsertRes.status===404){
-      await fetch(MUNDANA_SB_URL+'/rest/v1/app_data',{
-        method:'POST',headers:headers,body:JSON.stringify({key:'mono_done_tasks',value:existing})
-      });
+    var remote=[];
+    try{if(rows&&rows[0]&&rows[0].value){remote=typeof rows[0].value==='string'?JSON.parse(rows[0].value):rows[0].value;}}catch(e){}
+    if(!Array.isArray(remote))remote=[];
+    // Merge local + remote
+    var merged=remote.slice();
+    localDone.forEach(function(id){if(merged.indexOf(id)<0)merged.push(id);});
+    // Write back
+    var patchHeaders=Object.assign({},headers,{'Prefer':'return=minimal'});
+    var patchRes=await fetch(MUNDANA_SB_URL+'/rest/v1/app_data?key=eq.'+sbKey,{method:'PATCH',headers:patchHeaders,body:JSON.stringify({value:merged})});
+    if(!patchRes.ok){
+      await fetch(MUNDANA_SB_URL+'/rest/v1/app_data',{method:'POST',headers:patchHeaders,body:JSON.stringify({key:sbKey,value:merged})});
     }
-  }catch(e){console.error('Mundana done sync error:',e);}
+    // Update local with merged
+    localStorage.setItem('mundana_mododia_done_'+todayStr,JSON.stringify(merged));
+  }catch(e){console.error('Sync done error:',e);}
 }
 
 function mundanaDispensarHoje(taskId){
