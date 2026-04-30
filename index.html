@@ -43,7 +43,8 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 .main-layout{display:flex;flex:1;overflow:hidden}
 
 /* SIDEBAR */
-.sidebar{width:54px;background:var(--sidebar);display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:18px;flex-shrink:0}
+.sidebar{width:54px;background:var(--sidebar);display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:12px;flex-shrink:0;overflow-y:auto;overflow-x:hidden}
+.sidebar::-webkit-scrollbar{display:none}.sidebar{-ms-overflow-style:none;scrollbar-width:none}
 .sb-icon-active{width:28px;height:28px;background:rgba(255,255,255,0.12);border-radius:8px;display:flex;align-items:center;justify-content:center;border:0.5px solid rgba(255,255,255,0.2)}
 .sb-icon{display:flex;align-items:center;justify-content:center;width:28px;height:28px;cursor:pointer;border-radius:8px;transition:background .1s}
 .sb-icon:hover{background:rgba(255,255,255,0.08)}
