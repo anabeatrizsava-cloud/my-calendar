@@ -7224,13 +7224,164 @@ function renderLessonWordList(){
 }
 
 function finishLesson(){
-  var total=window._lessonWords.length+window._lessonFF.length+window._lessonPron.length;
+  var words=window._lessonWords.slice();
+  var ffs=window._lessonFF.slice();
+  var prons=window._lessonPron.slice();
+  var total=words.length+ffs.length+prons.length;
   closeLessonModal();
-  renderStudyView();
   setTimeout(function(){if(window.updateAutoKRs)updateAutoKRs();},500);
-  if(total)showToast('Aula finalizada! '+total+' ite'+(total>1?'ns':'m')+' salvo'+(total>1?'s':'')+'.');
-  else showToast('Aula finalizada.');
+  if(total){
+    showToast('Aula finalizada! '+total+' ite'+(total>1?'ns':'m')+' salvo'+(total>1?'s':'')+'.');
+    // Start post-lesson quiz if we have enough items
+    if(words.length+ffs.length>=2){
+      setTimeout(function(){startPostLessonQuiz(words,ffs);},500);
+    } else {
+      renderStudyView();
+    }
+  } else {
+    showToast('Aula finalizada.');
+    renderStudyView();
+  }
 }
+
+function startPostLessonQuiz(words,ffs){
+  var deck=[];
+  // Build questions from words (translation quiz)
+  words.forEach(function(w){
+    deck.push({type:'word',word:w.word,correct:w.translation,options:[]});
+  });
+  // Build questions from false friends
+  ffs.forEach(function(f){
+    deck.push({type:'ff',word:f.en,correct:f.correct,trap:f.trap,options:[]});
+  });
+  // Shuffle deck
+  deck.sort(function(){return Math.random()-0.5;});
+  // Build options for each question
+  var allTranslations=words.map(function(w){return w.translation;});
+  var allVocab=(window.studyVocab||[]).map(function(v){return v.translation;});
+  var allCorrects=ffs.map(function(f){return f.correct;});
+  var optionPool=allTranslations.concat(allVocab).concat(allCorrects);
+  // Remove duplicates
+  optionPool=optionPool.filter(function(v,i,a){return v&&a.indexOf(v)===i;});
+
+  deck.forEach(function(q){
+    if(q.type==='ff'){
+      q.options=[{text:q.correct,isCorrect:true},{text:q.trap,isCorrect:false}];
+      // Add 1 random
+      var pool=optionPool.filter(function(o){return o!==q.correct&&o!==q.trap;});
+      if(pool.length){q.options.push({text:pool[Math.floor(Math.random()*pool.length)],isCorrect:false});}
+    } else {
+      q.options=[{text:q.correct,isCorrect:true}];
+      // Add 2 random wrong options
+      var pool2=optionPool.filter(function(o){return o!==q.correct;});
+      pool2.sort(function(){return Math.random()-0.5;});
+      pool2.slice(0,2).forEach(function(o){q.options.push({text:o,isCorrect:false});});
+    }
+    q.options.sort(function(){return Math.random()-0.5;});
+  });
+
+  window._plqDeck=deck;
+  window._plqIndex=0;
+  window._plqScore=0;
+  window._plqAnswered=false;
+  showPostLessonQuizModal();
+}
+
+function showPostLessonQuizModal(){
+  var existing=document.getElementById('plqModal');if(existing)existing.remove();
+  var overlay=document.createElement('div');
+  overlay.className='mo open';
+  overlay.id='plqModal';
+  overlay.style.cssText='display:flex;align-items:center;justify-content:center';
+  var modal=document.createElement('div');
+  modal.className='modal';
+  modal.style.cssText='width:440px;max-height:90vh;overflow-y:auto;padding:24px;position:relative';
+
+  var deck=window._plqDeck;
+  var idx=window._plqIndex;
+
+  // Quiz finished
+  if(idx>=deck.length){
+    var pct=deck.length>0?Math.round(window._plqScore/deck.length*100):0;
+    modal.innerHTML='<div style="text-align:center;padding:20px 0">'
+      +'<div style="font-size:14px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif;margin-bottom:6px">Revisao da aula concluida!</div>'
+      +'<div style="font-size:42px;font-weight:500;color:'+(pct>=70?'#486068':'#B3907F')+';font-family:Montserrat,sans-serif;margin-bottom:6px">'+pct+'%</div>'
+      +'<div style="font-size:11px;color:#85979D;font-family:Montserrat,sans-serif;margin-bottom:20px">'+window._plqScore+' de '+deck.length+' corretas</div>'
+      +'<div id="plqClose" style="padding:10px 24px;background:#131F28;color:#C5CED0;border-radius:10px;font-size:11px;font-weight:500;cursor:pointer;display:inline-block;font-family:Montserrat,sans-serif">Fechar</div>'
+      +'</div>';
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    document.getElementById('plqClose').onclick=function(){document.getElementById('plqModal').remove();renderStudyView();};
+    return;
+  }
+
+  var q=deck[idx];
+
+  // Header
+  modal.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
+    +'<div style="font-size:12px;font-weight:500;color:#131F28;font-family:Montserrat,sans-serif">Revisao da aula</div>'
+    +'<div style="font-size:11px;color:#85979D;font-family:Montserrat,sans-serif">'+window._plqScore+' acertos</div>'
+    +'</div>';
+
+  // Progress bar
+  modal.innerHTML+='<div style="height:3px;background:#e5e7eb;border-radius:2px;overflow:hidden;margin-bottom:20px"><div style="width:'+Math.round((idx+1)/deck.length*100)+'%;height:100%;background:#131F28;border-radius:2px"></div></div>';
+
+  // Question
+  var typeLabel=q.type==='ff'?'False Friend':'Traducao';
+  modal.innerHTML+='<div style="text-align:center;margin-bottom:20px">'
+    +'<div style="font-size:10px;color:#85979D;font-family:Montserrat,sans-serif;margin-bottom:8px">'+(idx+1)+'/'+deck.length+' . '+typeLabel+'</div>'
+    +'<div style="font-size:24px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+eh(q.word)+'</div>'
+    +'</div>';
+
+  // Options
+  var optWrap=document.createElement('div');
+  optWrap.style.cssText='display:flex;flex-direction:column;gap:8px';
+
+  q.options.forEach(function(opt,oi){
+    var letter=String.fromCharCode(65+oi);
+    var btn=document.createElement('div');
+    if(window._plqAnswered){
+      if(opt.isCorrect){
+        btn.style.cssText='padding:12px 16px;border-radius:10px;font-size:12px;font-family:Montserrat,sans-serif;background:#e8edf0;border:0.5px solid #486068;color:#486068;font-weight:500';
+        btn.textContent=letter+') '+opt.text+' ✓';
+      } else {
+        btn.style.cssText='padding:12px 16px;border-radius:10px;font-size:12px;font-family:Montserrat,sans-serif;background:#f7f8fa;border:0.5px solid #e5e7eb;color:#9ca3af';
+        btn.textContent=letter+') '+opt.text;
+      }
+    } else {
+      btn.style.cssText='padding:12px 16px;border-radius:10px;font-size:12px;font-family:Montserrat,sans-serif;cursor:pointer;background:white;border:0.5px solid #e5e7eb;color:#111827';
+      btn.textContent=letter+') '+opt.text;
+      btn.onclick=(function(isC){return function(){
+        window._plqAnswered=true;
+        if(isC)window._plqScore++;
+        showPostLessonQuizModal();
+      };})(opt.isCorrect);
+    }
+    optWrap.appendChild(btn);
+  });
+  modal.appendChild(optWrap);
+
+  // Explanation + next button (after answer)
+  if(window._plqAnswered){
+    if(q.type==='ff'){
+      var expl=document.createElement('div');
+      expl.style.cssText='margin-top:16px;padding:12px;background:#f7f8fa;border-radius:10px';
+      expl.innerHTML='<div style="font-size:10px;color:#B3907F;font-weight:500;font-family:Montserrat,sans-serif;margin-bottom:4px">Cuidado com o false friend!</div>'
+        +'<div style="font-size:12px;color:#111827;font-family:Montserrat,sans-serif"><strong>'+eh(q.word)+'</strong> nao significa "'+eh(q.trap)+'"</div>'
+        +'<div style="font-size:12px;color:#486068;font-family:Montserrat,sans-serif;margin-top:2px">Significa: <strong>'+eh(q.correct)+'</strong></div>';
+      modal.appendChild(expl);
+    }
+    var nextBtn=document.createElement('div');
+    nextBtn.style.cssText='margin-top:14px;padding:10px 24px;background:#131F28;color:#C5CED0;border-radius:10px;font-size:11px;font-weight:500;cursor:pointer;text-align:center;font-family:Montserrat,sans-serif';
+    nextBtn.textContent=idx>=deck.length-1?'Ver resultado':'Proxima';
+    nextBtn.onclick=function(){window._plqIndex++;window._plqAnswered=false;showPostLessonQuizModal();};
+    modal.appendChild(nextBtn);
+  }
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+
 
 
 // ── PROGRESS DASHBOARD ───────────────────────────────────
