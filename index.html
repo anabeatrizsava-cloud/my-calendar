@@ -1278,7 +1278,7 @@ function updProgress(){
 function nav(d){if(view==='day')cd.setDate(cd.getDate()+d);else if(view==='week')cd.setDate(cd.getDate()+d*7);else cd.setMonth(cd.getMonth()+d);updTop();renderView();renderMC();}
 function goToday(){cd=new Date();updTop();renderView();renderMC();}
 function sw(v,el){view=v;document.querySelectorAll('.sbi').forEach(e=>e.classList.remove('act'));if(el&&el.classList)el.classList.add('act');document.querySelectorAll('.vb').forEach(e=>e.classList.remove('act'));const vb=document.getElementById('vb-'+v);if(vb)vb.classList.add('act');updTop();renderView();renderMC();}
-function renderView(){const c=document.getElementById('vc');c.innerHTML='';if(view==='day')rDay(c);else if(view==='week')rWeek(c);else if(view==='month')rMonth(c);else if(view==='planner')rPlanner(c);else rStickyView(c);if(view==='day'){renderDayLoad(tds(cd));if(typeof renderFinanceOverlay==='function')try{renderFinanceOverlay();}catch(e){}setTimeout(function(){if(typeof renderMundanaOverlay==='function')try{renderMundanaOverlay();}catch(e){}},600);}renderRightPanel();}
+function renderView(){const c=document.getElementById('vc');c.innerHTML='';if(view==='day')rDay(c);else if(view==='week')rWeek(c);else if(view==='month')rMonth(c);else if(view==='planner')rPlanner(c);else rStickyView(c);if(view==='day'){renderDayLoad(tds(cd));if(typeof renderFinanceOverlay==='function')try{renderFinanceOverlay();}catch(e){}setTimeout(function(){if(typeof renderMundanaOverlay==='function')try{renderMundanaOverlay();}catch(e){}if(typeof renderCyclePhaseTag==='function')try{renderCyclePhaseTag();}catch(e){}},600);}renderRightPanel();}
 
 function getEvs(ds){
   const res=[];
@@ -2006,7 +2006,7 @@ function toggleRPModeDropdown(){
   var dd=document.createElement('div');
   dd.id='rpModeDropdown';
   dd.style.cssText='position:absolute;right:0;top:28px;width:130px;background:white;border:0.5px solid #e5e7eb;border-radius:8px;overflow:hidden;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,.06);font-family:Montserrat,sans-serif';
-  var modes=[{id:'resumo',label:'Resumo'},{id:'contas',label:'Contas'},{id:'metas',label:'Metas'},{id:'eng',label:'English Study'},{id:'cadernos',label:'Cadernos'},{id:'idealweek',label:'Semana Ideal'}];
+  var modes=[{id:'resumo',label:'Resumo'},{id:'contas',label:'Contas'},{id:'metas',label:'Metas'},{id:'eng',label:'English Study'},{id:'cadernos',label:'Cadernos'},{id:'ciclo',label:'Ciclo'}];
   modes.forEach(function(m){
     var item=document.createElement('div');
     item.style.cssText='padding:8px 12px;font-size:11px;cursor:pointer;border-top:0.5px solid #f0f2f5;'+(window._rightPanelMode===m.id?'color:#111827;font-weight:500;background:#f7f8fa':'color:#6b7280');
@@ -2041,6 +2041,44 @@ function rpDropdownHeader(rp,activeLabel){
 }
 
 
+
+
+function renderRPCycle(rp){
+  rp.innerHTML='';
+  rp.appendChild(rpDropdownHeader(rp,'Ciclo'));
+  var main=document.createElement('div');
+  main.style.cssText='flex:1;overflow-y:auto;padding:0 14px 14px';
+  if(typeof getCycleInfo!=='function'){main.innerHTML='<div style="text-align:center;color:#9ca3af;padding:30px 0;font-size:11px">Modulo Ciclo nao carregado.</div>';rp.appendChild(main);return;}
+  var info=getCycleInfo();
+  var phaseNames={menstruacao:'Menstruacao',folicular:'Folicular',fertil:'Periodo fertil',lutea:'Fase lutea',none:'Sem dados'};
+  var phaseColors={menstruacao:'#B3907F',folicular:'#C5CED0',fertil:'#486068',lutea:'#85979D',none:'#d1d5db'};
+
+  // Compact dark card
+  var card=document.createElement('div');
+  card.style.cssText='background:#131F28;border-radius:10px;padding:14px;text-align:center;margin-bottom:10px';
+  card.innerHTML='<div style="font-size:28px;font-weight:500;color:white;font-family:Montserrat,sans-serif">'+(info.dayOfCycle>0?'Dia '+info.dayOfCycle:'—')+'</div>'
+    +'<div style="font-size:11px;color:#B3907F;margin-top:2px;font-family:Montserrat,sans-serif">'+(phaseNames[info.phase]||'')+'</div>'
+    +'<div style="display:flex;justify-content:center;gap:12px;margin-top:10px">'
+    +'<div><div style="font-size:14px;font-weight:500;color:white;font-family:Montserrat,sans-serif">'+(info.daysToNext>=0?info.daysToNext+'d':'—')+'</div><div style="font-size:9px;color:rgba(255,255,255,.35);font-family:Montserrat,sans-serif">proxima</div></div>'
+    +'<div><div style="font-size:14px;font-weight:500;color:white;font-family:Montserrat,sans-serif">'+info.avgCycle+'d</div><div style="font-size:9px;color:rgba(255,255,255,.35);font-family:Montserrat,sans-serif">ciclo</div></div>'
+    +'</div>';
+  main.appendChild(card);
+
+  // Phase bar compact
+  var pDur=info.avgPeriod||5;var fStart=info.fertileStart||12;var fEnd=info.fertileEnd||16;var cyc=info.avgCycle||28;
+  var bar=document.createElement('div');
+  bar.style.cssText='display:flex;gap:2px;height:6px;border-radius:3px;overflow:hidden;margin-bottom:10px';
+  bar.innerHTML='<div style="flex:'+pDur+';background:#B3907F"></div><div style="flex:'+(fStart-pDur)+';background:#C5CED0"></div><div style="flex:'+(fEnd-fStart)+';background:#486068"></div><div style="flex:'+(cyc-fEnd)+';background:#85979D"></div>';
+  main.appendChild(bar);
+
+  // Link to full module
+  var link=document.createElement('div');
+  link.style.cssText='padding:8px;background:#f7f8fa;border-radius:8px;text-align:center;font-size:10px;color:#6b7280;cursor:pointer;font-family:Montserrat,sans-serif';
+  link.textContent='Abrir Ciclo completo';
+  link.onclick=function(){window._rightPanelMode='resumo';switchToCycle();};
+  main.appendChild(link);
+  rp.appendChild(main);
+}
 
 function renderRPIdealWeek(rp){
   rp.innerHTML='';
@@ -2228,7 +2266,7 @@ function renderRightPanel(){
   // If mode is not resumo, render the module instead
   if(window._rightPanelMode==='contas'){renderRPFinance(rp);return;}
   if(window._rightPanelMode==='cadernos'){renderRPNotebook(rp);return;}
-  if(window._rightPanelMode==='idealweek'){renderRPIdealWeek(rp);return;}
+  if(window._rightPanelMode==='ciclo'){renderRPCycle(rp);return;}
   if(window._rightPanelMode==='metas'){renderRPGoals(rp);return;}
   if(window._rightPanelMode==='eng'){renderRPEng(rp);return;}
   const ds=tds(cd);
@@ -2237,6 +2275,21 @@ function renderRightPanel(){
   const done=todayEvs.filter(e=>!e.allDay&&e.done).length;
   const load=getDayLoad(ds);
   const pct=load.pct||0;
+
+  // Cycle phase mini card in resumo
+  if(typeof getCycleInfo==='function'){
+    var cyInfo=getCycleInfo();
+    if(cyInfo.dayOfCycle>0){
+      var cyPhaseNames={menstruacao:'Menstruacao',folicular:'Folicular',fertil:'Fertil',lutea:'Lutea'};
+      var cyPhaseColors={menstruacao:'#B3907F',folicular:'#C5CED0',fertil:'#486068',lutea:'#85979D'};
+      html+='<div style="background:white;border-radius:10px;border:0.5px solid #e5e7eb;padding:12px;margin-bottom:12px;cursor:pointer" onclick="switchToCycle()">'
+        +'<div style="display:flex;align-items:center;gap:8px">'
+        +'<div style="width:32px;height:32px;border-radius:50%;background:'+(cyPhaseColors[cyInfo.phase]||'#85979D')+';display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l2 2"/></svg></div>'
+        +'<div style="flex:1"><div style="font-size:12px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">Dia '+cyInfo.dayOfCycle+' — '+(cyPhaseNames[cyInfo.phase]||'')+'</div>'
+        +'<div style="font-size:10px;color:#85979D;font-family:Montserrat,sans-serif">'+(cyInfo.daysToNext>=0?'Proxima em '+cyInfo.daysToNext+' dias':'')+'</div></div>'
+        +'</div></div>';
+    }
+  }
 
   // tomorrow
   const tomorrow=new Date(cd);tomorrow.setDate(tomorrow.getDate()+1);
@@ -5659,6 +5712,34 @@ setTimeout(function(){fetchMundanaData();},3000);
 // Refresh every 5 minutes
 setInterval(function(){fetchMundanaData();},300000);
 
+
+// ── CYCLE PHASE TAG ON CALENDAR ──────────────────────────
+function renderCyclePhaseTag(){
+  document.querySelectorAll('.cycle-phase-tag').forEach(function(el){el.remove();});
+  if(typeof getCycleInfo!=='function')return;
+  var info=getCycleInfo();
+  if(!info.dayOfCycle||info.phase==='none')return;
+  var dv=document.querySelector('.dv .del');if(!dv)return;
+
+  var phaseColors={menstruacao:{bg:'#B3907F',text:'white'},folicular:{bg:'#C5CED0',text:'#486068'},fertil:{bg:'#486068',text:'white'},lutea:{bg:'#85979D',text:'white'}};
+  var phaseNames={menstruacao:'Menstruacao',folicular:'Folicular',fertil:'Fertil',lutea:'Lutea'};
+  var pc=phaseColors[info.phase]||phaseColors.lutea;
+
+  // Check if viewing today
+  var today=new Date();
+  if(cd.toDateString()!==today.toDateString())return;
+
+  var tag=document.createElement('div');
+  tag.className='cycle-phase-tag';
+  tag.style.cssText='display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:'+pc.bg+';color:'+pc.text+';border-radius:12px;font-size:10px;font-weight:500;font-family:Montserrat,sans-serif;margin-bottom:8px;cursor:pointer';
+  tag.innerHTML='<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="'+pc.text+'" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/></svg>Dia '+info.dayOfCycle+' . '+phaseNames[info.phase];
+  tag.onclick=function(){switchToCycle();};
+
+  // Insert at the top of the events area
+  if(dv.firstChild)dv.insertBefore(tag,dv.firstChild);
+  else dv.appendChild(tag);
+}
+
 function renderFinanceOverlay(){
   document.querySelectorAll('.fin-wrap').forEach(function(el){el.remove();});
   var ds=tds(cd);
@@ -8227,6 +8308,8 @@ function mobNavTo(tab){
     switchToGoals();
   } else if(tab==='notebook'){
     switchToNotebook();
+  } else if(tab==='cycle'){
+    switchToCycle();
   } else if(tab==='more'){
     showCalAutomationPanel();
   }
@@ -8295,6 +8378,8 @@ function adjustMobilePadding(){
     if(sa)sa.style.paddingBottom='70px';
     var nba=document.getElementById('notebookApp');
     if(nba)nba.style.paddingBottom='70px';
+    var cya=document.getElementById('cycleApp');
+    if(cya)cya.style.paddingBottom='70px';
     // Update finance pending dot
     updateMobFinDot();
   }
@@ -8325,6 +8410,10 @@ setTimeout(adjustMobilePadding,500);
   <div class="mob-tab" data-mobtab="notebook" onclick="mobNavTo('notebook')" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:6px 0;flex:1">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.8" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
     <div style="font-size:9px;color:#9ca3af">Livre</div>
+  </div>
+  <div class="mob-tab" data-mobtab="cycle" onclick="mobNavTo('cycle')" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:6px 0;flex:1">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l2 2"/></svg>
+    <div style="font-size:9px;color:#9ca3af">Ciclo</div>
   </div>
 </div>
 </body>
