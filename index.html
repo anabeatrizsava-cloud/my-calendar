@@ -3100,7 +3100,7 @@ function buildWorkRightPanel(calId,ds,wevs){
   var mNames=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   var first=new Date(y,m,1),dim=new Date(y,m+1,0).getDate(),sd=first.getDay();
   var today=new Date();
-  var mh='<div style="font-size:12px;font-weight:600;color:#111827;margin-bottom:8px;font-family:Montserrat,sans-serif">'+mNames[m]+' '+y+'</div>';
+  var mh='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="font-size:12px;font-weight:600;color:#111827;font-family:Montserrat,sans-serif">'+mNames[m]+' '+y+'</div><div style="display:flex;gap:6px" id="wcMcNav"></div></div>';
   mh+='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;text-align:center">';
   ['D','S','T','Q','Q','S','S'].forEach(function(d){mh+='<div style="font-size:9px;color:#9ca3af;padding:2px;font-family:Montserrat,sans-serif">'+d+'</div>';});
   for(var i=0;i<sd;i++)mh+='<div></div>';
@@ -3116,6 +3116,20 @@ function buildWorkRightPanel(calId,ds,wevs){
   mc.querySelectorAll('[data-mcday]').forEach(function(el){
     el.onclick=function(){cd=new Date(y,m,parseInt(this.dataset.mcday));renderWorkDay(calId);};
   });
+  // Month navigation arrows
+  var navWrap=mc.querySelector('#wcMcNav');
+  if(navWrap){
+    var prevBtn=document.createElement('div');
+    prevBtn.style.cssText='font-size:14px;color:#9ca3af;cursor:pointer;padding:0 3px;user-select:none';
+    prevBtn.textContent='‹';
+    prevBtn.onclick=function(){cd=new Date(cd.getFullYear(),cd.getMonth()-1,1);renderWorkDay(calId);};
+    var nextBtn=document.createElement('div');
+    nextBtn.style.cssText='font-size:14px;color:#9ca3af;cursor:pointer;padding:0 3px;user-select:none';
+    nextBtn.textContent='›';
+    nextBtn.onclick=function(){cd=new Date(cd.getFullYear(),cd.getMonth()+1,1);renderWorkDay(calId);};
+    navWrap.appendChild(prevBtn);
+    navWrap.appendChild(nextBtn);
+  }
   rp.appendChild(mc);
   // Summary
   var sm=document.createElement('div');sm.style.cssText='background:white;border-radius:10px;padding:12px;border:0.5px solid #e5e7eb';
