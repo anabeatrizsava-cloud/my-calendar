@@ -5183,6 +5183,72 @@ function getCycleInfo(){
     ovDay:ovDay,periods:periods};
 }
 
+
+
+function showCycleEndModal(){
+  var existing=document.getElementById('cycleEndModal');if(existing)existing.remove();
+  var overlay=document.createElement('div');
+  overlay.className='mo open';
+  overlay.id='cycleEndModal';
+  overlay.onclick=function(e){if(e.target===this)this.remove();};
+  var modal=document.createElement('div');
+  modal.className='modal';
+  modal.style.cssText='width:340px;padding:20px';
+  modal.onclick=function(e){e.stopPropagation();};
+
+  var todayStr=tds(new Date());
+  modal.innerHTML='<div style="font-size:14px;font-weight:500;color:#111827;margin-bottom:14px;font-family:Montserrat,sans-serif">Finalizar menstruacao</div>'
+    +'<div style="margin-bottom:16px"><div style="font-size:10px;color:#85979D;margin-bottom:4px;font-family:Montserrat,sans-serif">Data do fim</div><input type="date" id="cycleEndDateInput" value="'+todayStr+'" style="width:100%;padding:8px 12px;border:0.5px solid #e5e7eb;border-radius:8px;font-family:Montserrat,sans-serif;font-size:12px;color:#111827;outline:none"/></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end"><div id="cycleEndCancel" style="padding:8px 16px;border:0.5px solid #e5e7eb;border-radius:8px;font-size:11px;color:#6b7280;cursor:pointer;font-family:Montserrat,sans-serif">Cancelar</div><div id="cycleEndSave" style="padding:8px 16px;background:#486068;color:white;border-radius:8px;font-size:11px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif">Finalizar</div></div>';
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  document.getElementById('cycleEndCancel').onclick=function(){document.getElementById('cycleEndModal').remove();};
+  document.getElementById('cycleEndSave').onclick=function(){
+    var endVal=document.getElementById('cycleEndDateInput').value;
+    if(!endVal){showToast('Selecione a data.');return;}
+    var open=window.cycleData.periods.find(function(p){return!p.end;});
+    if(open){open.end=endVal;fbSaveCycle();document.getElementById('cycleEndModal').remove();renderCycleView();showToast('Menstruacao finalizada.');}
+  };
+}
+
+function showCycleRegisterModal(){
+  var existing=document.getElementById('cycleRegModal');if(existing)existing.remove();
+  var overlay=document.createElement('div');
+  overlay.className='mo open';
+  overlay.id='cycleRegModal';
+  overlay.onclick=function(e){if(e.target===this)this.remove();};
+  var modal=document.createElement('div');
+  modal.className='modal';
+  modal.style.cssText='width:340px;padding:20px';
+  modal.onclick=function(e){e.stopPropagation();};
+
+  var todayStr=tds(new Date());
+  modal.innerHTML='<div style="font-size:14px;font-weight:500;color:#111827;margin-bottom:14px;font-family:Montserrat,sans-serif">Registrar menstruacao</div>'
+    +'<div style="margin-bottom:12px"><div style="font-size:10px;color:#85979D;margin-bottom:4px;font-family:Montserrat,sans-serif">Data de inicio</div><input type="date" id="cycleStartDate" value="'+todayStr+'" style="width:100%;padding:8px 12px;border:0.5px solid #e5e7eb;border-radius:8px;font-family:Montserrat,sans-serif;font-size:12px;color:#111827;outline:none"/></div>'
+    +'<div style="margin-bottom:16px"><div style="font-size:10px;color:#85979D;margin-bottom:4px;font-family:Montserrat,sans-serif">Data de fim (opcional — deixe vazio se ainda estiver menstruando)</div><input type="date" id="cycleEndDate" value="" style="width:100%;padding:8px 12px;border:0.5px solid #e5e7eb;border-radius:8px;font-family:Montserrat,sans-serif;font-size:12px;color:#111827;outline:none"/></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end"><div id="cycleRegCancel" style="padding:8px 16px;border:0.5px solid #e5e7eb;border-radius:8px;font-size:11px;color:#6b7280;cursor:pointer;font-family:Montserrat,sans-serif">Cancelar</div><div id="cycleRegSave" style="padding:8px 16px;background:#B3907F;color:white;border-radius:8px;font-size:11px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif">Salvar</div></div>';
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  document.getElementById('cycleRegCancel').onclick=function(){document.getElementById('cycleRegModal').remove();};
+  document.getElementById('cycleRegSave').onclick=function(){
+    var startVal=document.getElementById('cycleStartDate').value;
+    if(!startVal){showToast('Selecione a data de inicio.');return;}
+    var endVal=document.getElementById('cycleEndDate').value||null;
+    if(!window.cycleData.periods)window.cycleData.periods=[];
+    window.cycleData.periods.push({id:gid(),start:startVal,end:endVal});
+    // Sort by start date descending
+    window.cycleData.periods.sort(function(a,b){return b.start.localeCompare(a.start);});
+    fbSaveCycle();
+    document.getElementById('cycleRegModal').remove();
+    renderCycleView();
+    showToast('Menstruacao registrada!');
+  };
+}
+
 function renderCycleView(){
   var app=document.getElementById('cycleApp');if(!app)return;
   app.innerHTML='';
@@ -5240,15 +5306,9 @@ function renderCycleView(){
   regBtn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>'+(isInPeriod?'Finalizar menstruacao':'Registrar menstruacao');
   regBtn.onclick=function(){
     if(isInPeriod){
-      // End current period
-      var last=window.cycleData.periods[window.cycleData.periods.length-1]||window.cycleData.periods[0];
-      // Find the one without end
-      var open=window.cycleData.periods.find(function(p){return!p.end;});
-      if(open){open.end=tds(new Date());fbSaveCycle();renderCycleView();showToast('Menstruacao finalizada.');}
+      showCycleEndModal();
     } else {
-      // Start new period
-      window.cycleData.periods.push({id:gid(),start:tds(new Date()),end:null});
-      fbSaveCycle();renderCycleView();showToast('Menstruacao registrada!');
+      showCycleRegisterModal();
     }
   };
   btnWrap.appendChild(regBtn);
