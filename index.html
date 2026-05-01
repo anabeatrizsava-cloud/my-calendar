@@ -930,6 +930,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
         <div class="ls-subtab active" data-lstab="word" onclick="setLessonSubTab('word')" style="flex:1;padding:10px 0;text-align:center;font-size:10px;font-weight:500;color:#111827;border-bottom:2px solid #111827;cursor:pointer;font-family:Montserrat,sans-serif">Palavra</div>
         <div class="ls-subtab" data-lstab="ff" onclick="setLessonSubTab('ff')" style="flex:1;padding:10px 0;text-align:center;font-size:10px;color:#9ca3af;cursor:pointer;font-family:Montserrat,sans-serif;border-bottom:2px solid transparent">False friend</div>
         <div class="ls-subtab" data-lstab="pron" onclick="setLessonSubTab('pron')" style="flex:1;padding:10px 0;text-align:center;font-size:10px;color:#9ca3af;cursor:pointer;font-family:Montserrat,sans-serif;border-bottom:2px solid transparent">Pronuncia</div>
+        <div class="ls-subtab" data-lstab="expr" onclick="setLessonSubTab('expr')" style="flex:1;padding:10px 0;text-align:center;font-size:10px;color:#9ca3af;cursor:pointer;font-family:Montserrat,sans-serif;border-bottom:2px solid transparent">Expressoes</div>
       </div>
       <div id="lessonInputArea" style="padding:14px 20px"></div>
     </div>
@@ -2251,7 +2252,7 @@ function renderRPEng(rp){
     recent.forEach(function(v){
       var row=document.createElement('div');
       row.style.cssText='display:flex;align-items:baseline;gap:6px;padding:4px 0;border-bottom:0.5px solid #f0f2f5';
-      row.innerHTML='<div style="font-size:11px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+eh(v.word)+'</div><div style="font-size:10px;color:#6b7280;font-family:Montserrat,sans-serif">'+eh(v.translation)+'</div>';
+      row.innerHTML='<div style="font-size:11px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+eh(v.word)+(v.type==='expr'?' <span style="font-size:8px;color:#B3907F;font-weight:500">expr</span>':'')+'</div><div style="font-size:10px;color:#6b7280;font-family:Montserrat,sans-serif">'+eh(v.translation)+'</div>';
       main.appendChild(row);
     });
   }
@@ -6869,6 +6870,26 @@ var _studyModal=false;
 var _studyModalType='vocab';
 var _editStudyId=null;
 
+
+// Deduplicate vocab on load
+function dedupStudyVocab(){
+  if(!window.studyVocab||!window.studyVocab.length)return;
+  var seen={};
+  var before=window.studyVocab.length;
+  window.studyVocab=window.studyVocab.filter(function(v){
+    var key=(v.word||'').toLowerCase().trim();
+    if(!key)return true;
+    if(seen[key])return false;
+    seen[key]=true;
+    return true;
+  });
+  var removed=before-window.studyVocab.length;
+  if(removed>0){
+    console.log('Vocab dedup: removed '+removed+' duplicates');
+    fbSaveStudy();
+  }
+}
+
 function renderStudyView(){
   var wrap=document.getElementById('studyApp');
   if(!wrap)return;
@@ -7030,6 +7051,29 @@ function renderVocabList(parent){
   label.style.cssText='font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1.2px;text-transform:uppercase;font-family:Montserrat,sans-serif';
   label.textContent='Vocabulario ('+list.length+')';
   headerRow.appendChild(label);
+  // Type filter pills
+  var filterRow=document.createElement('div');
+  filterRow.style.cssText='display:flex;gap:4px;margin-bottom:8px';
+  ['Todas','Palavras','Expressoes'].forEach(function(ft){
+    var pill=document.createElement('div');
+    var filterVal=ft==='Todas'?'all':ft==='Palavras'?'word':'expr';
+    var isActive=(window._vocabTypeFilter||'all')===filterVal;
+    pill.style.cssText='padding:4px 10px;border-radius:14px;font-size:10px;cursor:pointer;font-family:Montserrat,sans-serif;'+(isActive?'background:#131F28;color:#C5CED0;font-weight:500':'border:0.5px solid #e5e7eb;color:#6b7280');
+    pill.textContent=ft;
+    pill.onclick=function(){window._vocabTypeFilter=filterVal;renderStudyView();};
+    filterRow.appendChild(pill);
+  });
+  parent.appendChild(filterRow);
+
+  // Apply filter
+  var typeFilter=window._vocabTypeFilter||'all';
+  if(typeFilter!=='all'){
+    list=list.filter(function(v){
+      if(typeFilter==='expr')return v.type==='expr';
+      return v.type!=='expr';
+    });
+  }
+
   var searchWrap=document.createElement('div');
   searchWrap.style.cssText='display:flex;align-items:center;gap:6px;padding:4px 10px;background:white;border:0.5px solid #e8e4de;border-radius:8px;flex:1;max-width:280px';
   searchWrap.innerHTML='<svg width="12" height="12" viewBox="0 0 13 13" fill="none" style="flex-shrink:0"><circle cx="5.5" cy="5.5" r="4" stroke="#aaa89e" stroke-width="1.2"/><path d="M9 9l2.5 2.5" stroke="#aaa89e" stroke-width="1.2" stroke-linecap="round"/></svg>';
@@ -7511,12 +7555,13 @@ function renderFFQuiz(parent){
 window._lessonWords=[];
 window._lessonFF=[];
 window._lessonPron=[];
+window._lessonExpr=[];
 window._lessonCategory='';
 window._lessonSubTab='word';
 var LESSON_DEFAULT_CATS=['Rotina e trabalho','True Crime','Beauty','Business','Daily'];
 
 function openLessonModal(){
-  window._lessonWords=[];window._lessonFF=[];window._lessonPron=[];
+  window._lessonWords=[];window._lessonFF=[];window._lessonPron=[];window._lessonExpr=[];
   window._lessonCategory='';window._lessonSubTab='word';
   var m=document.getElementById('lessonModal');
   if(!m)return;
@@ -7663,6 +7708,31 @@ function addLessonFF(){
   setTimeout(function(){if(window.updateAutoKRs)updateAutoKRs();},500);
 }
 
+function addLessonExpr(){
+  var en=document.getElementById('ls-expr-en');
+  var pt=document.getElementById('ls-expr-pt');
+  var ex=document.getElementById('ls-expr-example');
+  if(!en||!en.value.trim()){showToast('Digite a expressao.');return;}
+  if(!pt||!pt.value.trim()){showToast('Digite o significado.');return;}
+  // Check duplicate
+  var word=en.value.trim().toLowerCase();
+  var isDup=(window.studyVocab||[]).some(function(v){return(v.word||'').toLowerCase()===word&&v.type==='expr';});
+  if(isDup){showToast('Essa expressao ja existe no vocabulario!');return;}
+  var isDupLesson=window._lessonExpr.some(function(e){return e.word.toLowerCase()===word;});
+  if(isDupLesson){showToast('Ja adicionada nesta aula!');return;}
+  var entry={word:en.value.trim(),translation:pt.value.trim(),example:(ex?ex.value.trim():''),type:'expr',date:tds(new Date()),category:window._lessonCategory||''};
+  window._lessonExpr.unshift(entry);
+  // Also save to vocab
+  if(!window.studyVocab)window.studyVocab=[];
+  window.studyVocab.unshift(entry);
+  fbSaveStudy();
+  renderLessonInputArea();
+  updateLessonCount();
+  renderLessonWordList();
+  showToast(entry.word+' adicionada!');
+  setTimeout(function(){if(window.updateAutoKRs)updateAutoKRs();},500);
+}
+
 function addLessonPron(){
   var pattern=(document.getElementById('ls-pron-pattern')||{}).value||'';
   if(!pattern.trim()){showToast('Digite o padrao!');return;}
@@ -7770,14 +7840,15 @@ function finishLesson(){
   var words=window._lessonWords.slice();
   var ffs=window._lessonFF.slice();
   var prons=window._lessonPron.slice();
-  var total=words.length+ffs.length+prons.length;
+  var exprs=window._lessonExpr.slice();
+  var total=words.length+ffs.length+prons.length+exprs.length;
   closeLessonModal();
   setTimeout(function(){if(window.updateAutoKRs)updateAutoKRs();},500);
   if(total){
     showToast('Aula finalizada! '+total+' ite'+(total>1?'ns':'m')+' salvo'+(total>1?'s':'')+'.');
     // Start post-lesson quiz if we have enough items
-    if(words.length+ffs.length>=2){
-      setTimeout(function(){startPostLessonQuiz(words,ffs);},500);
+    if(words.length+ffs.length+exprs.length>=2){
+      setTimeout(function(){startPostLessonQuiz(words.concat(exprs),ffs);},500);
     } else {
       renderStudyView();
     }
