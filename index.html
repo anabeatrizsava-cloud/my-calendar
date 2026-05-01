@@ -5169,7 +5169,7 @@ function fbSaveCycle(){
 
 function getCycleInfo(refDate){
   var periods=(window.cycleData.periods||[]).sort(function(a,b){return b.start.localeCompare(a.start);});
-  if(!periods.length)return{dayOfCycle:0,avgCycle:28,avgPeriod:5,nextPeriod:null,fertileStart:null,fertileEnd:null,phase:'none',lastStart:null};
+  if(!periods.length)return{dayOfCycle:0,avgCycle:28,avgPeriod:5,nextPeriod:null,fertileStart:null,fertileEnd:null,phase:'none',lastStart:null,isTPM:false,tpmDay:0};
   var last=periods[0];
   var lastStart=new Date(last.start+'T12:00:00');
   var now=refDate||new Date();
