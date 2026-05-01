@@ -7333,6 +7333,26 @@ function renderFlashcards(parent){
     parent.appendChild(empty);
     return;
   }
+  // Type filter (Todas / Palavras / Expressões)
+  var tfRow=document.createElement('div');tfRow.style.cssText='display:flex;gap:4px;margin-bottom:10px';
+  ['Todas','Palavras','Expressoes'].forEach(function(ft){
+    var filterVal=ft==='Todas'?'all':ft==='Palavras'?'word':'expr';
+    var isActive=(window._fcTypeFilter||'all')===filterVal;
+    var pill=document.createElement('div');
+    pill.style.cssText='padding:4px 10px;border-radius:14px;font-size:10px;cursor:pointer;font-family:Montserrat,sans-serif;'+(isActive?'background:#131F28;color:#C5CED0;font-weight:500':'border:0.5px solid #e5e7eb;color:#6b7280');
+    pill.textContent=ft;
+    pill.onclick=function(){window._fcTypeFilter=filterVal;renderStudyView();};
+    tfRow.appendChild(pill);
+  });
+  parent.appendChild(tfRow);
+  // Apply type filter
+  if((window._fcTypeFilter||'all')!=='all'){
+    list=list.filter(function(v){
+      if(window._fcTypeFilter==='expr')return v.type==='expr';
+      return v.type!=='expr';
+    });
+  }
+
   // Category filter
   var cats=[];list.forEach(function(v){if(v.category&&cats.indexOf(v.category)<0)cats.push(v.category);});
   if(cats.length){
@@ -7436,6 +7456,19 @@ function renderFlashcards(parent){
 window._quizIndex=0;window._quizAnswered=false;window._quizScore=0;window._quizTotal=0;window._quizDeck=[];
 
 function renderFFQuiz(parent){
+  // Type filter for quiz
+  var qfRow=document.createElement('div');qfRow.style.cssText='display:flex;gap:4px;margin-bottom:10px';
+  ['Todas','Palavras','Expressoes','False Friends'].forEach(function(ft){
+    var filterVal=ft==='Todas'?'all':ft==='Palavras'?'word':ft==='Expressoes'?'expr':'ff';
+    var isActive=(window._quizTypeFilter||'all')===filterVal;
+    var pill=document.createElement('div');
+    pill.style.cssText='padding:4px 10px;border-radius:14px;font-size:10px;cursor:pointer;font-family:Montserrat,sans-serif;'+(isActive?'background:#131F28;color:#C5CED0;font-weight:500':'border:0.5px solid #e5e7eb;color:#6b7280');
+    pill.textContent=ft;
+    pill.onclick=function(){window._quizTypeFilter=filterVal;window._quizDeck=[];renderStudyView();};
+    qfRow.appendChild(pill);
+  });
+  parent.appendChild(qfRow);
+
   var ff=window.studyFalseFriends||[];
   if(ff.length<2){
     var empty=document.createElement('div');
@@ -7617,6 +7650,12 @@ function renderLessonInputArea(){
       +'<div style="margin-bottom:10px"><div style="font-size:9px;color:#9ca3af;margin-bottom:3px;font-family:Montserrat,sans-serif">Exemplo</div><input class="inp" id="ls-pron-example" placeholder="Ex: investigation = in-ves-ti-GUEI-shon" style="font-family:Montserrat,sans-serif"/></div>'
       +'<div style="display:flex;justify-content:flex-end"><button onclick="addLessonPron()" style="padding:6px 16px;background:#486068;color:white;border:none;border-radius:8px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;display:flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M5 1v8M1 5h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Adicionar</button></div>';
     setTimeout(function(){var w=document.getElementById('ls-pron-pattern');if(w)w.focus();},100);
+  } else if(tab==='expr'){
+    area.innerHTML='<div style="margin-bottom:8px"><div style="font-size:9px;color:#9ca3af;margin-bottom:3px;font-family:Montserrat,sans-serif">Expressao em ingles</div><input class="inp" id="ls-expr-en" placeholder="Ex: break the ice" style="font-family:Montserrat,sans-serif"/></div>'
+      +'<div style="margin-bottom:8px"><div style="font-size:9px;color:#9ca3af;margin-bottom:3px;font-family:Montserrat,sans-serif">Significado / Traducao</div><input class="inp" id="ls-expr-pt" placeholder="Ex: quebrar o gelo" style="font-family:Montserrat,sans-serif"/></div>'
+      +'<div style="margin-bottom:10px"><div style="font-size:9px;color:#9ca3af;margin-bottom:3px;font-family:Montserrat,sans-serif">Exemplo de uso</div><input class="inp" id="ls-expr-example" placeholder="Ex: She told a joke to break the ice." style="font-family:Montserrat,sans-serif"/></div>'
+      +'<div style="display:flex;justify-content:flex-end"><button onclick="addLessonExpr()" style="padding:6px 16px;background:#111827;color:white;border:none;border-radius:8px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif;display:flex;align-items:center;gap:4px"><svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M5 1v8M1 5h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Adicionar</button></div>';
+    setTimeout(function(){var e=document.getElementById('ls-expr-en');if(e)e.focus();},100);
   }
 }
 
