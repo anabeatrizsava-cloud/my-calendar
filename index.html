@@ -890,6 +890,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
         <div class="wfield"><label>Traducao / significado</label><input class="inp" id="sm-trans" placeholder="Ex: direto ao ponto"/></div>
         <div class="wfield"><label>Exemplo ou contexto (opcional)</label><input class="inp" id="sm-example" placeholder="Ex: She is very straightforward."/></div>
         <div class="wfield"><label>Categoria (opcional)</label><input class="inp" id="sm-category" placeholder="Ex: Skincare, True Crime, Business" list="sm-cat-list"/><datalist id="sm-cat-list"></datalist></div>
+        <div class="wfield" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="sm-is-expr" style="width:16px;height:16px;accent-color:#B3907F;cursor:pointer"/><label for="sm-is-expr" style="cursor:pointer;font-size:11px;color:#6b7280;font-family:Montserrat,sans-serif">Marcar como expressao</label></div>
       </div>
       <div id="smf-note" style="display:none;flex-direction:column;gap:10px">
         <div class="wfield"><label>Anotacao da sessao</label><textarea class="inp" id="sm-note" style="min-height:120px;resize:vertical" placeholder="O que voce estudou hoje? Palavras novas, dificuldades, observacoes..."></textarea></div>
@@ -7185,6 +7186,7 @@ function showStudyModal(item){
       if(ti)ti.value=item.translation||'';
       if(ei)ei.value=item.example||'';
       var ci=document.getElementById('sm-category');if(ci)ci.value=item.category||'';
+      var exprCb=document.getElementById('sm-is-expr');if(exprCb)exprCb.checked=item.type==='expr';
     } else {
       var ni=document.getElementById('sm-note');
       if(ni)ni.value=item.text||'';
@@ -7195,6 +7197,7 @@ function showStudyModal(item){
     ['sm-word','sm-pronun','sm-trans','sm-example','sm-category','sm-note'].forEach(function(id){
       var el=document.getElementById(id);if(el)el.value='';
     });
+    var exprCb2=document.getElementById('sm-is-expr');if(exprCb2)exprCb2.checked=false;
     var dbtn=document.getElementById('sm-delbtn');
     if(dbtn)dbtn.style.display='none';
   }
@@ -7214,7 +7217,7 @@ function saveStudyEntry(){
     var trans=(document.getElementById('sm-trans')||{}).value||'';
     if(!word.trim()){showToast('Digite a palavra!');return;}
     var pronun=((document.getElementById('sm-pronun')||{}).value||'').trim();
-    var entry={id:_editStudyId||gid(),word:word.trim(),pronunciation:pronun,translation:trans.trim(),example:((document.getElementById('sm-example')||{}).value||'').trim(),category:((document.getElementById('sm-category')||{}).value||'').trim(),date:new Date().toISOString()};
+    var entry={id:_editStudyId||gid(),word:word.trim(),pronunciation:pronun,translation:trans.trim(),example:((document.getElementById('sm-example')||{}).value||'').trim(),category:((document.getElementById('sm-category')||{}).value||'').trim(),type:(document.getElementById('sm-is-expr')&&document.getElementById('sm-is-expr').checked)?'expr':'word',date:new Date().toISOString()};
     if(_editStudyId){
       var idx=(window.studyVocab||[]).findIndex(function(v){return v.id===_editStudyId;});
       if(idx>=0)window.studyVocab[idx]=entry;else window.studyVocab.unshift(entry);
