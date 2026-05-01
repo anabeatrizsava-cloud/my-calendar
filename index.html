@@ -1279,7 +1279,7 @@ function updProgress(){
 function nav(d){if(view==='day')cd.setDate(cd.getDate()+d);else if(view==='week')cd.setDate(cd.getDate()+d*7);else cd.setMonth(cd.getMonth()+d);updTop();renderView();renderMC();}
 function goToday(){cd=new Date();updTop();renderView();renderMC();}
 function sw(v,el){view=v;document.querySelectorAll('.sbi').forEach(e=>e.classList.remove('act'));if(el&&el.classList)el.classList.add('act');document.querySelectorAll('.vb').forEach(e=>e.classList.remove('act'));const vb=document.getElementById('vb-'+v);if(vb)vb.classList.add('act');updTop();renderView();renderMC();}
-function renderView(){const c=document.getElementById('vc');c.innerHTML='';if(view==='day')rDay(c);else if(view==='week')rWeek(c);else if(view==='month')rMonth(c);else if(view==='planner')rPlanner(c);else rStickyView(c);if(view==='day'){renderDayLoad(tds(cd));if(typeof renderFinanceOverlay==='function')try{renderFinanceOverlay();}catch(e){}setTimeout(function(){if(typeof renderMundanaOverlay==='function')try{renderMundanaOverlay();}catch(e){}if(typeof renderCyclePhaseTag==='function')try{renderCyclePhaseTag();}catch(e){}},600);}renderRightPanel();}
+function renderView(){const c=document.getElementById('vc');c.innerHTML='';if(view==='day')rDay(c);else if(view==='week')rWeek(c);else if(view==='month')rMonth(c);else if(view==='planner')rPlanner(c);else rStickyView(c);if(view==='day'){renderDayLoad(tds(cd));if(typeof renderFinanceOverlay==='function')try{renderFinanceOverlay();}catch(e){}setTimeout(function(){if(typeof renderMundanaOverlay==='function')try{renderMundanaOverlay();}catch(e){}},600);}renderRightPanel();}
 
 function getEvs(ds){
   const res=[];
@@ -1841,6 +1841,8 @@ function togDone(id,idate){
   // ── CROSS-MODULE CONNECTIONS ──
   var nowDone=!wasDone;
   if(nowDone)triggerCrossModuleUpdate(ev);
+  // Refresh Mundana overlay
+  setTimeout(renderMundanaOverlay,300);
   updProgress();renderView();showToast('Atualizado!');
 }
 
@@ -2350,7 +2352,7 @@ function renderRightPanel(){
 
   // Cycle phase mini card in resumo
   if(typeof getCycleInfo==='function'){
-    var cyInfo=getCycleInfo();
+    var cyInfo=getCycleInfo(cd);
     if(cyInfo.dayOfCycle>0){
       var cyPhaseNames={menstruacao:'Menstruacao',folicular:'Folicular',fertil:'Fertil',lutea:'Lutea'};
       var cyPhaseColors={menstruacao:'#B3907F',folicular:'#C5CED0',fertil:'#486068',lutea:'#85979D'};
@@ -5165,12 +5167,12 @@ function fbSaveCycle(){
   }catch(e){console.error('Cycle save error:',e);}
 }
 
-function getCycleInfo(){
+function getCycleInfo(refDate){
   var periods=(window.cycleData.periods||[]).sort(function(a,b){return b.start.localeCompare(a.start);});
   if(!periods.length)return{dayOfCycle:0,avgCycle:28,avgPeriod:5,nextPeriod:null,fertileStart:null,fertileEnd:null,phase:'none',lastStart:null};
   var last=periods[0];
   var lastStart=new Date(last.start+'T12:00:00');
-  var now=new Date();
+  var now=refDate||new Date();
   var dayOfCycle=Math.floor((now-lastStart)/(1000*60*60*24))+1;
   // Average cycle length
   var cycleLengths=[];
@@ -5732,22 +5734,37 @@ async function syncModoDiaDoneToSupabase(){
     var localDone=JSON.parse(localStorage.getItem('mundana_mododia_done_'+todayStr)||'[]');
     var headers={'apikey':MUNDANA_SB_KEY,'Authorization':'Bearer '+MUNDANA_SB_KEY,'Content-Type':'application/json'};
     // Read current from Supabase
-    var res=await fetch(MUNDANA_SB_URL+'/rest/v1/app_data?key=eq.'+sbKey+'&select=value',{headers});
+    var res=await fetch(MUNDANA_SB_URL+'/rest/v1/app_data?key=eq.'+sbKey+'&select=*',{headers});
     var rows=await res.json();
     var remote=[];
-    try{if(rows&&rows[0]&&rows[0].value){remote=typeof rows[0].value==='string'?JSON.parse(rows[0].value):rows[0].value;}}catch(e){}
+    var exists=false;
+    try{
+      if(rows&&rows.length>0&&rows[0].value){
+        exists=true;
+        remote=typeof rows[0].value==='string'?JSON.parse(rows[0].value):rows[0].value;
+      }
+    }catch(e){}
     if(!Array.isArray(remote))remote=[];
     // Merge local + remote
     var merged=remote.slice();
     localDone.forEach(function(id){if(merged.indexOf(id)<0)merged.push(id);});
-    // Write back
-    var patchHeaders=Object.assign({},headers,{'Prefer':'return=minimal'});
-    var patchRes=await fetch(MUNDANA_SB_URL+'/rest/v1/app_data?key=eq.'+sbKey,{method:'PATCH',headers:patchHeaders,body:JSON.stringify({value:merged})});
-    if(!patchRes.ok){
-      await fetch(MUNDANA_SB_URL+'/rest/v1/app_data',{method:'POST',headers:patchHeaders,body:JSON.stringify({key:sbKey,value:merged})});
+    // Upsert
+    if(exists){
+      await fetch(MUNDANA_SB_URL+'/rest/v1/app_data?key=eq.'+sbKey,{
+        method:'PATCH',
+        headers:Object.assign({},headers,{'Prefer':'return=representation'}),
+        body:JSON.stringify({value:merged})
+      });
+    } else {
+      await fetch(MUNDANA_SB_URL+'/rest/v1/app_data',{
+        method:'POST',
+        headers:Object.assign({},headers,{'Prefer':'return=minimal'}),
+        body:JSON.stringify({key:sbKey,value:merged})
+      });
     }
     // Update local with merged
     localStorage.setItem('mundana_mododia_done_'+todayStr,JSON.stringify(merged));
+    console.log('Mundana sync: '+merged.length+' done tasks synced');
   }catch(e){console.error('Sync done error:',e);}
 }
 
@@ -5767,6 +5784,8 @@ function renderMundanaOverlay(){
   // Only show on today's view
   var today=new Date();
   if(cd.toDateString()!==today.toDateString())return;
+  // Also show on mobile
+  if(activeCal&&activeCal!=='main'&&activeCal!=='calendar')return;
 
   var tasks=window._mundanaTasks||[];
   // Filter out dismissed AND done tasks
