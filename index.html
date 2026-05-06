@@ -984,6 +984,7 @@ onAuthStateChanged(auth,user=>{
     onSnapshot(doc(db,'users',uid,'config','goalsData'),snap=>{if(snap.exists())window.goalsData=snap.data();updateAutoKRs();});
     onSnapshot(doc(db,'users',uid,'config','notebookData'),snap=>{if(snap.exists()){window.notebookData=snap.data();if(!window.notebookData.notebooks)window.notebookData.notebooks=[];window.notebookData.notebooks.forEach(function(nb){if(!nb.rows)nb.rows=[];if(!nb.columns)nb.columns=[];});}});
     onSnapshot(doc(db,'users',uid,'config','idealWeekData'),snap=>{if(snap.exists()){window.idealWeekData=snap.data();if(!window.idealWeekData.blocks)window.idealWeekData.blocks=[];}});
+    onSnapshot(doc(db,'users',uid,'config','deliverables'),snap=>{if(snap.exists()){window.deliverables=snap.data().items||[];}});
     onSnapshot(doc(db,'users',uid,'config','cycleData'),snap=>{if(snap.exists()){window.cycleData=snap.data();if(!window.cycleData.periods)window.cycleData.periods=[];}});
     if(!window.appInited){window.appInited=true;window._firebaseReady=true;if(typeof initFinanceIntegration==='function')initFinanceIntegration();if(window._domReady)initApp();}
   }else{document.getElementById('loginScreen').style.display='flex';document.getElementById('mainApp').style.display='none';}
@@ -2920,8 +2921,9 @@ function renderWorkDay(calId){
   var topbar=document.createElement('div');
   topbar.className='topbar';
   topbar.style.cssText='background:#f0f2f5;border-bottom:0.5px solid #d1d5db';
-  var vBtns=['day','week','notes','kanban'];
-  var vLabels=['Dia','Sem.','Notas','Kanban'];
+  var isMobileWC=window.innerWidth<=768;
+  var vBtns=isMobileWC?['day','week','notes','kanban']:['day','week','notes','kanban','deliverables'];
+  var vLabels=isMobileWC?['Dia','Sem.','Notas','Kanban']:['Dia','Sem.','Notas','Kanban','Entregaveis'];
   var viewSwitcher='<div style="display:flex;gap:2px;background:#e5e7eb;border-radius:7px;padding:2px">';
   vBtns.forEach(function(v,i){
     var act=v===window._wView;
@@ -5466,6 +5468,335 @@ function renderCycleView(){
   main.appendChild(histCard);
 
   app.appendChild(main);
+}
+
+
+// ── ENTREGAVEIS MODULE ───────────────────────────────────
+function fbSaveDeliverables(){
+  if(!window.auth||!window.auth.currentUser)return;
+  try{var uid=window.auth.currentUser.uid;
+  window.firestore.setDoc(window.firestore.doc(window.db,'users',uid,'config','deliverables'),{items:JSON.parse(JSON.stringify(window.deliverables))});
+  }catch(e){console.error('Deliverables save:',e);}
+}
+
+var DEL_TYPES=[
+  {id:'projeto',label:'Projeto',bg:'#486068',text:'white'},
+  {id:'melhoria',label:'Melhoria',bg:'#B3907F',text:'white'},
+  {id:'processo',label:'Processo',bg:'#85979D',text:'white'}
+];
+
+function renderDeliverables(calId){
+  var wrap=document.getElementById('workApp');if(!wrap)return;
+  wrap.innerHTML='';
+  var items=window.deliverables||[];
+
+  // Topbar
+  var tb=document.createElement('div');
+  tb.className='topbar';
+  tb.style.cssText='background:#f0f2f5;border-bottom:0.5px solid #d1d5db;padding:10px 20px;display:flex;align-items:center;justify-content:space-between';
+  
+  var tbLeft=document.createElement('div');
+  tbLeft.style.cssText='display:flex;align-items:center;gap:12px';
+  tbLeft.innerHTML='<div style="font-size:14px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">Entregaveis '+new Date().getFullYear()+'</div>';
+  
+  // View switcher (same as other WC views)
+  var vBtns2=['day','week','notes','kanban','deliverables'];
+  var vLabels2=['Dia','Sem.','Notas','Kanban','Entregaveis'];
+  var sw='<div style="display:flex;gap:2px;background:#e5e7eb;border-radius:7px;padding:2px">';
+  vBtns2.forEach(function(v,i){
+    var act=v==='deliverables';
+    sw+='<button data-wview="'+v+'" style="background:'+(act?'white':'transparent')+';border:none;border-radius:5px;padding:4px 10px;cursor:pointer;font-size:10px;font-weight:'+(act?'600':'400')+';color:'+(act?'#111827':'#6b7280')+';font-family:Montserrat,sans-serif">'+vLabels2[i]+'</button>';
+  });
+  sw+='</div>';
+  tbLeft.innerHTML+=sw;
+  tb.appendChild(tbLeft);
+
+  var tbRight=document.createElement('div');
+  tbRight.style.cssText='display:flex;gap:8px';
+  tbRight.innerHTML='<div onclick="openDeliverableModal()" style="padding:5px 14px;background:#131F28;color:#C5CED0;border-radius:8px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif">+ Novo</div>';
+  tb.appendChild(tbRight);
+  wrap.appendChild(tb);
+
+  // Bind view switcher
+  tb.querySelectorAll('[data-wview]').forEach(function(btn){
+    btn.onclick=function(){_wView=this.dataset.wview;if(_wView==='deliverables'){renderDeliverables(calId);}else{renderWorkDay(calId);}};
+  });
+
+  // Main area
+  var main=document.createElement('div');
+  main.style.cssText='flex:1;overflow-y:auto;padding:20px 24px;background:#f7f8fa';
+
+  // Metrics
+  var clients={};items.forEach(function(d){(d.tags||[]).forEach(function(t){clients[t]=true;});if(d.client)clients[d.client]=true;});
+  var months={};items.forEach(function(d){if(d.date)months[d.date.substring(0,7)]=true;});
+  var mCards=document.createElement('div');
+  mCards.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px';
+  mCards.innerHTML='<div style="background:#131F28;border-radius:10px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:500;color:white;font-family:Montserrat,sans-serif">'+items.length+'</div><div style="font-size:10px;color:rgba(255,255,255,.4);font-family:Montserrat,sans-serif">entregaveis</div></div>'
+    +'<div style="background:#486068;border-radius:10px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:500;color:white;font-family:Montserrat,sans-serif">'+Object.keys(clients).length+'</div><div style="font-size:10px;color:rgba(255,255,255,.4);font-family:Montserrat,sans-serif">clientes</div></div>'
+    +'<div style="background:#B3907F;border-radius:10px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:500;color:white;font-family:Montserrat,sans-serif">'+Object.keys(months).length+'</div><div style="font-size:10px;color:rgba(255,255,255,.4);font-family:Montserrat,sans-serif">meses ativos</div></div>';
+  main.appendChild(mCards);
+
+  // Filters
+  var filterRow=document.createElement('div');
+  filterRow.style.cssText='display:flex;gap:4px;margin-bottom:14px;flex-wrap:wrap';
+  var allTypes=[{id:'all',label:'Todos ('+items.length+')'}].concat(DEL_TYPES.map(function(t){
+    var c=items.filter(function(d){return d.type===t.id;}).length;
+    return{id:t.id,label:t.label+' ('+c+')'};
+  }));
+  allTypes.forEach(function(t){
+    var pill=document.createElement('div');
+    var active=window._delFilter===t.id;
+    pill.style.cssText='padding:4px 10px;border-radius:14px;font-size:10px;cursor:pointer;font-family:Montserrat,sans-serif;'+(active?'background:#131F28;color:#C5CED0;font-weight:500':'border:0.5px solid #e5e7eb;color:#6b7280');
+    pill.textContent=t.label;
+    pill.onclick=function(){window._delFilter=t.id;renderDeliverables(calId);};
+    filterRow.appendChild(pill);
+  });
+  main.appendChild(filterRow);
+
+  // Filter items
+  var filtered=window._delFilter==='all'?items:items.filter(function(d){return d.type===window._delFilter;});
+  filtered.sort(function(a,b){return(b.date||'').localeCompare(a.date||'');});
+
+  // Group by month
+  var byMonth={};
+  filtered.forEach(function(d){
+    var m=d.date?d.date.substring(0,7):'sem-data';
+    if(!byMonth[m])byMonth[m]=[];
+    byMonth[m].push(d);
+  });
+  var monthKeys=Object.keys(byMonth).sort(function(a,b){return b.localeCompare(a);});
+  var MO=['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var monthColors=['#131F28','#486068','#B3907F','#85979D','#131F28','#486068','#B3907F','#85979D','#131F28','#486068','#B3907F','#85979D'];
+
+  if(!monthKeys.length){
+    main.innerHTML+='<div style="text-align:center;color:#9ca3af;padding:40px 0;font-size:12px;font-family:Montserrat,sans-serif">Nenhum entregavel registrado ainda.</div>';
+    wrap.appendChild(main);return;
+  }
+
+  // Timeline
+  var timeline=document.createElement('div');
+  timeline.style.cssText='position:relative;padding-left:28px';
+  var timelineLine=document.createElement('div');
+  timelineLine.style.cssText='position:absolute;left:8px;top:6px;bottom:6px;width:1.5px;background:#e5e7eb';
+  timeline.appendChild(timelineLine);
+
+  monthKeys.forEach(function(mk,mi){
+    var parts=mk.split('-');
+    var mIdx=parseInt(parts[1])-1;
+    var mColor=monthColors[mIdx%12];
+    var mLabel=MO[mIdx]+' '+parts[0];
+
+    var mGroup=document.createElement('div');
+    mGroup.style.cssText='margin-bottom:20px;position:relative';
+
+    // Dot
+    var dot=document.createElement('div');
+    dot.style.cssText='position:absolute;left:-24px;top:2px;width:12px;height:12px;border-radius:50%;background:'+mColor+';border:2px solid #f7f8fa';
+    mGroup.appendChild(dot);
+
+    // Month label
+    var mLbl=document.createElement('div');
+    mLbl.style.cssText='font-size:11px;font-weight:500;color:'+mColor+';margin-bottom:8px;font-family:Montserrat,sans-serif';
+    mLbl.textContent=mLabel;
+    mGroup.appendChild(mLbl);
+
+    // Cards
+    byMonth[mk].forEach(function(d){
+      var typeObj=DEL_TYPES.find(function(t){return t.id===d.type;})||DEL_TYPES[0];
+      var card=document.createElement('div');
+      card.style.cssText='background:white;border-radius:12px;border:0.5px solid #e5e7eb;padding:14px;margin-bottom:6px;cursor:pointer';
+      card.onclick=function(){openDeliverableModal(d.id);};
+
+      // Header
+      var hdr=document.createElement('div');
+      hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:6px';
+      hdr.innerHTML='<div style="font-size:12px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+eh(d.title||'')+'</div><div style="padding:2px 8px;border-radius:10px;background:'+typeObj.bg+';color:'+typeObj.text+';font-size:9px;font-weight:500;font-family:Montserrat,sans-serif">'+typeObj.label+'</div>';
+      card.appendChild(hdr);
+
+      // Description
+      if(d.description){
+        var desc=document.createElement('div');
+        desc.style.cssText='font-size:11px;color:#6b7280;margin-bottom:8px;font-family:Montserrat,sans-serif';
+        desc.textContent=(d.client?d.client+' — ':'')+d.description;
+        card.appendChild(desc);
+      }
+
+      // Tags
+      if(d.tags&&d.tags.length){
+        var tagRow=document.createElement('div');
+        tagRow.style.cssText='display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap';
+        d.tags.forEach(function(t){
+          tagRow.innerHTML+='<div style="padding:2px 6px;border-radius:4px;background:#f7f8fa;font-size:9px;color:#6b7280;font-family:Montserrat,sans-serif">'+eh(t)+'</div>';
+        });
+        card.appendChild(tagRow);
+      }
+
+      // Metrics
+      if(d.metrics&&d.metrics.length){
+        var mRow=document.createElement('div');
+        mRow.style.cssText='display:flex;gap:6px;margin-bottom:10px';
+        d.metrics.forEach(function(m){
+          mRow.innerHTML+='<div style="flex:1;background:#f7f8fa;border-radius:8px;padding:8px;text-align:center"><div style="font-size:16px;font-weight:500;color:'+typeObj.bg+';font-family:Montserrat,sans-serif">'+eh(m.value)+'</div><div style="font-size:9px;color:#9ca3af;font-family:Montserrat,sans-serif">'+eh(m.label)+'</div></div>';
+        });
+        card.appendChild(mRow);
+      }
+
+      // Skills
+      if(d.skills&&d.skills.length){
+        var skillDiv=document.createElement('div');
+        skillDiv.style.cssText='border-top:0.5px solid #f5f5f5;padding-top:10px';
+        skillDiv.innerHTML='<div style="font-size:9px;font-weight:500;color:#9ca3af;margin-bottom:6px;letter-spacing:0.3px;font-family:Montserrat,sans-serif">SKILLS DESENVOLVIDAS</div>';
+        var skillRow=document.createElement('div');
+        skillRow.style.cssText='display:flex;gap:4px;flex-wrap:wrap';
+        d.skills.forEach(function(s){
+          skillRow.innerHTML+='<div style="padding:3px 10px;border-radius:14px;background:#131F28;color:#C5CED0;font-size:10px;font-family:Montserrat,sans-serif">'+eh(s)+'</div>';
+        });
+        skillDiv.appendChild(skillRow);
+        card.appendChild(skillDiv);
+      }
+
+      mGroup.appendChild(card);
+    });
+
+    timeline.appendChild(mGroup);
+  });
+
+  main.appendChild(timeline);
+  wrap.appendChild(main);
+}
+
+function openDeliverableModal(editId){
+  var existing=document.getElementById('delModal');if(existing)existing.remove();
+  var item=editId?(window.deliverables||[]).find(function(d){return d.id===editId;}):null;
+
+  var overlay=document.createElement('div');
+  overlay.className='mo open';
+  overlay.id='delModal';
+  overlay.onclick=function(e){if(e.target===this)this.remove();};
+  var modal=document.createElement('div');
+  modal.className='modal';
+  modal.style.cssText='width:480px;max-height:90vh;overflow-y:auto;padding:20px';
+  modal.onclick=function(e){e.stopPropagation();};
+
+  modal.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><div style="font-size:14px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+(item?'Editar entregavel':'Novo entregavel')+'</div><div id="del-close-x" style="font-size:16px;color:#9ca3af;cursor:pointer">x</div></div>'
+
+    +'<div style="margin-bottom:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:4px;font-family:Montserrat,sans-serif">Titulo *</div><input class="inp" id="del-title" value="'+eh(item?item.title:'')+'" placeholder="Ex: Automacao de conciliacao contabil" style="font-family:Montserrat,sans-serif"/></div>'
+
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px"><div><div style="font-size:10px;color:#6b7280;margin-bottom:4px;font-family:Montserrat,sans-serif">Cliente</div><input class="inp" id="del-client" value="'+eh(item?item.client||'':'')+'" placeholder="Ex: Creditas" style="font-family:Montserrat,sans-serif"/></div><div><div style="font-size:10px;color:#6b7280;margin-bottom:4px;font-family:Montserrat,sans-serif">Data</div><input type="date" class="inp" id="del-date" value="'+(item?item.date||'':tds(new Date()))+'" style="font-family:Montserrat,sans-serif"/></div></div>'
+
+    +'<div style="margin-bottom:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:4px;font-family:Montserrat,sans-serif">Tipo</div><div id="del-type-wrap" style="display:flex;gap:4px"></div></div>'
+
+    +'<div style="margin-bottom:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:4px;font-family:Montserrat,sans-serif">Descricao</div><textarea class="inp" id="del-desc" rows="3" placeholder="O que foi feito e por que" style="font-family:Montserrat,sans-serif;resize:vertical">'+(item?eh(item.description||''):'')+'</textarea></div>'
+
+    +'<div style="margin-bottom:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:4px;font-family:Montserrat,sans-serif">Tags (Enter para adicionar)</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px" id="del-tags-list"></div><input class="inp" id="del-tags-input" placeholder="Ex: Ledger, Conciliacao" style="font-family:Montserrat,sans-serif"/></div>'
+
+    +'<div style="margin-bottom:10px"><div style="font-size:10px;color:#6b7280;margin-bottom:4px;font-family:Montserrat,sans-serif">Metricas de impacto (ate 3)</div><div id="del-metrics-wrap"></div><div id="del-add-metric" style="font-size:10px;color:#486068;cursor:pointer;margin-top:4px;font-family:Montserrat,sans-serif">+ Adicionar metrica</div></div>'
+
+    +'<div style="margin-bottom:14px"><div style="font-size:10px;color:#6b7280;margin-bottom:4px;font-family:Montserrat,sans-serif">Skills desenvolvidas (Enter para adicionar)</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px" id="del-skills-list"></div><input class="inp" id="del-skills-input" placeholder="Ex: Gestao de projeto, SQL avancado" style="font-family:Montserrat,sans-serif"/></div>'
+
+    +'<div style="display:flex;gap:8px;justify-content:flex-end">'+(item?'<div id="del-delete-btn" style="padding:8px 16px;border:0.5px solid #dc2626;border-radius:8px;font-size:11px;color:#dc2626;cursor:pointer;font-family:Montserrat,sans-serif;margin-right:auto">Excluir</div>':'')+'<div id="del-cancel-btn" style="padding:8px 16px;border:0.5px solid #e5e7eb;border-radius:8px;font-size:11px;color:#6b7280;cursor:pointer;font-family:Montserrat,sans-serif">Cancelar</div><div id="del-save-btn" style="padding:8px 16px;background:#131F28;color:#C5CED0;border-radius:8px;font-size:11px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif">Salvar</div></div>';
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  document.getElementById('del-close-x').onclick=function(){document.getElementById('delModal').remove();};
+  // Type selector
+  var selType=item?item.type:'projeto';
+  var typeWrap=document.getElementById('del-type-wrap');
+  DEL_TYPES.forEach(function(t){
+    var pill=document.createElement('div');
+    pill.dataset.type=t.id;
+    pill.style.cssText='padding:4px 12px;border-radius:14px;font-size:10px;cursor:pointer;font-family:Montserrat,sans-serif;'+(selType===t.id?'background:'+t.bg+';color:'+t.text+';font-weight:500':'border:0.5px solid #e5e7eb;color:#6b7280');
+    pill.textContent=t.label;
+    pill.onclick=function(){
+      selType=this.dataset.type;
+      typeWrap.querySelectorAll('div').forEach(function(p){
+        var to=DEL_TYPES.find(function(x){return x.id===p.dataset.type;});
+        p.style.cssText='padding:4px 12px;border-radius:14px;font-size:10px;cursor:pointer;font-family:Montserrat,sans-serif;'+(selType===p.dataset.type?'background:'+to.bg+';color:'+to.text+';font-weight:500':'border:0.5px solid #e5e7eb;color:#6b7280');
+      });
+    };
+    typeWrap.appendChild(pill);
+  });
+
+  // Tags
+  var tags=item?(item.tags||[]).slice():[];
+  function renderDelTags(){
+    var list=document.getElementById('del-tags-list');list.innerHTML='';
+    tags.forEach(function(t,i){
+      list.innerHTML+='<div style="display:flex;align-items:center;gap:4px;padding:2px 8px;background:#f7f8fa;border-radius:4px;font-size:10px;color:#6b7280;font-family:Montserrat,sans-serif">'+eh(t)+'<span style="cursor:pointer;color:#d1d5db" onclick="window._delTags.splice('+i+',1);window._delRenderTags()">x</span></div>';
+    });
+  }
+  window._delTags=tags;window._delRenderTags=renderDelTags;renderDelTags();
+  document.getElementById('del-tags-input').onkeydown=function(e){
+    if(e.key==='Enter'&&this.value.trim()){e.preventDefault();tags.push(this.value.trim());this.value='';renderDelTags();}
+  };
+
+  // Metrics
+  var metrics=item?(item.metrics||[]).slice():[]; 
+  function renderDelMetrics(){
+    var wrap2=document.getElementById('del-metrics-wrap');wrap2.innerHTML='';
+    metrics.forEach(function(m,i){
+      wrap2.innerHTML+='<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px"><input class="inp" value="'+eh(m.value)+'" placeholder="Valor (ex: -40%)" style="flex:1;font-family:Montserrat,sans-serif" onchange="window._delMetrics['+i+'].value=this.value"/><input class="inp" value="'+eh(m.label)+'" placeholder="Label (ex: falsos positivos)" style="flex:1.5;font-family:Montserrat,sans-serif" onchange="window._delMetrics['+i+'].label=this.value"/><span style="cursor:pointer;color:#d1d5db;font-size:12px" onclick="window._delMetrics.splice('+i+',1);window._delRenderMetrics()">x</span></div>';
+    });
+  }
+  window._delMetrics=metrics;window._delRenderMetrics=renderDelMetrics;renderDelMetrics();
+  document.getElementById('del-add-metric').onclick=function(){
+    if(metrics.length>=3){showToast('Maximo 3 metricas.');return;}
+    metrics.push({value:'',label:''});renderDelMetrics();
+  };
+
+  // Skills
+  var skills=item?(item.skills||[]).slice():[];
+  function renderDelSkills(){
+    var list2=document.getElementById('del-skills-list');list2.innerHTML='';
+    skills.forEach(function(s,i){
+      list2.innerHTML+='<div style="display:flex;align-items:center;gap:4px;padding:3px 10px;background:#131F28;color:#C5CED0;border-radius:14px;font-size:10px;font-family:Montserrat,sans-serif">'+eh(s)+'<span style="cursor:pointer;color:#85979D" onclick="window._delSkills.splice('+i+',1);window._delRenderSkills()">x</span></div>';
+    });
+  }
+  window._delSkills=skills;window._delRenderSkills=renderDelSkills;renderDelSkills();
+  document.getElementById('del-skills-input').onkeydown=function(e){
+    if(e.key==='Enter'&&this.value.trim()){e.preventDefault();skills.push(this.value.trim());this.value='';renderDelSkills();}
+  };
+
+  document.getElementById('del-cancel-btn').onclick=function(){document.getElementById('delModal').remove();};
+  // Delete
+  if(item){
+    document.getElementById('del-delete-btn').onclick=function(){
+      if(!confirm('Excluir "'+item.title+'"?'))return;
+      window.deliverables=window.deliverables.filter(function(d){return d.id!==editId;});
+      fbSaveDeliverables();document.getElementById('delModal').remove();renderDeliverables(_wCalId);showToast('Excluido.');
+    };
+  }
+
+  // Save
+  document.getElementById('del-save-btn').onclick=function(){
+    var title=document.getElementById('del-title').value.trim();
+    if(!title){showToast('Digite o titulo.');return;}
+    // Read metric inputs from DOM (they use onchange)
+    document.querySelectorAll('#del-metrics-wrap input').forEach(function(inp,i){
+      var mi=Math.floor(i/2);var field=i%2===0?'value':'label';
+      if(window._delMetrics[mi])window._delMetrics[mi][field]=inp.value;
+    });
+    var entry={
+      id:editId||gid(),
+      title:title,
+      client:document.getElementById('del-client').value.trim(),
+      date:document.getElementById('del-date').value,
+      type:selType,
+      description:document.getElementById('del-desc').value.trim(),
+      tags:window._delTags.slice(),
+      metrics:window._delMetrics.filter(function(m){return m.value||m.label;}),
+      skills:window._delSkills.slice()
+    };
+    if(editId){
+      var idx=(window.deliverables||[]).findIndex(function(d){return d.id===editId;});
+      if(idx>=0)window.deliverables[idx]=entry;
+    } else {
+      window.deliverables.push(entry);
+    }
+    fbSaveDeliverables();document.getElementById('delModal').remove();renderDeliverables(_wCalId);
+    showToast(editId?'Atualizado!':'Entregavel registrado!');
+  };
 }
 
 // ── MUNDANA INTEGRATION ──────────────────────────────────
