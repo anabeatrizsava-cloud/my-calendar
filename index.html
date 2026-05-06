@@ -5486,6 +5486,90 @@ var DEL_TYPES=[
   {id:'processo',label:'Processo',bg:'#85979D',text:'white'}
 ];
 
+
+function generateDeliverablesPDF(){
+  var items=window.deliverables||[];
+  if(!items.length){showToast('Nenhum entregavel para exportar.');return;}
+  var year=new Date().getFullYear();
+  var clients={};items.forEach(function(d){if(d.client)clients[d.client]=true;(d.tags||[]).forEach(function(t){clients[t]=true;});});
+  var allSkills={};items.forEach(function(d){(d.skills||[]).forEach(function(s){allSkills[s]=(allSkills[s]||0)+1;});});
+  var skillEntries=Object.keys(allSkills).map(function(s){return s+' ('+allSkills[s]+'x)';}).join(', ');
+  var topMetrics=[];items.forEach(function(d){(d.metrics||[]).forEach(function(m){if(m.value&&m.label)topMetrics.push(m.value+' '+m.label+(d.client?' — '+d.client:''));});});
+
+  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Entregaveis '+year+'</title><style>';
+  html+='body{font-family:Montserrat,system-ui,sans-serif;padding:40px;color:#111827;max-width:800px;margin:0 auto}';
+  html+='h1{font-size:22px;font-weight:500;color:#131F28;margin-bottom:4px}';
+  html+='h2{font-size:14px;font-weight:500;color:#486068;margin:24px 0 10px;border-bottom:1px solid #e5e7eb;padding-bottom:6px}';
+  html+='h3{font-size:12px;font-weight:500;color:#131F28;margin:16px 0 6px}';
+  html+='.sub{font-size:12px;color:#85979D;margin-bottom:20px}';
+  html+='.card{border:0.5px solid #e5e7eb;border-radius:8px;padding:14px;margin-bottom:10px}';
+  html+='.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:500;color:white}';
+  html+='.metric{display:inline-block;background:#f7f8fa;border-radius:6px;padding:6px 12px;text-align:center;margin-right:6px;margin-bottom:4px}';
+  html+='.metric .val{font-size:14px;font-weight:500;color:#486068}';
+  html+='.metric .lbl{font-size:9px;color:#9ca3af}';
+  html+='.skill{display:inline-block;padding:2px 8px;border-radius:10px;background:#131F28;color:#C5CED0;font-size:9px;margin-right:4px;margin-bottom:4px}';
+  html+='.tag{display:inline-block;padding:2px 6px;border-radius:4px;background:#f7f8fa;font-size:9px;color:#6b7280;margin-right:4px}';
+  html+='@media print{body{padding:20px}}';
+  html+='</style></head><body>';
+
+  html+='<h1>Portfolio de Entregaveis — '+year+'</h1>';
+  html+='<div class="sub">Ana Beatriz Sava — Ledger Specialist, Slice | '+items.length+' entregaveis, '+Object.keys(clients).length+' clientes</div>';
+
+  // Resumo
+  html+='<h2>Resumo executivo</h2>';
+  var resumoText='Ao longo de '+year+', foram entregues '+items.length+' projeto'+(items.length!==1?'s':'')+' atendendo '+Object.keys(clients).length+' cliente'+(Object.keys(clients).length!==1?'s':'')+' ('+Object.keys(clients).join(', ')+').';
+  if(topMetrics.length)resumoText+=' Principais impactos: '+topMetrics.slice(0,5).join('; ')+'.';
+  if(skillEntries)resumoText+=' Competencias desenvolvidas: '+skillEntries+'.';
+  html+='<p style="font-size:12px;line-height:1.7">'+resumoText+'</p>';
+
+  // Trimestral
+  var q1=items.filter(function(d){var m=parseInt((d.date||'').substring(5,7));return m>=1&&m<=3;}).length;
+  var q2=items.filter(function(d){var m=parseInt((d.date||'').substring(5,7));return m>=4&&m<=6;}).length;
+  var q3=items.filter(function(d){var m=parseInt((d.date||'').substring(5,7));return m>=7&&m<=9;}).length;
+  var q4=items.filter(function(d){var m=parseInt((d.date||'').substring(5,7));return m>=10&&m<=12;}).length;
+  html+='<h2>Evolucao trimestral</h2>';
+  html+='<p style="font-size:12px">Q1: '+q1+' entrega'+(q1!==1?'s':'')+' | Q2: '+q2+' | Q3: '+q3+' | Q4: '+q4+'</p>';
+
+  // Entregaveis por mes
+  var MO2=['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var sorted=items.slice().sort(function(a,b){return(b.date||'').localeCompare(a.date||'');});
+  var byMonth2={};sorted.forEach(function(d){var m=d.date?d.date.substring(0,7):'';if(!byMonth2[m])byMonth2[m]=[];byMonth2[m].push(d);});
+  var typeBgs={projeto:'#486068',melhoria:'#B3907F',processo:'#85979D'};
+
+  html+='<h2>Detalhamento por periodo</h2>';
+  Object.keys(byMonth2).sort(function(a,b){return b.localeCompare(a);}).forEach(function(mk){
+    var parts=mk.split('-');
+    var mIdx=parseInt(parts[1])-1;
+    html+='<h3>'+MO2[mIdx]+' '+parts[0]+'</h3>';
+    byMonth2[mk].forEach(function(d){
+      var typeObj={projeto:'Projeto',melhoria:'Melhoria',processo:'Processo'};
+      html+='<div class="card">';
+      html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><strong style="font-size:12px">'+eh(d.title||'')+'</strong><span class="badge" style="background:'+(typeBgs[d.type]||'#85979D')+'">'+(typeObj[d.type]||d.type)+'</span></div>';
+      if(d.description)html+='<p style="font-size:11px;color:#6b7280;margin:0 0 6px">'+(d.client?d.client+' — ':'')+eh(d.description)+'</p>';
+      if(d.tags&&d.tags.length)html+='<div style="margin-bottom:6px">'+d.tags.map(function(t){return'<span class="tag">'+eh(t)+'</span>';}).join('')+'</div>';
+      if(d.metrics&&d.metrics.length)html+='<div style="margin-bottom:6px">'+d.metrics.map(function(m){return'<span class="metric"><span class="val">'+eh(m.value)+'</span><br><span class="lbl">'+eh(m.label)+'</span></span>';}).join('')+'</div>';
+      if(d.skills&&d.skills.length)html+='<div>'+d.skills.map(function(s){return'<span class="skill">'+eh(s)+'</span>';}).join('')+'</div>';
+      html+='</div>';
+    });
+  });
+
+  // Skills map
+  if(Object.keys(allSkills).length){
+    html+='<h2>Mapa de competencias</h2>';
+    Object.keys(allSkills).sort(function(a,b){return allSkills[b]-allSkills[a];}).forEach(function(s){
+      html+='<p style="font-size:11px;margin:3px 0"><strong>'+eh(s)+'</strong> — '+allSkills[s]+' projeto'+(allSkills[s]!==1?'s':'')+'</p>';
+    });
+  }
+
+  html+='</body></html>';
+
+  var blob=new Blob([html],{type:'text/html'});
+  var url=URL.createObjectURL(blob);
+  var w=window.open(url,'_blank');
+  if(w){showToast('PDF aberto! Use Ctrl+P para imprimir/salvar.');}
+  else{showToast('Popup bloqueado. Permita popups para este site.');}
+}
+
 function renderDeliverables(calId){
   var wrap=document.getElementById('workApp');if(!wrap)return;
   wrap.innerHTML='';
@@ -5536,6 +5620,81 @@ function renderDeliverables(calId){
     +'<div style="background:#486068;border-radius:10px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:500;color:white;font-family:Montserrat,sans-serif">'+Object.keys(clients).length+'</div><div style="font-size:10px;color:rgba(255,255,255,.4);font-family:Montserrat,sans-serif">clientes</div></div>'
     +'<div style="background:#B3907F;border-radius:10px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:500;color:white;font-family:Montserrat,sans-serif">'+Object.keys(months).length+'</div><div style="font-size:10px;color:rgba(255,255,255,.4);font-family:Montserrat,sans-serif">meses ativos</div></div>';
   main.appendChild(mCards);
+
+  // ── RESUMO EXECUTIVO ──
+  var resumoCard=document.createElement('div');
+  resumoCard.style.cssText='background:white;border-radius:12px;border:0.5px solid #e5e7eb;padding:16px;margin-bottom:12px';
+  var year=new Date().getFullYear();
+  var clientList=Object.keys(clients).join(', ')||'nenhum';
+  var topMetrics=[];
+  items.forEach(function(d){(d.metrics||[]).forEach(function(m){if(m.value&&m.label)topMetrics.push(m.value+' '+m.label+(d.client?' ('+d.client+')':''));});});
+  var resumoText='Ana entregou '+items.length+' projeto'+(items.length!==1?'s':'')+' em '+year+', atendendo '+Object.keys(clients).length+' cliente'+(Object.keys(clients).length!==1?'s':'')+' ('+clientList+').';
+  if(topMetrics.length)resumoText+=' Destaques: '+topMetrics.slice(0,3).join(', ')+'.';
+  var q1=items.filter(function(d){var m=parseInt((d.date||'').substring(5,7));return m>=1&&m<=3;}).length;
+  var q2=items.filter(function(d){var m=parseInt((d.date||'').substring(5,7));return m>=4&&m<=6;}).length;
+  var q3=items.filter(function(d){var m=parseInt((d.date||'').substring(5,7));return m>=7&&m<=9;}).length;
+  var q4=items.filter(function(d){var m=parseInt((d.date||'').substring(5,7));return m>=10&&m<=12;}).length;
+  if(q1||q2||q3||q4)resumoText+=' Distribuicao: Q1='+q1+', Q2='+q2+', Q3='+q3+', Q4='+q4+'.';
+  resumoCard.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="font-size:11px;font-weight:500;color:#131F28;letter-spacing:0.3px;font-family:Montserrat,sans-serif">RESUMO EXECUTIVO</div><div id="del-copy-resumo" style="font-size:10px;color:#486068;cursor:pointer;font-family:Montserrat,sans-serif">Copiar</div></div>'
+    +'<div style="font-size:12px;color:#111827;line-height:1.7;font-family:Montserrat,sans-serif" id="del-resumo-text">'+eh(resumoText)+'</div>';
+  main.appendChild(resumoCard);
+  setTimeout(function(){
+    var copyBtn=document.getElementById('del-copy-resumo');
+    if(copyBtn)copyBtn.onclick=function(){
+      var txt=document.getElementById('del-resumo-text');
+      if(txt){navigator.clipboard.writeText(txt.textContent);showToast('Resumo copiado!');}
+    };
+  },100);
+
+  // ── EVOLUCAO TRIMESTRAL ──
+  var qtCard=document.createElement('div');
+  qtCard.style.cssText='background:white;border-radius:12px;border:0.5px solid #e5e7eb;padding:16px;margin-bottom:12px';
+  qtCard.innerHTML='<div style="font-size:11px;font-weight:500;color:#131F28;letter-spacing:0.3px;margin-bottom:10px;font-family:Montserrat,sans-serif">EVOLUCAO TRIMESTRAL</div>';
+  var qtGrid=document.createElement('div');
+  qtGrid.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px';
+  var maxQ=Math.max(q1,q2,q3,q4,1);
+  [['Q1',q1],['Q2',q2],['Q3',q3],['Q4',q4]].forEach(function(qd){
+    var barPct=Math.round(qd[1]/maxQ*100);
+    var qCol=document.createElement('div');
+    qCol.style.cssText='text-align:center';
+    qCol.innerHTML='<div style="height:80px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:6px"><div style="width:32px;background:linear-gradient(to top,#486068,#85979D);border-radius:4px 4px 0 0;height:'+Math.max(barPct,5)+'%;transition:height .3s"></div></div>'
+      +'<div style="font-size:14px;font-weight:500;color:#131F28;font-family:Montserrat,sans-serif">'+qd[1]+'</div>'
+      +'<div style="font-size:10px;color:#85979D;font-family:Montserrat,sans-serif">'+qd[0]+'</div>';
+    qtGrid.appendChild(qCol);
+  });
+  qtCard.appendChild(qtGrid);
+  main.appendChild(qtCard);
+
+  // ── MAPA DE SKILLS ──
+  var allSkills={};
+  items.forEach(function(d){(d.skills||[]).forEach(function(s){allSkills[s]=(allSkills[s]||0)+1;});});
+  var skillEntries=Object.keys(allSkills).map(function(s){return{name:s,count:allSkills[s]};}).sort(function(a,b){return b.count-a.count;});
+  if(skillEntries.length){
+    var skCard=document.createElement('div');
+    skCard.style.cssText='background:white;border-radius:12px;border:0.5px solid #e5e7eb;padding:16px;margin-bottom:12px';
+    skCard.innerHTML='<div style="font-size:11px;font-weight:500;color:#131F28;letter-spacing:0.3px;margin-bottom:10px;font-family:Montserrat,sans-serif">MAPA DE SKILLS</div>';
+    var skMax=skillEntries[0].count;
+    skillEntries.forEach(function(sk){
+      var barPct2=Math.round(sk.count/skMax*100);
+      var row=document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:6px';
+      row.innerHTML='<div style="font-size:11px;color:#6b7280;width:140px;text-align:right;font-family:Montserrat,sans-serif;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+eh(sk.name)+'</div>'
+        +'<div style="flex:1;height:14px;background:#f0f2f5;border-radius:4px;overflow:hidden"><div style="width:'+barPct2+'%;height:100%;background:#131F28;border-radius:4px"></div></div>'
+        +'<div style="font-size:11px;font-weight:500;color:#131F28;width:30px;font-family:Montserrat,sans-serif">'+sk.count+'x</div>';
+      skCard.appendChild(row);
+    });
+    main.appendChild(skCard);
+  }
+
+  // ── EXPORTAR PDF ──
+  var pdfBtn=document.createElement('div');
+  pdfBtn.style.cssText='display:flex;justify-content:center;margin-bottom:14px';
+  pdfBtn.innerHTML='<div id="del-pdf-btn" style="display:inline-flex;align-items:center;gap:6px;padding:8px 20px;border:0.5px solid #e5e7eb;border-radius:8px;font-size:11px;color:#6b7280;cursor:pointer;font-family:Montserrat,sans-serif"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="1.8" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar PDF</div>';
+  main.appendChild(pdfBtn);
+  setTimeout(function(){
+    var pb=document.getElementById('del-pdf-btn');
+    if(pb)pb.onclick=function(){generateDeliverablesPDF();};
+  },100);
 
   // Filters
   var filterRow=document.createElement('div');
