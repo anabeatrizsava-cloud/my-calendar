@@ -5729,7 +5729,10 @@ function renderDeliverables(calId){
   var monthColors=['#131F28','#486068','#B3907F','#85979D','#131F28','#486068','#B3907F','#85979D','#131F28','#486068','#B3907F','#85979D'];
 
   if(!monthKeys.length){
-    main.innerHTML+='<div style="text-align:center;color:#9ca3af;padding:40px 0;font-size:12px;font-family:Montserrat,sans-serif">Nenhum entregavel registrado ainda.</div>';
+    var emptyMsg=document.createElement('div');
+    emptyMsg.style.cssText='text-align:center;color:#9ca3af;padding:40px 0;font-size:12px;font-family:Montserrat,sans-serif';
+    emptyMsg.textContent='Nenhum entregavel registrado ainda.';
+    main.appendChild(emptyMsg);
     wrap.appendChild(main);return;
   }
 
@@ -5956,6 +5959,7 @@ function openDeliverableModal(editId){
     } else {
       window.deliverables.push(entry);
     }
+    window._delFilter='all';
     fbSaveDeliverables();document.getElementById('delModal').remove();renderDeliverables(_wCalId);
     showToast(editId?'Atualizado!':'Entregavel registrado!');
     }catch(e){console.error('Save deliverable error:',e);showToast('Erro ao salvar: '+e.message);}
