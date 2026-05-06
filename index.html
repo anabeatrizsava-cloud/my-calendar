@@ -5930,9 +5930,10 @@ function openDeliverableModal(editId){
 
   // Save
   document.getElementById('del-save-btn').onclick=function(){
+    try{
     var title=document.getElementById('del-title').value.trim();
     if(!title){showToast('Digite o titulo.');return;}
-    // Read metric inputs from DOM (they use onchange)
+    // Read metric inputs from DOM
     document.querySelectorAll('#del-metrics-wrap input').forEach(function(inp,i){
       var mi=Math.floor(i/2);var field=i%2===0?'value':'label';
       if(window._delMetrics[mi])window._delMetrics[mi][field]=inp.value;
@@ -5948,14 +5949,16 @@ function openDeliverableModal(editId){
       metrics:window._delMetrics.filter(function(m){return m.value||m.label;}),
       skills:window._delSkills.slice()
     };
+    if(!window.deliverables)window.deliverables=[];
     if(editId){
-      var idx=(window.deliverables||[]).findIndex(function(d){return d.id===editId;});
-      if(idx>=0)window.deliverables[idx]=entry;
+      var idx2=(window.deliverables).findIndex(function(d){return d.id===editId;});
+      if(idx2>=0)window.deliverables[idx2]=entry;
     } else {
       window.deliverables.push(entry);
     }
     fbSaveDeliverables();document.getElementById('delModal').remove();renderDeliverables(_wCalId);
     showToast(editId?'Atualizado!':'Entregavel registrado!');
+    }catch(e){console.error('Save deliverable error:',e);showToast('Erro ao salvar: '+e.message);}
   };
 }
 
