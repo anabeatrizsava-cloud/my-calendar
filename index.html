@@ -4797,7 +4797,7 @@ function renderWorkKanban(calId){
 
   // Client selector dropdown
   var clientBar=document.createElement('div');
-  clientBar.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 14px;background:white;border:0.5px solid #e5e7eb;margin:0;flex-shrink:0';
+  clientBar.style.cssText='display:flex;align-items:center;gap:8px;padding:10px 14px;background:white;border:0.5px solid #e5e7eb;margin:0;flex-shrink:0';
   var clientLabel=document.createElement('div');
   clientLabel.style.cssText='font-size:11px;color:#85979D;font-family:Montserrat,sans-serif';
   clientLabel.textContent='Cliente:';
@@ -4812,6 +4812,40 @@ function renderWorkKanban(calId){
   });
   clientSelect.onchange=function(){_wCalId=this.value;renderWorkKanban(this.value);};
   clientBar.appendChild(clientSelect);
+  // Edit client name button
+  var editClientBtn=document.createElement('div');
+  editClientBtn.style.cssText='padding:4px 8px;border:0.5px solid #e5e7eb;border-radius:6px;font-size:10px;color:#6b7280;cursor:pointer;font-family:Montserrat,sans-serif;display:flex;align-items:center;gap:3px';
+  editClientBtn.innerHTML='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>Renomear';
+  editClientBtn.onclick=function(){
+    var currentCal=(window.workCals||[]).find(function(c){return c.id===calId;});
+    if(!currentCal)return;
+    var newName=prompt('Novo nome do cliente:',currentCal.name||'');
+    if(!newName||!newName.trim())return;
+    currentCal.name=newName.trim();
+    if(window.fbSaveWorkCals)fbSaveWorkCals();
+    renderWorkKanban(calId);
+    showToast('Cliente renomeado!');
+  };
+  clientBar.appendChild(editClientBtn);
+  // Add new client button
+  var addClientBtn=document.createElement('div');
+  addClientBtn.style.cssText='padding:4px 8px;border:0.5px solid #e5e7eb;border-radius:6px;font-size:10px;color:#6b7280;cursor:pointer;font-family:Montserrat,sans-serif;display:flex;align-items:center;gap:3px';
+  addClientBtn.innerHTML='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Novo cliente';
+  addClientBtn.onclick=function(){
+    var name=prompt('Nome do novo cliente:');
+    if(!name||!name.trim())return;
+    var newCal={id:gid(),name:name.trim(),color:'#4a5568'};
+    if(!window.workCals)window.workCals=[];
+    window.workCals.push(newCal);
+    window.workEvs[newCal.id]=[];
+    window.kanbanCols[newCal.id]=[];
+    window.kanbanCards[newCal.id]=[];
+    if(window.fbSaveWorkCals)fbSaveWorkCals();
+    _wCalId=newCal.id;
+    renderWorkKanban(newCal.id);
+    showToast('Cliente "'+name.trim()+'" criado!');
+  };
+  clientBar.appendChild(addClientBtn);
   var allCards=window.kanbanCards[calId]||[];
   var cols2=window.kanbanCols[calId]||[];
   var todoCol=cols2.find(function(c){return c.name.toLowerCase().indexOf('fazer')>=0||c.name.toLowerCase()==='backlog';});
