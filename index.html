@@ -2670,8 +2670,12 @@ function getWEvs(calId,ds){
   var res=[];
   evList.forEach(function(ev){
     if(ev.date===ds){
-      var copy=Object.assign({},ev);
-      if(ev.progressExceptions&&ev.progressExceptions[ds])copy.progress=ev.progressExceptions[ds];
+      var copy=Object.assign({},ev,{_instanceDate:ds});
+      if(ev.repeat&&ev.repeat!=='none'){
+        copy.progress=(ev.progressExceptions&&ev.progressExceptions[ds])?ev.progressExceptions[ds]:(ev.progressExceptions?'not-started':ev.progress);
+      } else if(ev.progressExceptions&&ev.progressExceptions[ds]){
+        copy.progress=ev.progressExceptions[ds];
+      }
       res.push(copy);return;
     }
     if(!ev.repeat||ev.repeat==='none')return;
@@ -3255,6 +3259,10 @@ function openWNew(){
   setWSeg('wePriority','medium');
   setWSeg('weProgress','not-started');
   setWSeg('weRepeat','none');
+  var repeatField=document.getElementById('weRepeatField');if(repeatField)repeatField.style.display='';
+  var clientField=document.getElementById('weClientField');if(clientField)clientField.style.display='';
+  var prioProgGrid=document.getElementById('wePrioProgGrid');if(prioProgGrid)prioProgGrid.style.display='';
+  window._kanbanSaveOverride=false;
   window._weSelWeekDays=[];window._weSelMonthDays=[];window._weIcon='';window._weSubtasks=[];window._weLinks=[];
   var cEl=document.getElementById('weclient');if(cEl)cEl.value='';
   buildWeIconPicker();
@@ -3292,6 +3300,10 @@ function openWEdit(calId,evId,idate){
   buildWeIconPicker();
   renderWeSubtasks();
   setWSeg('weRepeat',ev.repeat||'none');
+  var repeatField2=document.getElementById('weRepeatField');if(repeatField2)repeatField2.style.display='';
+  var clientField2=document.getElementById('weClientField');if(clientField2)clientField2.style.display='';
+  var prioProgGrid2=document.getElementById('wePrioProgGrid');if(prioProgGrid2)prioProgGrid2.style.display='';
+  window._kanbanSaveOverride=false;
   renderWTags();
   var m=document.getElementById('wEvModal');if(m)m.classList.add('open');
 }
