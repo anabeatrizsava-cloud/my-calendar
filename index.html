@@ -4795,6 +4795,35 @@ function renderWorkKanban(calId){
   if(newBtn)newBtn.onclick=function(){openWNew();};
   wrap.appendChild(topbar);
 
+  // Client selector dropdown
+  var clientBar=document.createElement('div');
+  clientBar.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 14px;background:white;border:0.5px solid #e5e7eb;margin:0;flex-shrink:0';
+  var clientLabel=document.createElement('div');
+  clientLabel.style.cssText='font-size:11px;color:#85979D;font-family:Montserrat,sans-serif';
+  clientLabel.textContent='Cliente:';
+  clientBar.appendChild(clientLabel);
+  var clientSelect=document.createElement('select');
+  clientSelect.style.cssText='padding:5px 10px;background:#f7f8fa;border:0.5px solid #e5e7eb;border-radius:8px;font-size:12px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif;cursor:pointer;min-width:160px;outline:none';
+  (window.workCals||[]).forEach(function(c){
+    var opt=document.createElement('option');
+    opt.value=c.id;opt.textContent=c.name||c.id;
+    if(c.id===calId)opt.selected=true;
+    clientSelect.appendChild(opt);
+  });
+  clientSelect.onchange=function(){_wCalId=this.value;renderWorkKanban(this.value);};
+  clientBar.appendChild(clientSelect);
+  var allCards=window.kanbanCards[calId]||[];
+  var cols2=window.kanbanCols[calId]||[];
+  var todoCol=cols2.find(function(c){return c.name.toLowerCase().indexOf('fazer')>=0||c.name.toLowerCase()==='backlog';});
+  var progressCol=cols2.find(function(c){return c.name.toLowerCase().indexOf('andamento')>=0||c.name.toLowerCase().indexOf('progress')>=0;});
+  var todoCount=todoCol?allCards.filter(function(c){return c.colId===todoCol.id;}).length:0;
+  var progressCount=progressCol?allCards.filter(function(c){return c.colId===progressCol.id;}).length:0;
+  var statsDiv=document.createElement('div');
+  statsDiv.style.cssText='font-size:11px;color:#C5CED0;font-family:Montserrat,sans-serif;margin-left:auto';
+  statsDiv.textContent=allCards.length+' cards . '+todoCount+' a fazer . '+progressCount+' em andamento';
+  clientBar.appendChild(statsDiv);
+  wrap.appendChild(clientBar);
+
   // Board
   var board=document.createElement('div');
   board.style.cssText='flex:1;display:flex;gap:0;overflow-x:auto;background:#f7f8fa';
