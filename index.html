@@ -985,6 +985,7 @@ onAuthStateChanged(auth,user=>{
     onSnapshot(doc(db,'users',uid,'config','notebookData'),snap=>{if(snap.exists()){window.notebookData=snap.data();if(!window.notebookData.notebooks)window.notebookData.notebooks=[];window.notebookData.notebooks.forEach(function(nb){if(!nb.rows)nb.rows=[];if(!nb.columns)nb.columns=[];});}});
     onSnapshot(doc(db,'users',uid,'config','idealWeekData'),snap=>{if(snap.exists()){window.idealWeekData=snap.data();if(!window.idealWeekData.blocks)window.idealWeekData.blocks=[];}});
     onSnapshot(doc(db,'users',uid,'config','deliverables'),snap=>{if(snap.exists()){window.deliverables=snap.data().items||[];}});
+    onSnapshot(doc(db,'users',uid,'config','kanbanBoards'),snap=>{if(snap.exists()){window.kanbanBoards=snap.data().boards||[];}});
     onSnapshot(doc(db,'users',uid,'config','cycleData'),snap=>{if(snap.exists()){window.cycleData=snap.data();if(!window.cycleData.periods)window.cycleData.periods=[];}});
     if(!window.appInited){window.appInited=true;window._firebaseReady=true;if(typeof initFinanceIntegration==='function')initFinanceIntegration();if(window._domReady)initApp();}
   }else{document.getElementById('loginScreen').style.display='flex';document.getElementById('mainApp').style.display='none';}
@@ -3722,6 +3723,43 @@ function editKanbanCard(calId,cardId){
   var dupEl=document.getElementById('weDupBtn');if(dupEl)dupEl.style.display='none';
   // Override save to update kanban card instead of work event
   window._kanbanSaveOverride=true;
+  // Add "Mover para" button
+  var existingMoveBtn=document.getElementById('weMoveBtn');if(existingMoveBtn)existingMoveBtn.remove();
+  var moveBtn=document.createElement('div');
+  moveBtn.id='weMoveBtn';
+  moveBtn.style.cssText='display:flex;align-items:center;gap:6px;margin-top:10px;padding:8px 14px;border:0.5px solid #e5e7eb;border-radius:8px;cursor:pointer;font-family:Montserrat,sans-serif';
+  moveBtn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg><span style="font-size:11px;color:#6b7280">Mover para outro cliente</span>';
+  moveBtn.onclick=function(){
+    var allBoards=[];
+    (window.workCals||[]).forEach(function(c){if(c.id!==calId)allBoards.push({id:c.id,name:c.name||c.id});});
+    (window.kanbanBoards||[]).forEach(function(b){if(b.id!==calId)allBoards.push({id:b.id,name:b.name||b.id});});
+    if(!allBoards.length){showToast('Nenhum outro cliente disponivel.');return;}
+    var options=allBoards.map(function(b,i){return(i+1)+'. '+b.name;}).join('\n');
+    var choice=prompt('Mover card para qual cliente?\n\n'+options);
+    if(!choice)return;
+    var idx3=parseInt(choice)-1;
+    if(isNaN(idx3)||idx3<0||idx3>=allBoards.length){showToast('Opcao invalida.');return;}
+    var targetId=allBoards[idx3].id;
+    var targetName=allBoards[idx3].name;
+    // Move card
+    var sourceCards=window.kanbanCards[calId]||[];
+    var cardToMove=sourceCards.find(function(c){return c.id===cardId;});
+    if(!cardToMove){showToast('Card nao encontrado.');return;}
+    // Remove from source
+    window.kanbanCards[calId]=sourceCards.filter(function(c){return c.id!==cardId;});
+    // Add to target (first column)
+    if(!window.kanbanCards[targetId])window.kanbanCards[targetId]=[];
+    var targetCols=window.kanbanCols[targetId]||[];
+    if(targetCols.length)cardToMove.colId=targetCols[0].id;
+    window.kanbanCards[targetId].push(cardToMove);
+    // Save both
+    fbSaveKanban(calId);fbSaveKanban(targetId);
+    closeWEvModal();window._editKanbanCardId=null;
+    renderWorkKanban(calId);
+    showToast('Card movido para "'+targetName+'"!');
+  };
+  var modalBody=document.querySelector('#wEvModal .modal');
+  if(modalBody)modalBody.appendChild(moveBtn);
   var m=document.getElementById('wEvModal');if(m)m.classList.add('open');
 }
 
@@ -4810,6 +4848,12 @@ function renderWorkKanban(calId){
     if(c.id===calId)opt.selected=true;
     clientSelect.appendChild(opt);
   });
+  (window.kanbanBoards||[]).forEach(function(b){
+    var opt2=document.createElement('option');
+    opt2.value=b.id;opt2.textContent=b.name||b.id;
+    if(b.id===calId)opt2.selected=true;
+    clientSelect.appendChild(opt2);
+  });
   clientSelect.onchange=function(){_wCalId=this.value;renderWorkKanban(this.value);};
   clientBar.appendChild(clientSelect);
   // Edit client name button
@@ -4818,11 +4862,14 @@ function renderWorkKanban(calId){
   editClientBtn.innerHTML='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>Renomear';
   editClientBtn.onclick=function(){
     var currentCal=(window.workCals||[]).find(function(c){return c.id===calId;});
-    if(!currentCal)return;
-    var newName=prompt('Novo nome do cliente:',currentCal.name||'');
+    var currentBoard=(window.kanbanBoards||[]).find(function(b){return b.id===calId;});
+    var item=currentCal||currentBoard;
+    if(!item)return;
+    var newName=prompt('Novo nome:',item.name||'');
     if(!newName||!newName.trim())return;
-    currentCal.name=newName.trim();
-    if(window.fbSaveWorkCals)fbSaveWorkCals();
+    item.name=newName.trim();
+    if(currentCal&&window.fbSaveWorkCals)fbSaveWorkCals();
+    if(currentBoard)fbSaveKanbanBoards();
     renderWorkKanban(calId);
     showToast('Cliente renomeado!');
   };
@@ -4832,22 +4879,48 @@ function renderWorkKanban(calId){
   addClientBtn.style.cssText='padding:4px 8px;border:0.5px solid #e5e7eb;border-radius:6px;font-size:10px;color:#6b7280;cursor:pointer;font-family:Montserrat,sans-serif;display:flex;align-items:center;gap:3px';
   addClientBtn.innerHTML='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Novo cliente';
   addClientBtn.onclick=function(){
-    var name=prompt('Nome do novo cliente:');
+    var name=prompt('Nome do novo kanban:');
     if(!name||!name.trim())return;
-    var newCal={id:gid(),name:name.trim(),color:'#4a5568'};
-    if(!window.workCals)window.workCals=[];
-    window.workCals.push(newCal);
-    window.workEvs[newCal.id]=[];
-    window.kanbanCols[newCal.id]=[];
-    window.kanbanCards[newCal.id]=[];
-    if(window.fbSaveWorkCals)fbSaveWorkCals();
-    _wCalId=newCal.id;
-    renderWorkKanban(newCal.id);
-    showToast('Cliente "'+name.trim()+'" criado!');
+    var newId=gid();
+    if(!window.kanbanBoards)window.kanbanBoards=[];
+    window.kanbanBoards.push({id:newId,name:name.trim()});
+    window.kanbanCols[newId]=[];
+    window.kanbanCards[newId]=[];
+    fbSaveKanbanBoards();
+    _wCalId=newId;
+    renderWorkKanban(newId);
+    showToast('"'+name.trim()+'" criado!');
   };
   clientBar.appendChild(addClientBtn);
+  // Delete client/board button
+  var delClientBtn=document.createElement('div');
+  delClientBtn.style.cssText='padding:4px 8px;border:0.5px solid #dc2626;border-radius:6px;font-size:10px;color:#dc2626;cursor:pointer;font-family:Montserrat,sans-serif;display:flex;align-items:center;gap:3px';
+  delClientBtn.innerHTML='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Excluir';
+  delClientBtn.onclick=function(){
+    var currentName='';
+    var isBoard=(window.kanbanBoards||[]).find(function(b){return b.id===calId;});
+    var isCal=(window.workCals||[]).find(function(c){return c.id===calId;});
+    currentName=isBoard?isBoard.name:isCal?isCal.name:calId;
+    if(!confirm('Excluir "'+currentName+'" e todos os cards?'))return;
+    if(isBoard){
+      window.kanbanBoards=window.kanbanBoards.filter(function(b){return b.id!==calId;});
+      fbSaveKanbanBoards();
+    }
+    delete window.kanbanCols[calId];
+    delete window.kanbanCards[calId];
+    fbSaveKanban(calId);
+    // Switch to first available
+    var next=(window.workCals||[])[0]||(window.kanbanBoards||[])[0];
+    if(next){_wCalId=next.id;renderWorkKanban(next.id);}
+    showToast('"'+currentName+'" excluido.');
+  };
+  clientBar.appendChild(delClientBtn);
   var allCards=window.kanbanCards[calId]||[];
   var cols2=window.kanbanCols[calId]||[];
+  if(!cols2.length){
+    window.kanbanCols[calId]=[{id:gid(),name:'A fazer',color:'#131F28'},{id:gid(),name:'Em andamento',color:'#486068'},{id:gid(),name:'Concluido',color:'#B3907F'}];
+    cols2=window.kanbanCols[calId];
+  }
   var todoCol=cols2.find(function(c){return c.name.toLowerCase().indexOf('fazer')>=0||c.name.toLowerCase()==='backlog';});
   var progressCol=cols2.find(function(c){return c.name.toLowerCase().indexOf('andamento')>=0||c.name.toLowerCase().indexOf('progress')>=0;});
   var todoCount=todoCol?allCards.filter(function(c){return c.colId===todoCol.id;}).length:0;
@@ -5548,6 +5621,14 @@ function renderCycleView(){
 
 
 // ── ENTREGAVEIS MODULE ───────────────────────────────────
+
+function fbSaveKanbanBoards(){
+  if(!window.auth||!window.auth.currentUser)return;
+  try{var uid=window.auth.currentUser.uid;
+  window.firestore.setDoc(window.firestore.doc(window.db,'users',uid,'config','kanbanBoards'),{boards:JSON.parse(JSON.stringify(window.kanbanBoards||[]))});
+  }catch(e){console.error('KanbanBoards save:',e);}
+}
+
 function fbSaveDeliverables(){
   if(!window.auth||!window.auth.currentUser)return;
   try{var uid=window.auth.currentUser.uid;
