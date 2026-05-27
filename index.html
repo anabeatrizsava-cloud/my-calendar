@@ -2601,7 +2601,14 @@ function renderCalSwitcher(){
     dot.id='calDot_'+c.id;
     dot.setAttribute('style','background:'+c.color+';width:11px;height:11px;cursor:pointer;border-radius:2px');
     dot.title=c.name+(c.integrated?' (integrado)':'');
-    (function(id){dot.onclick=function(){switchCal(id);};})(c.id);
+    (function(id,cal){
+      dot.onclick=function(){switchCal(id);};
+      dot.oncontextmenu=function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        showCalDotMenu(e,id,cal);
+      };
+    })(c.id,c);
     wrap.appendChild(dot);
     var tog=document.createElement('div');
     tog.setAttribute('style','cursor:pointer;opacity:.45;display:flex;align-items:center;justify-content:center;width:14px;height:10px');
@@ -2613,6 +2620,137 @@ function renderCalSwitcher(){
     wrap.appendChild(tog);
     sw.appendChild(wrap);
   });
+}
+
+function showCalDotMenu(e,calId,cal){
+  var existing=document.getElementById('calDotCtxMenu');
+  if(existing)existing.remove();
+  var menu=document.createElement('div');
+  menu.id='calDotCtxMenu';
+  menu.setAttribute('style','position:fixed;z-index:9999;background:#ffffff;border:0.5px solid #d1d5db;border-radius:10px;padding:6px 0;width:172px;box-shadow:0 4px 16px rgba(0,0,0,0.13);font-family:Montserrat,sans-serif');
+  var rect=e.target.getBoundingClientRect();
+  menu.style.left=(rect.right+8)+'px';
+  menu.style.top=Math.min(rect.top,window.innerHeight-180)+'px';
+  menu.innerHTML=
+    '<div style="padding:6px 12px 8px;border-bottom:0.5px solid #e5e7eb;margin-bottom:4px">'
+      +'<div style="font-size:11px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+cal.name+'</div>'
+      +'<div style="font-size:10px;color:#9ca3af;margin-top:1px">Work calendar</div>'
+    +'</div>'
+    +'<div id="ctxRename" style="padding:5px 12px;font-size:11px;color:#374151;display:flex;align-items:center;gap:7px;cursor:pointer">'
+      +'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>Renomear'
+    +'</div>'
+    +'<div id="ctxIntegrate" style="padding:5px 12px;font-size:11px;color:#374151;display:flex;align-items:center;gap:7px;cursor:pointer">'
+      +'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>'
+      +(cal.integrated?'Desintegrar do principal':'Integrar ao principal')
+    +'</div>'
+    +'<div style="height:0.5px;background:#e5e7eb;margin:4px 0"></div>'
+    +'<div id="ctxDelete" style="padding:5px 12px;font-size:11px;color:#dc2626;display:flex;align-items:center;gap:7px;cursor:pointer">'
+      +'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Excluir calendar'
+    +'</div>';
+  document.body.appendChild(menu);
+  menu.querySelector('#ctxRename').onmouseenter=function(){this.style.background='#f3f4f6';};
+  menu.querySelector('#ctxRename').onmouseleave=function(){this.style.background='';};
+  menu.querySelector('#ctxIntegrate').onmouseenter=function(){this.style.background='#f3f4f6';};
+  menu.querySelector('#ctxIntegrate').onmouseleave=function(){this.style.background='';};
+  menu.querySelector('#ctxDelete').onmouseenter=function(){this.style.background='#fef2f2';};
+  menu.querySelector('#ctxDelete').onmouseleave=function(){this.style.background='';};
+  menu.querySelector('#ctxRename').onclick=function(){
+    menu.remove();
+    var newName=prompt('Novo nome:',cal.name||'');
+    if(!newName||!newName.trim())return;
+    cal.name=newName.trim();
+    if(window.fbSaveWorkCals)fbSaveWorkCals();
+    renderCalSwitcher();
+    showToast('Calendar renomeado!');
+  };
+  menu.querySelector('#ctxIntegrate').onclick=function(){
+    menu.remove();
+    toggleCalIntegration(calId);
+  };
+  menu.querySelector('#ctxDelete').onclick=function(){
+    menu.remove();
+    confirmDeleteWorkCal(calId,cal);
+  };
+  setTimeout(function(){
+    document.addEventListener('click',function closeMenu(ev){
+      if(!menu.contains(ev.target)){menu.remove();document.removeEventListener('click',closeMenu);}
+    });
+  },0);
+}
+
+function confirmDeleteWorkCal(calId,cal){
+  var existing=document.getElementById('delCalOverlay');
+  if(existing)existing.remove();
+  var overlay=document.createElement('div');
+  overlay.id='delCalOverlay';
+  overlay.setAttribute('style','position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center');
+  var evCount=(window.workEvs[calId]||[]).length;
+  var cardCount=(window.kanbanCards[calId]||[]).length;
+  var colCount=(window.kanbanCols[calId]||[]).length;
+  overlay.innerHTML=
+    '<div style="background:#fff;border:0.5px solid #d1d5db;border-radius:16px;width:390px;max-width:92vw;font-family:Montserrat,sans-serif;overflow:hidden" onclick="event.stopPropagation()">'
+      +'<div style="padding:20px 24px 0">'
+        +'<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px">'
+          +'<div style="display:flex;align-items:center;gap:10px">'
+            +'<div style="width:36px;height:36px;border-radius:8px;background:#fef2f2;display:flex;align-items:center;justify-content:center;flex-shrink:0">'
+              +'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>'
+            +'</div>'
+            +'<div>'
+              +'<p style="font-size:14px;font-weight:600;color:#111827;margin:0">Excluir calendar</p>'
+              +'<p style="font-size:11px;color:#6b7280;margin:0;margin-top:2px">Esta ação não pode ser desfeita</p>'
+            +'</div>'
+          +'</div>'
+          +'<button id="delCalClose" style="background:none;border:none;cursor:pointer;color:#9ca3af;padding:2px;display:flex;align-items:center;font-size:18px;line-height:1">×</button>'
+        +'</div>'
+      +'</div>'
+      +'<div style="padding:16px 24px">'
+        +'<div style="background:#f9fafb;border-radius:10px;padding:12px 14px;margin-bottom:14px;border:0.5px solid #e5e7eb">'
+          +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+            +'<div style="width:10px;height:10px;border-radius:3px;background:'+(cal.color||'#486068')+';flex-shrink:0"></div>'
+            +'<p style="font-size:13px;font-weight:600;color:#111827;margin:0">'+cal.name+'</p>'
+          +'</div>'
+          +'<div style="display:flex;gap:16px">'
+            +'<div><span style="display:block;color:#9ca3af;font-size:10px;margin-bottom:2px">eventos</span><span style="font-size:12px;font-weight:500;color:#111827">'+evCount+'</span></div>'
+            +'<div><span style="display:block;color:#9ca3af;font-size:10px;margin-bottom:2px">colunas kanban</span><span style="font-size:12px;font-weight:500;color:#111827">'+colCount+'</span></div>'
+            +'<div><span style="display:block;color:#9ca3af;font-size:10px;margin-bottom:2px">cards kanban</span><span style="font-size:12px;font-weight:500;color:#111827">'+cardCount+'</span></div>'
+          +'</div>'
+        +'</div>'
+        +'<div style="background:#f0fdf4;border-radius:8px;padding:8px 12px;margin-bottom:12px;border:0.5px solid #bbf7d0;display:flex;align-items:flex-start;gap:7px">'
+          +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>'
+          +'<p style="font-size:11px;color:#15803d;margin:0;line-height:1.5">Kanbans criados em outros work calendars <strong>não serão afetados</strong> — apenas os dados deste calendar serão removidos.</p>'
+        +'</div>'
+        +'<div style="background:#fef2f2;border-radius:8px;padding:8px 12px;border:0.5px solid #fecaca;display:flex;align-items:flex-start;gap:7px">'
+          +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
+          +'<p style="font-size:11px;color:#991b1b;margin:0;line-height:1.5">Eventos e cards deste calendar serão permanentemente excluídos.</p>'
+        +'</div>'
+      +'</div>'
+      +'<div style="padding:0 24px 20px;display:flex;gap:8px;justify-content:flex-end">'
+        +'<button id="delCalCancel" style="padding:8px 16px;border-radius:8px;border:0.5px solid #d1d5db;background:#fff;font-family:Montserrat,sans-serif;font-size:12px;font-weight:500;cursor:pointer;color:#6b7280">Cancelar</button>'
+        +'<button id="delCalConfirm" style="padding:8px 16px;border-radius:8px;border:none;background:#dc2626;font-family:Montserrat,sans-serif;font-size:12px;font-weight:500;cursor:pointer;color:#fff;display:flex;align-items:center;gap:6px">'
+          +'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>'
+          +'Excluir calendar'
+        +'</button>'
+      +'</div>'
+    +'</div>';
+  document.body.appendChild(overlay);
+  overlay.querySelector('#delCalClose').onclick=function(){overlay.remove();};
+  overlay.querySelector('#delCalCancel').onclick=function(){overlay.remove();};
+  overlay.onclick=function(ev){if(ev.target===overlay)overlay.remove();};
+  overlay.querySelector('#delCalConfirm').onclick=function(){
+    // Remove apenas o workCal e seus dados — NÃO toca em kanbanBoards independentes
+    window.workCals=(window.workCals||[]).filter(function(c){return c.id!==calId;});
+    if(window.fbSaveWorkCals)fbSaveWorkCals();
+    delete window.workEvs[calId];
+    fbSaveWorkEvs(calId);
+    delete window.kanbanCols[calId];
+    delete window.kanbanCards[calId];
+    fbSaveKanban(calId);
+    overlay.remove();
+    var next=(window.workCals||[])[0]||(window.kanbanBoards||[])[0];
+    if(next){_wCalId=next.id;switchCal(next.id);}else{switchCal('main');}
+    renderCalSwitcher();
+    showToast('"'+cal.name+'" excluido.');
+  };
 }
 
 function toggleCalIntegration(calId){
@@ -4901,10 +5039,17 @@ function renderWorkKanban(calId){
     var isBoard=(window.kanbanBoards||[]).find(function(b){return b.id===calId;});
     var isCal=(window.workCals||[]).find(function(c){return c.id===calId;});
     currentName=isBoard?isBoard.name:isCal?isCal.name:calId;
-    if(!confirm('Excluir "'+currentName+'" e todos os cards?'))return;
+    if(!confirm('Excluir "'+currentName+'" e todos os dados associados (tarefas, cards)?'))return;
     if(isBoard){
       window.kanbanBoards=window.kanbanBoards.filter(function(b){return b.id!==calId;});
       fbSaveKanbanBoards();
+    }
+    if(isCal){
+      window.workCals=window.workCals.filter(function(c){return c.id!==calId;});
+      if(window.fbSaveWorkCals)fbSaveWorkCals();
+      // Also delete work events for this calendar
+      delete window.workEvs[calId];
+      fbSaveWorkEvs(calId);
     }
     delete window.kanbanCols[calId];
     delete window.kanbanCards[calId];
