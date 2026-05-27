@@ -2737,7 +2737,6 @@ function confirmDeleteWorkCal(calId,cal){
   overlay.querySelector('#delCalCancel').onclick=function(){overlay.remove();};
   overlay.onclick=function(ev){if(ev.target===overlay)overlay.remove();};
   overlay.querySelector('#delCalConfirm').onclick=function(){
-    // Remove apenas o workCal e seus dados — NÃO toca em kanbanBoards independentes
     window.workCals=(window.workCals||[]).filter(function(c){return c.id!==calId;});
     if(window.fbSaveWorkCals)fbSaveWorkCals();
     delete window.workEvs[calId];
@@ -4925,7 +4924,8 @@ function runKanbanAutomation(calId){
 function renderWorkKanban(calId){
   calId=calId||activeCal;
   if(calId==='main')return;
-  var cal=(window.workCals||[]).find(function(c){return c.id===calId;});
+  var cal=(window.workCals||[]).find(function(c){return c.id===calId;})
+      ||(window.kanbanBoards||[]).find(function(b){return b.id===calId;});
   if(!cal)return;
   // Run automations
   runKanbanAutomation(calId);
