@@ -7580,7 +7580,7 @@ function showFinSundayModal(pending){
         var oldDate=new Date((task.dueDate||task.date)+'T12:00:00');
         oldDate.setDate(oldDate.getDate()+7);
         var newDate=oldDate.toISOString().split('T')[0];
-        try{window.firestore.updateDoc(window.firestore.doc(window.db,'finance_tasks',docId),{dueDate:newDate});}catch(e){}
+        try{window.firestore.updateDoc(window.firestore.doc(window.db,'finance_tasks',docId),{date:newDate,dueDate:null});}catch(e){}
       }
       var r=document.getElementById('finSunRow'+idx);if(r){r.style.opacity='.3';r.style.pointerEvents='none';}
       showToast('Movida pra proxima semana!');
