@@ -1823,26 +1823,20 @@ function togDone(id,idate){
   const ev=evs.find(e=>e.id===id);
   if(!ev)return;
   const isRepeated=ev.repeat&&ev.repeat!=='none';
-  const instanceDate=idate&&idate!==ev.date?idate:(isRepeated?idate:null);
+  // For repeated events always use doneExceptions keyed by instance date
   var wasDone=false;
-  if(instanceDate&&isRepeated){
-    // repeated event — toggle only this specific date
+  if(isRepeated){
+    // repeated event — toggle only this specific instance date, never touch master done
     if(!ev.doneExceptions)ev.doneExceptions={};
-    wasDone=!!ev.doneExceptions[instanceDate];
-    ev.doneExceptions[instanceDate]=!ev.doneExceptions[instanceDate];
-    if(window.fbSaveEv)fbSaveEv(ev);
-  } else if(instanceDate===ev.date||!isRepeated){
-    // original date or non-repeated event
-    wasDone=ev.done;
-    ev.done=!ev.done;
+    wasDone=!!ev.doneExceptions[idate||ev.date];
+    ev.doneExceptions[idate||ev.date]=!wasDone;
     if(window.fbSaveEv)fbSaveEv(ev);
   } else {
-    // fallback
+    // non-repeated event — toggle master done
     wasDone=ev.done;
     ev.done=!ev.done;
     if(window.fbSaveEv)fbSaveEv(ev);
   }
-  // ── CROSS-MODULE CONNECTIONS ──
   var nowDone=!wasDone;
   if(nowDone)triggerCrossModuleUpdate(ev);
   // Refresh Mundana overlay
@@ -2622,6 +2616,7 @@ function renderCalSwitcher(){
   });
 }
 
+
 function showCalDotMenu(e,calId,cal){
   var existing=document.getElementById('calDotCtxMenu');
   if(existing)existing.remove();
@@ -2631,22 +2626,7 @@ function showCalDotMenu(e,calId,cal){
   var rect=e.target.getBoundingClientRect();
   menu.style.left=(rect.right+8)+'px';
   menu.style.top=Math.min(rect.top,window.innerHeight-180)+'px';
-  menu.innerHTML=
-    '<div style="padding:6px 12px 8px;border-bottom:0.5px solid #e5e7eb;margin-bottom:4px">'
-      +'<div style="font-size:11px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+cal.name+'</div>'
-      +'<div style="font-size:10px;color:#9ca3af;margin-top:1px">Work calendar</div>'
-    +'</div>'
-    +'<div id="ctxRename" style="padding:5px 12px;font-size:11px;color:#374151;display:flex;align-items:center;gap:7px;cursor:pointer">'
-      +'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>Renomear'
-    +'</div>'
-    +'<div id="ctxIntegrate" style="padding:5px 12px;font-size:11px;color:#374151;display:flex;align-items:center;gap:7px;cursor:pointer">'
-      +'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>'
-      +(cal.integrated?'Desintegrar do principal':'Integrar ao principal')
-    +'</div>'
-    +'<div style="height:0.5px;background:#e5e7eb;margin:4px 0"></div>'
-    +'<div id="ctxDelete" style="padding:5px 12px;font-size:11px;color:#dc2626;display:flex;align-items:center;gap:7px;cursor:pointer">'
-      +'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Excluir calendar'
-    +'</div>';
+  menu.innerHTML='<div style="padding:6px 12px 8px;border-bottom:0.5px solid #e5e7eb;margin-bottom:4px"><div style="font-size:11px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+cal.name+'</div><div style="font-size:10px;color:#9ca3af;margin-top:1px">Work calendar</div></div><div id="ctxRename" style="padding:5px 12px;font-size:11px;color:#374151;display:flex;align-items:center;gap:7px;cursor:pointer">Renomear</div><div id="ctxIntegrate" style="padding:5px 12px;font-size:11px;color:#374151;display:flex;align-items:center;gap:7px;cursor:pointer">'+(cal.integrated?'Desintegrar do principal':'Integrar ao principal')+'</div><div style="height:0.5px;background:#e5e7eb;margin:4px 0"></div><div id="ctxDelete" style="padding:5px 12px;font-size:11px;color:#dc2626;display:flex;align-items:center;gap:7px;cursor:pointer">Excluir calendar</div>';
   document.body.appendChild(menu);
   menu.querySelector('#ctxRename').onmouseenter=function(){this.style.background='#f3f4f6';};
   menu.querySelector('#ctxRename').onmouseleave=function(){this.style.background='';};
@@ -2654,28 +2634,10 @@ function showCalDotMenu(e,calId,cal){
   menu.querySelector('#ctxIntegrate').onmouseleave=function(){this.style.background='';};
   menu.querySelector('#ctxDelete').onmouseenter=function(){this.style.background='#fef2f2';};
   menu.querySelector('#ctxDelete').onmouseleave=function(){this.style.background='';};
-  menu.querySelector('#ctxRename').onclick=function(){
-    menu.remove();
-    var newName=prompt('Novo nome:',cal.name||'');
-    if(!newName||!newName.trim())return;
-    cal.name=newName.trim();
-    if(window.fbSaveWorkCals)fbSaveWorkCals();
-    renderCalSwitcher();
-    showToast('Calendar renomeado!');
-  };
-  menu.querySelector('#ctxIntegrate').onclick=function(){
-    menu.remove();
-    toggleCalIntegration(calId);
-  };
-  menu.querySelector('#ctxDelete').onclick=function(){
-    menu.remove();
-    confirmDeleteWorkCal(calId,cal);
-  };
-  setTimeout(function(){
-    document.addEventListener('click',function closeMenu(ev){
-      if(!menu.contains(ev.target)){menu.remove();document.removeEventListener('click',closeMenu);}
-    });
-  },0);
+  menu.querySelector('#ctxRename').onclick=function(){menu.remove();var newName=prompt('Novo nome:',cal.name||'');if(!newName||!newName.trim())return;cal.name=newName.trim();if(window.fbSaveWorkCals)fbSaveWorkCals();renderCalSwitcher();showToast('Calendar renomeado!');};
+  menu.querySelector('#ctxIntegrate').onclick=function(){menu.remove();toggleCalIntegration(calId);};
+  menu.querySelector('#ctxDelete').onclick=function(){menu.remove();confirmDeleteWorkCal(calId,cal);};
+  setTimeout(function(){document.addEventListener('click',function closeMenu(ev){if(!menu.contains(ev.target)){menu.remove();document.removeEventListener('click',closeMenu);}});},0);
 }
 
 function confirmDeleteWorkCal(calId,cal){
@@ -2687,63 +2649,16 @@ function confirmDeleteWorkCal(calId,cal){
   var evCount=(window.workEvs[calId]||[]).length;
   var cardCount=(window.kanbanCards[calId]||[]).length;
   var colCount=(window.kanbanCols[calId]||[]).length;
-  overlay.innerHTML=
-    '<div style="background:#fff;border:0.5px solid #d1d5db;border-radius:16px;width:390px;max-width:92vw;font-family:Montserrat,sans-serif;overflow:hidden" onclick="event.stopPropagation()">'
-      +'<div style="padding:20px 24px 0">'
-        +'<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px">'
-          +'<div style="display:flex;align-items:center;gap:10px">'
-            +'<div style="width:36px;height:36px;border-radius:8px;background:#fef2f2;display:flex;align-items:center;justify-content:center;flex-shrink:0">'
-              +'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>'
-            +'</div>'
-            +'<div>'
-              +'<p style="font-size:14px;font-weight:600;color:#111827;margin:0">Excluir calendar</p>'
-              +'<p style="font-size:11px;color:#6b7280;margin:0;margin-top:2px">Esta ação não pode ser desfeita</p>'
-            +'</div>'
-          +'</div>'
-          +'<button id="delCalClose" style="background:none;border:none;cursor:pointer;color:#9ca3af;padding:2px;display:flex;align-items:center;font-size:18px;line-height:1">×</button>'
-        +'</div>'
-      +'</div>'
-      +'<div style="padding:16px 24px">'
-        +'<div style="background:#f9fafb;border-radius:10px;padding:12px 14px;margin-bottom:14px;border:0.5px solid #e5e7eb">'
-          +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
-            +'<div style="width:10px;height:10px;border-radius:3px;background:'+(cal.color||'#486068')+';flex-shrink:0"></div>'
-            +'<p style="font-size:13px;font-weight:600;color:#111827;margin:0">'+cal.name+'</p>'
-          +'</div>'
-          +'<div style="display:flex;gap:16px">'
-            +'<div><span style="display:block;color:#9ca3af;font-size:10px;margin-bottom:2px">eventos</span><span style="font-size:12px;font-weight:500;color:#111827">'+evCount+'</span></div>'
-            +'<div><span style="display:block;color:#9ca3af;font-size:10px;margin-bottom:2px">colunas kanban</span><span style="font-size:12px;font-weight:500;color:#111827">'+colCount+'</span></div>'
-            +'<div><span style="display:block;color:#9ca3af;font-size:10px;margin-bottom:2px">cards kanban</span><span style="font-size:12px;font-weight:500;color:#111827">'+cardCount+'</span></div>'
-          +'</div>'
-        +'</div>'
-        +'<div style="background:#f0fdf4;border-radius:8px;padding:8px 12px;margin-bottom:12px;border:0.5px solid #bbf7d0;display:flex;align-items:flex-start;gap:7px">'
-          +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>'
-          +'<p style="font-size:11px;color:#15803d;margin:0;line-height:1.5">Kanbans criados em outros work calendars <strong>não serão afetados</strong> — apenas os dados deste calendar serão removidos.</p>'
-        +'</div>'
-        +'<div style="background:#fef2f2;border-radius:8px;padding:8px 12px;border:0.5px solid #fecaca;display:flex;align-items:flex-start;gap:7px">'
-          +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
-          +'<p style="font-size:11px;color:#991b1b;margin:0;line-height:1.5">Eventos e cards deste calendar serão permanentemente excluídos.</p>'
-        +'</div>'
-      +'</div>'
-      +'<div style="padding:0 24px 20px;display:flex;gap:8px;justify-content:flex-end">'
-        +'<button id="delCalCancel" style="padding:8px 16px;border-radius:8px;border:0.5px solid #d1d5db;background:#fff;font-family:Montserrat,sans-serif;font-size:12px;font-weight:500;cursor:pointer;color:#6b7280">Cancelar</button>'
-        +'<button id="delCalConfirm" style="padding:8px 16px;border-radius:8px;border:none;background:#dc2626;font-family:Montserrat,sans-serif;font-size:12px;font-weight:500;cursor:pointer;color:#fff;display:flex;align-items:center;gap:6px">'
-          +'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>'
-          +'Excluir calendar'
-        +'</button>'
-      +'</div>'
-    +'</div>';
+  overlay.innerHTML='<div style="background:#fff;border:0.5px solid #d1d5db;border-radius:16px;width:390px;max-width:92vw;font-family:Montserrat,sans-serif;overflow:hidden" onclick="event.stopPropagation()"><div style="padding:20px 24px 0"><p style="font-size:14px;font-weight:600;color:#111827;margin:0">Excluir calendar</p><p style="font-size:11px;color:#6b7280;margin:4px 0 0">Esta ação não pode ser desfeita</p></div><div style="padding:16px 24px"><div style="background:#f9fafb;border-radius:10px;padding:12px 14px;margin-bottom:14px;border:0.5px solid #e5e7eb"><p style="font-size:13px;font-weight:600;color:#111827;margin:0 0 8px">'+cal.name+'</p><div style="display:flex;gap:16px"><div><span style="display:block;color:#9ca3af;font-size:10px;margin-bottom:2px">eventos</span><span style="font-size:12px;font-weight:500;color:#111827">'+evCount+'</span></div><div><span style="display:block;color:#9ca3af;font-size:10px;margin-bottom:2px">colunas</span><span style="font-size:12px;font-weight:500;color:#111827">'+colCount+'</span></div><div><span style="display:block;color:#9ca3af;font-size:10px;margin-bottom:2px">cards</span><span style="font-size:12px;font-weight:500;color:#111827">'+cardCount+'</span></div></div></div><div style="background:#f0fdf4;border-radius:8px;padding:8px 12px;margin-bottom:12px;border:0.5px solid #bbf7d0"><p style="font-size:11px;color:#15803d;margin:0;line-height:1.5">Kanbans criados em outros work calendars <strong>não serão afetados</strong>.</p></div><div style="background:#fef2f2;border-radius:8px;padding:8px 12px;border:0.5px solid #fecaca"><p style="font-size:11px;color:#991b1b;margin:0;line-height:1.5">Eventos e cards deste calendar serão excluídos permanentemente.</p></div></div><div style="padding:0 24px 20px;display:flex;gap:8px;justify-content:flex-end"><button id="delCalCancel" style="padding:8px 16px;border-radius:8px;border:0.5px solid #d1d5db;background:#fff;font-family:Montserrat,sans-serif;font-size:12px;font-weight:500;cursor:pointer;color:#6b7280">Cancelar</button><button id="delCalConfirm" style="padding:8px 16px;border-radius:8px;border:none;background:#dc2626;font-family:Montserrat,sans-serif;font-size:12px;font-weight:500;cursor:pointer;color:#fff">Excluir calendar</button></div></div>';
   document.body.appendChild(overlay);
-  overlay.querySelector('#delCalClose').onclick=function(){overlay.remove();};
+  overlay.querySelector('#delCalClose') && overlay.querySelector('#delCalClose').addEventListener('click',function(){overlay.remove();});
   overlay.querySelector('#delCalCancel').onclick=function(){overlay.remove();};
   overlay.onclick=function(ev){if(ev.target===overlay)overlay.remove();};
   overlay.querySelector('#delCalConfirm').onclick=function(){
     window.workCals=(window.workCals||[]).filter(function(c){return c.id!==calId;});
     if(window.fbSaveWorkCals)fbSaveWorkCals();
-    delete window.workEvs[calId];
-    fbSaveWorkEvs(calId);
-    delete window.kanbanCols[calId];
-    delete window.kanbanCards[calId];
-    fbSaveKanban(calId);
+    delete window.workEvs[calId];fbSaveWorkEvs(calId);
+    delete window.kanbanCols[calId];delete window.kanbanCards[calId];fbSaveKanban(calId);
     overlay.remove();
     var next=(window.workCals||[])[0]||(window.kanbanBoards||[])[0];
     if(next){_wCalId=next.id;switchCal(next.id);}else{switchCal('main');}
@@ -2874,10 +2789,13 @@ function toggleMeetDone(calId,evId,idate){
   var list=window.workEvs[calId]||[];
   var ev=list.find(function(e){return e.id===evId;});
   if(!ev)return;
-  if(ev.repeat&&ev.repeat!=='none'&&idate){
+  var isRepeat=ev.repeat&&ev.repeat!=='none';
+  // Always use progressExceptions for repeated events — never touch master progress
+  var instanceDate=idate||ev.date;
+  if(isRepeat){
     if(!ev.progressExceptions)ev.progressExceptions={};
-    var cur=ev.progressExceptions[idate]||ev.progress||'not-started';
-    ev.progressExceptions[idate]=cur==='done'?'not-started':'done';
+    var cur=ev.progressExceptions[instanceDate]||ev.progress||'not-started';
+    ev.progressExceptions[instanceDate]=cur==='done'?'not-started':'done';
   } else {
     ev.progress=(ev.progress==='done')?'not-started':'done';
   }
@@ -2892,12 +2810,14 @@ function cycleWProg(calId,evId,idate,el){
   var ev=list.find(function(e){return e.id===evId;});
   if(!ev)return;
   var order=['not-started','in-progress','done'];
-  if(ev.repeat&&ev.repeat!=='none'&&idate){
-    // Repeating task: store progress per instance date
+  var isRepeatCyc=ev.repeat&&ev.repeat!=='none';
+  var instanceDateCyc=idate||ev.date;
+  if(isRepeatCyc){
+    // Repeating task: store progress per instance date — never touch master
     if(!ev.progressExceptions)ev.progressExceptions={};
-    var currentProg=ev.progressExceptions[idate]||ev.progress||'not-started';
+    var currentProg=ev.progressExceptions[instanceDateCyc]||ev.progress||'not-started';
     var idx=order.indexOf(currentProg);
-    ev.progressExceptions[idate]=order[(idx+1)%3];
+    ev.progressExceptions[instanceDateCyc]=order[(idx+1)%3];
   } else {
     // Non-repeating task: change master progress
     var idx=order.indexOf(ev.progress||'not-started');
@@ -4140,9 +4060,10 @@ function runCustomCalRules(){
   rules.forEach(function(rule){
     if(!rule.enabled)return;
 
-    // Run key to prevent duplicate runs per day
+    // Run key to prevent duplicate runs per day — persist in localStorage so reloads don't re-fire
     var runKey='_cr_'+rule.id+'_'+todayStr;
-    if(window[runKey])return;
+    var alreadyRan=window[runKey]||localStorage.getItem(runKey);
+    if(alreadyRan)return;
 
     // Check trigger
     var shouldRun=false;
@@ -4163,8 +4084,9 @@ function runCustomCalRules(){
     if(!shouldRun){console.log('Rule "'+rule.name+'" skipped: trigger not met');return;}
     console.log('Rule "'+rule.name+'" FIRING: trigger='+rule.trigger+' action='+rule.action);
 
-    // Mark as run for today
+    // Mark as run for today — both in memory and localStorage
     window[runKey]=true;
+    try{localStorage.setItem(runKey,'1');}catch(e){}
 
     // Apply to matching tasks across all work calendars
     (window.workCals||[]).forEach(function(cal){
@@ -4343,13 +4265,16 @@ function runAutoComplete(){
     var list=window.workEvs[cal.id]||[];
     var changed=false;
     list.forEach(function(ev){
-      if(ev.progress==='done')return;
       if(!ev.endTime||ev.allDay)return;
-      if(ev.date!==todayStr)return;
-      var parts=ev.endTime.split(':');
+      // For repeated events, check if this date is an active instance
+      var isRepeat=ev.repeat&&ev.repeat!=="none";
+      if(isRepeat){var inst=(ev.progressExceptions||{})[todayStr];if(inst==="done")return;}else{if(ev.progress==="done")return;}
+      // For repeated events match any instance today; for non-repeated match exact date
+      if(!isRepeat&&ev.date!==todayStr)return;
+      var parts=ev.endTime.split(":");
       var endMin=parseInt(parts[0])*60+parseInt(parts[1]);
       if(nowMinutes>=endMin+30){
-        ev.progress='done';
+        if(isRepeat){if(!ev.progressExceptions)ev.progressExceptions={};ev.progressExceptions[todayStr]="done";}else{ev.progress="done";}
         changed=true;
       }
     });
