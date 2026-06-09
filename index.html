@@ -1344,8 +1344,8 @@ function rDay(c){
   const wrap=document.createElement('div');wrap.className='dv';
   const allday=de.filter(e=>e.allDay),
     timedRaw=de.filter(e=>!e.allDay),
-    timedNotDone=timedRaw.filter(e=>!e.done).sort((a,b)=>a.startTime.localeCompare(b.startTime)),
-    timedDone=timedRaw.filter(e=>e.done).sort((a,b)=>a.startTime.localeCompare(b.startTime)),
+    timedNotDone=timedRaw.filter(e=>!e.done).sort((a,b)=>(a.startTime||'').localeCompare(b.startTime||'')),
+    timedDone=timedRaw.filter(e=>e.done).sort((a,b)=>(a.startTime||'').localeCompare(b.startTime||'')),
     timed=hideDone?timedNotDone:[...timedNotDone,...timedDone];
   const today=new Date(),isT=cd.toDateString()===today.toDateString();
   const fer=getFeriado(ds);
@@ -2296,13 +2296,28 @@ function renderRightPanel(){
   const todayEvs=getEvs(ds);
   const total=todayEvs.filter(e=>!e.allDay).length;
   const done=todayEvs.filter(e=>!e.allDay&&e.done).length;
+  const pending=total-done;
   const load=getDayLoad(ds);
   const pct=load.pct||0;
+  // Horas totais (incluindo concluídas)
+  const loadAll=(function(){
+    const evList=todayEvs.filter(e=>!e.allDay);
+    let t=0;
+    evList.forEach(ev=>{
+      if(ev.startTime&&ev.endTime){
+        const [sh,sm]=ev.startTime.split(':').map(Number);
+        const [eh,em]=ev.endTime.split(':').map(Number);
+        const diff=(eh*60+em)-(sh*60+sm);
+        if(diff>0)t+=diff;
+      }else{t+=60;}
+    });
+    return t;
+  })();
 
   // tomorrow
   const tomorrow=new Date(cd);tomorrow.setDate(tomorrow.getDate()+1);
   const tmrDs=tds(tomorrow);
-  const tmrEvs=getEvs(tmrDs).filter(e=>!e.allDay).sort((a,b)=>a.startTime.localeCompare(b.startTime)).slice(0,2);
+  const tmrEvs=getEvs(tmrDs).filter(e=>!e.allDay).sort((a,b)=>(a.startTime||'').localeCompare(b.startTime||'')).slice(0,2);
   const days=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
   const months2rp=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const tmrLabel=days[tomorrow.getDay()]+' '+tomorrow.getDate();
@@ -2353,14 +2368,16 @@ function renderRightPanel(){
   html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px">';
   html+='<div style="background:#f7f8fa;border-radius:8px;padding:10px">';
   html+='<div style="font-size:8px;font-weight:600;color:#9ca3af;letter-spacing:.8px;text-transform:uppercase;margin-bottom:5px;font-family:Montserrat,sans-serif">Tarefas</div>';
-  html+='<div style="font-size:26px;font-weight:300;color:#1a1a1a;line-height:1;font-family:Montserrat,sans-serif">'+total+'</div>';
-  html+='<div style="font-size:9px;color:#aaa89e;margin-top:3px;font-family:Montserrat,sans-serif">'+done+' concluída'+(done!==1?'s':'')+'</div></div>';
+  html+='<div style="font-size:26px;font-weight:300;color:#1a1a1a;line-height:1;font-family:Montserrat,sans-serif">'+pending+'</div>';
+  html+='<div style="font-size:9px;color:#aaa89e;margin-top:3px;font-family:Montserrat,sans-serif">'+done+' concluída'+(done!==1?'s':'')+' de '+total+'</div></div>';
   html+='<div style="background:#f7f8fa;border-radius:8px;padding:10px">';
   html+='<div style="font-size:8px;font-weight:600;color:#9ca3af;letter-spacing:.8px;text-transform:uppercase;margin-bottom:5px;font-family:Montserrat,sans-serif">Horas</div>';
   const h=Math.floor(load.totalMins/60),m=load.totalMins%60;
   const hStr=load.totalMins>0?(h>0?h+'h':'')+(m>0?m+'m':''):'0h';
+  const hAll=Math.floor(loadAll/60),mAll=loadAll%60;
+  const hAllStr=loadAll>0?(hAll>0?hAll+'h':'')+(mAll>0?mAll+'m':''):'0h';
   html+='<div style="font-size:26px;font-weight:300;color:#1a1a1a;line-height:1;font-family:Montserrat,sans-serif">'+hStr+'</div>';
-  html+='<div style="font-size:9px;color:#aaa89e;margin-top:3px;font-family:Montserrat,sans-serif">pendentes</div></div></div>';
+  html+='<div style="font-size:9px;color:#aaa89e;margin-top:3px;font-family:Montserrat,sans-serif">pendentes de '+hAllStr+'</div></div></div>';
   // carga - thin bar
   var cargaColor=pct>=90?'#B3907F':pct>=60?'#c87060':pct>=30?'#b17a3a':'#486068';
   html+='<div style="background:#f7f8fa;border-radius:6px;padding:6px 8px;margin-top:8px">';
