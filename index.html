@@ -1357,7 +1357,7 @@ function rDay(c){
   html+='<div class="del">';
   if(!timed.length&&!allday.length&&!fer)html+='<div style="text-align:center;color:var(--text3);padding:32px 0;font-size:13px">Nenhum evento.<br><span style="font-size:11px">Clique em Novo para adicionar.</span></div>';
   else{
-    const grpsND={};timedNotDone.forEach(ev=>{const h=ev.startTime.split(':')[0];if(!grpsND[h])grpsND[h]=[];grpsND[h].push(ev);});
+    const grpsND={};timedNotDone.forEach(ev=>{const h=(ev.startTime||'00').split(':')[0];if(!grpsND[h])grpsND[h]=[];grpsND[h].push(ev);});
     const nowM=today.getHours()*60+today.getMinutes();let ni=false;
     Object.keys(grpsND).sort().forEach((h,idx)=>{
       if(isT&&!ni&&parseInt(h)*60>nowM){html+='<div class="now-ind"></div>';ni=true;}
@@ -1386,7 +1386,7 @@ function ecHTML(ev){
       ? '<div class="etgs">'+ev.tags.map((t,i)=>{const wc=['#374151','#4a5568','#6b7280','#1f2937','#111827'];return'<span class="wtag-pill" style="background:'+wc[i%5]+';color:white">'+t+'</span>';}).join('')+'</div>'
       : '<div class="etgs">'+ev.tags.map(t=>'<span class="etg">'+t+'</span>').join('')+'</div>'
     ):'';
-    const tm=ev.allDay?'Dia todo':ev.startTime+' - '+ev.endTime;
+    const tm=ev.allDay?'Dia todo':(ev.startTime&&ev.endTime?ev.startTime+' - '+ev.endTime:ev.startTime||ev.endTime||'');
     return'<div class="ec bulk-ev '+(sel?'bulk-selected':'')+(ev.done?' done':'')+'" data-eid="'+ev.id+'" data-idate="'+(ev._instanceDate||ev.date)+'" style="border-left-color:'+(ev.color||'#c87060')+'">'
       +'<div class="bulk-chk" data-bid="'+ev.id+'">'+(sel?'✓':'')+'</div>'
       +'<div class="ecb"><div class="ect">'+(ev.emoji&&ev.emoji!=='none'?ev.emoji+' ':'')+eh(ev.title)+'</div><div class="ectm">'+tm+'</div>'+tg+'</div>'
@@ -1394,7 +1394,7 @@ function ecHTML(ev){
   }
   const tg=ev.tags&&ev.tags.length?'<div class="etgs">'+ev.tags.map(t=>'<span class="etg" style="background:rgba(26,21,16,.07);color:#6a5a40;border:0.5px solid #e0d4c4">'+t+'</span>').join('')+'</div>':'';
   const sc=ev.subtasks&&ev.subtasks.length?'<div class="ec-subs">'+ev.subtasks.slice(0,2).map(s=>'<div class="ec-sub-item"><div class="ec-sub-chk'+(s.done?' done':'')+'">'+( s.done?'✓':'')+'</div><span class="'+(s.done?'ec-sub-done':'')+'">'+eh(s.text)+'</span></div>').join('')+(ev.subtasks.length>2?'<div style="font-size:10px;color:#b0a080">+'+( ev.subtasks.length-2)+' mais</div>':'')+'</div>':'';
-  const tm=ev.allDay?'Dia todo':ev.startTime+' – '+ev.endTime;
+  const tm=ev.allDay?'Dia todo':(ev.startTime&&ev.endTime?ev.startTime+' – '+ev.endTime:ev.startTime||ev.endTime||'');
   const tagName=ev.tags&&ev.tags.length?ev.tags[0]:'';
   const emojiStr=(ev.emoji&&ev.emoji!=='none'&&ev.emoji!=='')?ev.emoji+' ':'';
   const col=ev.color||'#c87060';
@@ -2405,7 +2405,7 @@ function renderRightPanel(){
       html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid #e5e7eb">';
       html+='<div style="width:2px;height:22px;background:'+col+';border-radius:1px;flex-shrink:0"></div>';
       html+='<div style="flex:1"><div style="font-size:10px;font-weight:500;color:#1a1a1a;font-family:Montserrat,sans-serif">'+(ev.emoji&&ev.emoji!=='none'?ev.emoji+' ':'')+eh(ev.title)+'</div>';
-      html+='<div style="font-size:9px;color:#aaa89e;font-family:monospace;margin-top:1px">'+ev.startTime+' \u2013 '+ev.endTime+'</div></div></div>';
+      html+='<div style="font-size:9px;color:#aaa89e;font-family:monospace;margin-top:1px">'+(ev.startTime&&ev.endTime?ev.startTime+' – '+ev.endTime:ev.startTime||ev.endTime||'')+'</div></div></div>';
     });
   }
   html+='</div></div>';
@@ -7020,6 +7020,7 @@ function syncRunPlanToCalendar(plan){
     date:plan.date,
     color:'#486068',
     tag:'corrida',
+    allDay:true,
     _runPlanId:plan.id,
     done:false
   };
@@ -10072,8 +10073,8 @@ function mobNavTo(tab){
     else showToast('Nenhum Work Calendar criado.');
   } else if(tab==='finance'){
     switchToFinWeek();
-  } else if(tab==='goals'){
-    switchToGoals();
+  } else if(tab==='run'){
+    switchToRun();
   } else if(tab==='notebook'){
     switchToNotebook();
   } else if(tab==='cycle'){
@@ -10171,9 +10172,9 @@ setTimeout(adjustMobilePadding,500);
     <div id="mobFinDot" style="display:none;position:absolute;top:2px;right:calc(50% - 14px);width:7px;height:7px;border-radius:50%;background:#B3907F;border:1.5px solid white"></div>
     <div style="font-size:9px;color:#9ca3af">Contas</div>
   </div>
-  <div class="mob-tab" data-mobtab="goals" onclick="mobNavTo('goals')" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:6px 0;flex:1">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.8" stroke-linecap="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-4"/></svg>
-    <div style="font-size:9px;color:#9ca3af">Metas</div>
+  <div class="mob-tab" data-mobtab="run" onclick="mobNavTo('run')" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:6px 0;flex:1">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4a1 1 0 1 0 2 0 1 1 0 0 0-2 0"/><path d="m7 21 3-6 2 2 2-4"/><path d="m5 12 4-3 3 1 3-3"/></svg>
+    <div style="font-size:9px;color:#9ca3af">Corrida</div>
   </div>
   <div class="mob-tab" data-mobtab="notebook" onclick="mobNavTo('notebook')" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:6px 0;flex:1">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.8" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
