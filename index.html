@@ -7087,7 +7087,9 @@ function renderRunView(){
 
 function renderRunDashboard(body){
   var runs=window.runData.runs||[];
+  var plans=window.runData.plans||[];
   var now=new Date();
+  var today=tds(now);
   var y=now.getFullYear(),m=now.getMonth();
   var monthStr=y+'-'+(m+1<10?'0':'')+(m+1);
   var monthRuns=runs.filter(function(r){return (r.date||'').startsWith(monthStr);});
@@ -7101,50 +7103,52 @@ function renderRunDashboard(body){
   var metaKm=parseFloat(window.runData.metaKm)||80;
   var pct=metaKm>0?Math.min(100,Math.round(totalKm/metaKm*100)):0;
 
-  // Meta card
-  body.innerHTML+='<div style="background:white;border-radius:12px;border:0.5px solid #e5e7eb;padding:14px 16px;margin-bottom:12px">'
-    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
-      +'<div><div style="font-size:12px;font-weight:500;color:#111827">Meta: 21k</div><div style="font-size:9px;color:#9ca3af;margin-top:1px">Km acumulados este mês</div></div>'
-      +'<div style="text-align:right"><div style="font-size:20px;font-weight:500;color:#486068">'+totalKm.toFixed(1)+' km</div><div style="font-size:9px;color:#9ca3af">de '+metaKm+' km/mês</div></div>'
-    +'</div>'
-    +'<div style="background:#f0f2f5;border-radius:8px;height:6px;overflow:hidden;margin-bottom:4px"><div style="height:100%;border-radius:8px;background:#486068;width:'+pct+'%"></div></div>'
-    +'<div style="font-size:9px;color:#9ca3af">'+pct+'% da meta mensal · <span style="color:#486068;font-weight:500;cursor:pointer" onclick="var v=prompt(\'Meta mensal de km:\',window.runData.metaKm||80);if(v&&!isNaN(v)){window.runData.metaKm=parseFloat(v);fbSaveRunData();renderRunView();}">editar meta</span></div>'
-  +'</div>';
+  // Treino do dia (plano)
+  var todayPlan=plans.find(function(p){return p.date===today&&p.status!=='done';});
 
-  // Métricas
-  body.innerHTML+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">'
-    +metricCard('Treinos',monthRuns.length,'este mês')
-    +metricCard('Pace médio',avgPace?secsTopace(avgPace):'-','/km')
-    +metricCard('FC média',avgFC||'-','bpm')
-    +metricCard('Tempo total',totalMins>=60?Math.floor(totalMins/60)+'h '+(totalMins%60)+'min':totalMins+'min','')
-  +'</div>';
+  // ── MÉTRICAS EM LINHA (Opção B) ──
+  var wkStart=new Date(now);wkStart.setDate(now.getDate()-((now.getDay()+6)%7));
+  var wkEnd=new Date(wkStart);wkEnd.setDate(wkStart.getDate()+6);
+  var wkKm=runs.filter(function(r){
+    if(!r.date)return false;
+    var d=new Date(r.date+'T12:00:00');
+    return d>=wkStart&&d<=wkEnd;
+  }).reduce(function(s,r){return s+(parseFloat(r.dist)||0);},0);
 
-  // Gráfico por semana
-  var weeks=getWeeksOfMonth(y,m);
-  var weekKms=weeks.map(function(w){
-    return runs.filter(function(r){
-      if(!r.date)return false;
-      var d=new Date(r.date+'T12:00:00');
-      return d>=w.start&&d<=w.end;
-    }).reduce(function(s,r){return s+(parseFloat(r.dist)||0);},0);
-  });
-  var maxKm=Math.max.apply(null,weekKms)||1;
-  var barsHtml='<div style="display:flex;align-items:flex-end;gap:6px;height:64px;margin-bottom:4px">';
-  var labHtml='<div style="display:flex;gap:6px">';
-  weekKms.forEach(function(km,i){
-    var h=Math.max(4,Math.round(km/maxKm*60));
-    var isNow=i===weeks.length-1;
-    barsHtml+='<div style="flex:1;border-radius:3px 3px 0 0;background:#486068;opacity:'+(isNow?'1':'0.5')+';height:'+h+'px;position:relative">'
-      +(km>0?'<div style="position:absolute;top:-14px;width:100%;text-align:center;font-size:8px;color:#6b7280">'+km.toFixed(1)+'</div>':'')
-    +'</div>';
-    labHtml+='<div style="flex:1;font-size:8px;color:#9ca3af;text-align:center">S'+(i+1)+'</div>';
-  });
-  barsHtml+='</div>';labHtml+='</div>';
+  body.innerHTML+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'    +metricCardB('Meta mês',totalKm.toFixed(1)+' <span style="font-size:10px;color:#9ca3af">/ '+metaKm+' km</span>',pct+'% · <span style="color:#486068;cursor:pointer" onclick="var v=prompt(\'Meta mensal de km:\',window.runData.metaKm||80);if(v&&!isNaN(v)){window.runData.metaKm=parseFloat(v);fbSaveRunData();renderRunView();}">editar</span>',pct)    +metricCardB('Semana',wkKm.toFixed(1)+' km','acumulado',null)    +metricCardB('Pace médio',avgPace?secsTopace(avgPace)+'/km':'-','este mês',null)    +metricCardB('FC média',avgFC?avgFC+' bpm':'-','este mês',null)    +metricCardB('Treinos',monthRuns.length,'este mês',null)  +'</div>';
 
-  body.innerHTML+='<div style="background:white;border-radius:12px;border:0.5px solid #e5e7eb;padding:14px 16px">'
-    +'<div style="font-size:10px;font-weight:500;color:#6b7280;margin-bottom:10px">Distância por semana (km)</div>'
-    +barsHtml+labHtml
-  +'</div>';
+  // ── TREINO DO DIA ──
+  if(todayPlan){
+    var meta=[];
+    if(todayPlan.dist)meta.push(todayPlan.dist+' km');
+    if(todayPlan.pace)meta.push('pace '+todayPlan.pace+'/km');
+    if(todayPlan.dur)meta.push(todayPlan.dur+' min');
+    body.innerHTML+='<div style="background:white;border-radius:12px;border:0.5px solid #e5e7eb;padding:16px;margin-bottom:12px">'      +'<div style="display:flex;align-items:flex-start;gap:16px">'        +'<div style="flex:1">'          +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'            +'<span style="background:#486068;color:#C5CED0;border-radius:8px;padding:2px 10px;font-size:9px;font-weight:500;font-family:Montserrat,sans-serif">hoje</span>'            +(todayPlan.zone?'<span style="background:#f0f2f5;color:#486068;border-radius:8px;padding:2px 8px;font-size:9px;font-weight:500;font-family:Montserrat,sans-serif">'+todayPlan.zone+'</span>':'')          +'</div>'          +'<div style="font-size:14px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif;margin-bottom:10px">'+todayPlan.title+'</div>'          +'<div style="display:flex;gap:20px;flex-wrap:wrap">'            +(todayPlan.dist?'<div><div style="font-size:9px;color:#9ca3af;font-family:Montserrat,sans-serif">Distância</div><div style="font-size:14px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+todayPlan.dist+' km</div></div>':'')            +(todayPlan.pace?'<div><div style="font-size:9px;color:#9ca3af;font-family:Montserrat,sans-serif">Pace alvo</div><div style="font-size:14px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+todayPlan.pace+'/km</div></div>':'')            +(todayPlan.dur?'<div><div style="font-size:9px;color:#9ca3af;font-family:Montserrat,sans-serif">Duração est.</div><div style="font-size:14px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+todayPlan.dur+' min</div></div>':'')            +(todayPlan.zone?'<div><div style="font-size:9px;color:#9ca3af;font-family:Montserrat,sans-serif">Zona</div><div style="font-size:14px;font-weight:500;color:#486068;font-family:Montserrat,sans-serif">'+todayPlan.zone+'</div></div>':'')          +'</div>'        +'</div>'        +'<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">'          +'<button onclick="completeTodayPlan(\''+todayPlan.id+'\')" style="background:#131F28;border:none;border-radius:8px;padding:8px 16px;font-size:11px;font-weight:500;color:#C5CED0;font-family:Montserrat,sans-serif;cursor:pointer">✓ Concluir treino</button>'          +'<button onclick="window._runView=\'log\';renderRunView()" style="background:transparent;border:0.5px solid #d1d5db;border-radius:8px;padding:7px 16px;font-size:11px;color:#6b7280;font-family:Montserrat,sans-serif;cursor:pointer">+ Registrar no log</button>'        +'</div>'      +'</div>'    +'</div>';
+  } else {
+    // Sem treino planejado hoje
+    var lastRun=runs.slice().sort(function(a,b){return (b.date||'')>(a.date||'')?1:-1;})[0];
+    if(lastRun){
+      body.innerHTML+='<div style="background:white;border-radius:12px;border:0.5px solid #e5e7eb;padding:14px 16px;margin-bottom:12px">'        +'<div style="font-size:9px;color:#9ca3af;font-family:Montserrat,sans-serif;margin-bottom:4px">Último treino · '+lastRun.date+'</div>'        +'<div style="font-size:14px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif;margin-bottom:6px">'+lastRun.dist+' km</div>'        +'<div style="display:flex;gap:16px">'          +(lastRun.time?'<div><div style="font-size:9px;color:#9ca3af">Tempo</div><div style="font-size:12px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+lastRun.time+'</div></div>':'')          +(lastRun.pace?'<div><div style="font-size:9px;color:#9ca3af">Pace</div><div style="font-size:12px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+lastRun.pace+'/km</div></div>':'')          +(lastRun.fc?'<div><div style="font-size:9px;color:#9ca3af">FC</div><div style="font-size:12px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif">'+lastRun.fc+' bpm</div></div>':'')        +'</div>'      +'</div>';
+    }
+  }
+}
+
+function metricCardB(label,val,sub,pct){
+  var prog=pct!==null?'<div style="background:#e5e7eb;border-radius:3px;height:4px;margin-top:6px;overflow:hidden"><div style="height:100%;background:#486068;border-radius:3px;width:'+pct+'%"></div></div>':'';
+  return '<div style="flex:1;min-width:100px;background:#f9fafb;border-radius:8px;padding:10px 12px">'    +'<div style="font-size:9px;color:#9ca3af;margin-bottom:4px;font-family:Montserrat,sans-serif">'+label+'</div>'    +'<div style="font-size:15px;font-weight:500;color:#111827;font-family:Montserrat,sans-serif;line-height:1">'+val+'</div>'    +'<div style="font-size:9px;color:#9ca3af;margin-top:3px;font-family:Montserrat,sans-serif">'+sub+'</div>'    +prog  +'</div>';
+}
+
+function completeTodayPlan(planId){
+  var plan=(window.runData.plans||[]).find(function(p){return p.id===planId;});
+  if(!plan)return;
+  plan.status='done';
+  fbSaveRunData();
+  // Refletir no calendário principal
+  var evId='run_plan_'+planId;
+  var ev=(window.evs||[]).find(function(e){return e.id===evId;});
+  if(ev){ev.done=true;if(window.fbSaveEv)fbSaveEv(ev);}
+  showToast('Treino concluído!');
+  renderRunView();
 }
 
 function metricCard(label,val,unit){
