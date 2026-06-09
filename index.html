@@ -150,6 +150,9 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 @media(max-width:768px){
   #finWeekApp,#goalsApp,#studyApp{max-width:100vw;overflow-x:hidden}
   #finWeekApp>div:first-child,#goalsApp>div:first-child,#notebookApp>div:first-child,#cycleApp>div:first-child{padding-top:env(safe-area-inset-top,0px)!important}
+
+  #runApp>div:first-child{padding-top:env(safe-area-inset-top,0px)!important}
+  .run-tab-pill{padding:3px 10px;border-radius:5px;font-size:10px;font-weight:500;cursor:pointer;border:none;font-family:Montserrat,sans-serif;transition:background .15s,color .15s}
   #notebookApp .nb-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
   #notebookApp .nb-table{min-width:600px}
   #finWeekApp .topbar-like,#goalsApp .topbar-like{padding:10px 16px!important}
@@ -533,6 +536,12 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
     </div>
     <span style="font-size:7px;color:rgba(255,255,255,.35);letter-spacing:.3px;font-family:Montserrat,sans-serif">CICLO</span>
   </div>
+  <div onclick="switchToRun()" title="Corrida" id="sbRunBtn" style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;opacity:.55;transition:opacity .15s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.55'">
+    <div style="width:22px;height:22px;border-radius:6px;border:1.5px solid rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4a1 1 0 1 0 2 0 1 1 0 0 0-2 0"/><path d="m7 21 3-6 2 2 2-4"/><path d="m5 12 4-3 3 1 3-3"/></svg>
+    </div>
+    <span style="font-size:7px;color:rgba(255,255,255,.35);letter-spacing:.3px;font-family:Montserrat,sans-serif">CORR</span>
+  </div>
   <div class="sb-divider"></div>
   <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
     <span class="sync-dot" id="syncDot"></span>
@@ -599,6 +608,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 <div id="notebookApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
 <div id="idealWeekApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
 <div id="cycleApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
+<div id="runApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
 
 </div><!-- main-layout -->
 </div><!-- app -->
@@ -982,10 +992,11 @@ onAuthStateChanged(auth,user=>{
     if(su)su();su=onSnapshot(doc(db,'users',uid,'config','stickies'),snap=>{if(snap.exists()){window.stickies=snap.data().stickies||[];}else{window.stickies=[];}if(window.view==='sticky')renderView();else renderStickies();});
     onSnapshot(doc(db,'users',uid,'config','calAutoSettings'),snap=>{if(snap.exists()){var d=snap.data();window.calAutoSettings=Object.assign(window.calAutoSettings||{},d);window.calCustomRules=d.customRules||[];console.log('Loaded custom rules:',window.calCustomRules.length);setTimeout(function(){runCalAutomations();},2000);}});
     onSnapshot(doc(db,'users',uid,'config','goalsData'),snap=>{if(snap.exists())window.goalsData=snap.data();updateAutoKRs();});
-    onSnapshot(doc(db,'users',uid,'config','notebookData'),snap=>{if(snap.exists()){window.notebookData=snap.data();if(!window.notebookData.notebooks)window.notebookData.notebooks=[];window.notebookData.notebooks.forEach(function(nb){if(!nb.rows)nb.rows=[];if(!nb.columns)nb.columns=[];});}});
+    onSnapshot(doc(db,'users',uid,'config','notebookData'),snap=>{if(window._nbSaving)return;if(snap.exists()){window.notebookData=snap.data();if(!window.notebookData.notebooks)window.notebookData.notebooks=[];window.notebookData.notebooks.forEach(function(nb){if(!nb.rows)nb.rows=[];if(!nb.columns)nb.columns=[];}); }});
     onSnapshot(doc(db,'users',uid,'config','idealWeekData'),snap=>{if(snap.exists()){window.idealWeekData=snap.data();if(!window.idealWeekData.blocks)window.idealWeekData.blocks=[];}});
     onSnapshot(doc(db,'users',uid,'config','deliverables'),snap=>{if(snap.exists()){window.deliverables=snap.data().items||[];}});
     onSnapshot(doc(db,'users',uid,'config','kanbanBoards'),snap=>{if(snap.exists()){window.kanbanBoards=snap.data().boards||[];}});
+    onSnapshot(doc(db,'users',uid,'config','runData'),snap=>{if(snap.exists()){window.runData=snap.data();if(!window.runData.runs)window.runData.runs=[];if(!window.runData.plans)window.runData.plans=[];}});
     onSnapshot(doc(db,'users',uid,'config','cycleData'),snap=>{if(snap.exists()){window.cycleData=snap.data();if(!window.cycleData.periods)window.cycleData.periods=[];}});
     if(!window.appInited){window.appInited=true;window._firebaseReady=true;if(typeof initFinanceIntegration==='function')initFinanceIntegration();if(window._domReady)initApp();}
   }else{document.getElementById('loginScreen').style.display='flex';document.getElementById('mainApp').style.display='none';}
@@ -1841,7 +1852,7 @@ function togDone(id,idate){
   if(nowDone)triggerCrossModuleUpdate(ev);
   // Refresh Mundana overlay
   setTimeout(renderMundanaOverlay,300);
-  updProgress();renderView();showToast('Atualizado!');
+  updProgress();renderView();showToast('Atualizado!');checkRunCalSync();
 }
 
 // ── SIDEBAR TAGS ──
@@ -5377,6 +5388,7 @@ function switchToCycle(){
   var nb=document.getElementById('notebookApp');if(nb)nb.style.display='none';
   var iw=document.getElementById('idealWeekApp');if(iw)iw.style.display='none';
   var cy=document.getElementById('cycleApp');if(cy)cy.style.display='flex';
+  var ra=document.getElementById('runApp');if(ra)ra.style.display='none';
   activeCal='cycle';
   renderCycleView();
 }
@@ -6741,6 +6753,411 @@ function markFinPaid(docId){
 window.notebookData=window.notebookData||{notebooks:[]};
 window._activeNotebook='';
 
+
+// ── MÓDULO CORRIDA ────────────────────────────────────────────────────────────
+window.runData = window.runData || {runs:[], plans:[]};
+window._runView = 'dashboard';
+
+function switchToRun(){
+  var wa=document.getElementById('workApp');if(wa)wa.style.display='none';
+  var cc=document.querySelector('.center-col');if(cc)cc.style.display='none';
+  var rp=document.getElementById('rightPanel');if(rp)rp.style.display='none';
+  var sa=document.getElementById('studyApp');if(sa)sa.style.display='none';
+  var ga=document.getElementById('goalsApp');if(ga)ga.style.display='none';
+  var fw=document.getElementById('finWeekApp');if(fw)fw.style.display='none';
+  var nb=document.getElementById('notebookApp');if(nb)nb.style.display='none';
+  var iw=document.getElementById('idealWeekApp');if(iw)iw.style.display='none';
+  var cy=document.getElementById('cycleApp');if(cy)cy.style.display='none';
+  var ra=document.getElementById('runApp');if(ra)ra.style.display='flex';
+  activeCal='run';
+  renderRunView();
+}
+
+function fbSaveRunData(){
+  if(!window.auth||!window.auth.currentUser)return;
+  try{
+    var uid=window.auth.currentUser.uid;
+    var data=JSON.parse(JSON.stringify(window.runData));
+    if(!data.runs)data.runs=[];
+    if(!data.plans)data.plans=[];
+    window.firestore.setDoc(window.firestore.doc(window.db,'users',uid,'config','runData'),data);
+  }catch(e){console.error('fbSaveRunData error:',e);}
+}
+
+function calcPace(distKm, timeStr){
+  // timeStr = "HH:MM:SS" or "MM:SS"
+  if(!distKm||!timeStr)return '';
+  var parts=timeStr.split(':').map(Number);
+  var secs=0;
+  if(parts.length===3)secs=parts[0]*3600+parts[1]*60+parts[2];
+  else if(parts.length===2)secs=parts[0]*60+parts[1];
+  if(!secs||!distKm)return '';
+  var paceSecPerKm=secs/distKm;
+  var pm=Math.floor(paceSecPerKm/60);
+  var ps=Math.round(paceSecPerKm%60);
+  return pm+':'+(ps<10?'0':'')+ps;
+}
+
+function syncRunPlanToCalendar(plan){
+  // Creates a work event in main evs for a planned run
+  if(!plan||!plan.date||!plan.title)return;
+  var evId='run_plan_'+plan.id;
+  // Check if already exists
+  var existing=(window.evs||[]).find(function(e){return e.id===evId;});
+  if(existing)return;
+  var ev={
+    id:evId,
+    title:'🏃 '+plan.title,
+    date:plan.date,
+    color:'#486068',
+    tag:'corrida',
+    _runPlanId:plan.id,
+    done:false
+  };
+  if(!window.evs)window.evs=[];
+  window.evs.push(ev);
+  if(window.fbSaveEv)fbSaveEv(ev);
+}
+
+function removeRunPlanFromCalendar(planId){
+  var evId='run_plan_'+planId;
+  window.evs=(window.evs||[]).filter(function(e){return e.id!==evId;});
+  // Delete from Firestore
+  if(window.auth&&window.auth.currentUser){
+    try{
+      var uid=window.auth.currentUser.uid;
+      window.firestore.deleteDoc(window.firestore.doc(window.db,'users',uid,'events',evId));
+    }catch(e){}
+  }
+}
+
+function checkRunCalSync(){
+  // Called from togDone — when a run_plan_ event is done, mark the plan as concluido
+  (window.evs||[]).forEach(function(ev){
+    if(!ev._runPlanId)return;
+    var plan=(window.runData.plans||[]).find(function(p){return p.id===ev._runPlanId;});
+    if(!plan)return;
+    if(ev.done&&plan.status!=='done'){
+      plan.status='done';
+      fbSaveRunData();
+      if(activeCal==='run')renderRunView();
+    }
+  });
+}
+
+function renderRunView(){
+  var app=document.getElementById('runApp');if(!app)return;
+  app.innerHTML='';
+  app.style.cssText='display:flex;flex:1;overflow:hidden;flex-direction:column;background:#f7f8fa;font-family:Montserrat,sans-serif';
+
+  // Topbar
+  var tb=document.createElement('div');
+  tb.style.cssText='background:#131F28;padding:10px 16px;padding-top:max(10px,env(safe-area-inset-top,10px));display:flex;align-items:center;justify-content:space-between;flex-shrink:0';
+  var views=['dashboard','log','historico','plano'];
+  var labels=['Dashboard','Log','Histórico','Plano'];
+  var tabsHtml='<div style="display:flex;gap:2px;background:#1e2d38;border-radius:7px;padding:2px">';
+  views.forEach(function(v,i){
+    var act=v===window._runView;
+    tabsHtml+='<button onclick="window._runView=\''+v+'\';renderRunView()" style="background:'+(act?'#131F28':'transparent')+';border:none;border-radius:5px;padding:4px 10px;cursor:pointer;font-size:10px;font-weight:'+(act?'600':'400')+';color:'+(act?'#C5CED0':'#6b8a96')+';font-family:Montserrat,sans-serif">'+labels[i]+'</button>';
+  });
+  tabsHtml+='</div>';
+  tb.innerHTML='<span style="font-size:11px;font-weight:600;color:#C5CED0;letter-spacing:1px;text-transform:uppercase">Corrida</span>'+tabsHtml;
+  app.appendChild(tb);
+
+  var body=document.createElement('div');
+  body.style.cssText='flex:1;overflow-y:auto;padding:16px';
+
+  if(window._runView==='dashboard')renderRunDashboard(body);
+  else if(window._runView==='log')renderRunLog(body);
+  else if(window._runView==='historico')renderRunHistorico(body);
+  else if(window._runView==='plano')renderRunPlano(body);
+
+  app.appendChild(body);
+}
+
+function renderRunDashboard(body){
+  var runs=window.runData.runs||[];
+  var now=new Date();
+  var y=now.getFullYear(),m=now.getMonth();
+  var monthStr=y+'-'+(m+1<10?'0':'')+(m+1);
+  var monthRuns=runs.filter(function(r){return (r.date||'').startsWith(monthStr);});
+  var totalKm=monthRuns.reduce(function(s,r){return s+(parseFloat(r.dist)||0);},0);
+  var totalSecs=monthRuns.reduce(function(s,r){return s+timeToSecs(r.time);},0);
+  var allPaces=monthRuns.filter(function(r){return r.pace;}).map(function(r){return paceToSecs(r.pace);});
+  var avgPace=allPaces.length?Math.round(allPaces.reduce(function(a,b){return a+b;},0)/allPaces.length):0;
+  var allFC=monthRuns.filter(function(r){return r.fc;}).map(function(r){return parseInt(r.fc)||0;});
+  var avgFC=allFC.length?Math.round(allFC.reduce(function(a,b){return a+b;},0)/allFC.length):0;
+  var totalMins=Math.floor(totalSecs/60);
+  var metaKm=parseFloat(window.runData.metaKm)||80;
+  var pct=metaKm>0?Math.min(100,Math.round(totalKm/metaKm*100)):0;
+
+  // Meta card
+  body.innerHTML+='<div style="background:white;border-radius:12px;border:0.5px solid #e5e7eb;padding:14px 16px;margin-bottom:12px">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+      +'<div><div style="font-size:12px;font-weight:500;color:#111827">Meta: 21k</div><div style="font-size:9px;color:#9ca3af;margin-top:1px">Km acumulados este mês</div></div>'
+      +'<div style="text-align:right"><div style="font-size:20px;font-weight:500;color:#486068">'+totalKm.toFixed(1)+' km</div><div style="font-size:9px;color:#9ca3af">de '+metaKm+' km/mês</div></div>'
+    +'</div>'
+    +'<div style="background:#f0f2f5;border-radius:8px;height:6px;overflow:hidden;margin-bottom:4px"><div style="height:100%;border-radius:8px;background:#486068;width:'+pct+'%"></div></div>'
+    +'<div style="font-size:9px;color:#9ca3af">'+pct+'% da meta mensal · <span style="color:#486068;font-weight:500;cursor:pointer" onclick="var v=prompt(\'Meta mensal de km:\',window.runData.metaKm||80);if(v&&!isNaN(v)){window.runData.metaKm=parseFloat(v);fbSaveRunData();renderRunView();}">editar meta</span></div>'
+  +'</div>';
+
+  // Métricas
+  body.innerHTML+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">'
+    +metricCard('Treinos',monthRuns.length,'este mês')
+    +metricCard('Pace médio',avgPace?secsTopace(avgPace):'-','/km')
+    +metricCard('FC média',avgFC||'-','bpm')
+    +metricCard('Tempo total',totalMins>=60?Math.floor(totalMins/60)+'h '+(totalMins%60)+'min':totalMins+'min','')
+  +'</div>';
+
+  // Gráfico por semana
+  var weeks=getWeeksOfMonth(y,m);
+  var weekKms=weeks.map(function(w){
+    return runs.filter(function(r){
+      if(!r.date)return false;
+      var d=new Date(r.date+'T12:00:00');
+      return d>=w.start&&d<=w.end;
+    }).reduce(function(s,r){return s+(parseFloat(r.dist)||0);},0);
+  });
+  var maxKm=Math.max.apply(null,weekKms)||1;
+  var barsHtml='<div style="display:flex;align-items:flex-end;gap:6px;height:64px;margin-bottom:4px">';
+  var labHtml='<div style="display:flex;gap:6px">';
+  weekKms.forEach(function(km,i){
+    var h=Math.max(4,Math.round(km/maxKm*60));
+    var isNow=i===weeks.length-1;
+    barsHtml+='<div style="flex:1;border-radius:3px 3px 0 0;background:#486068;opacity:'+(isNow?'1':'0.5')+';height:'+h+'px;position:relative">'
+      +(km>0?'<div style="position:absolute;top:-14px;width:100%;text-align:center;font-size:8px;color:#6b7280">'+km.toFixed(1)+'</div>':'')
+    +'</div>';
+    labHtml+='<div style="flex:1;font-size:8px;color:#9ca3af;text-align:center">S'+(i+1)+'</div>';
+  });
+  barsHtml+='</div>';labHtml+='</div>';
+
+  body.innerHTML+='<div style="background:white;border-radius:12px;border:0.5px solid #e5e7eb;padding:14px 16px">'
+    +'<div style="font-size:10px;font-weight:500;color:#6b7280;margin-bottom:10px">Distância por semana (km)</div>'
+    +barsHtml+labHtml
+  +'</div>';
+}
+
+function metricCard(label,val,unit){
+  return '<div style="background:#f9fafb;border-radius:8px;padding:8px 10px"><div style="font-size:9px;color:#9ca3af;margin-bottom:3px">'+label+'</div>'
+    +'<div style="font-size:15px;font-weight:500;color:#111827">'+val+'<span style="font-size:9px;font-weight:400;color:#9ca3af;margin-left:2px">'+unit+'</span></div></div>';
+}
+
+function renderRunLog(body){
+  body.innerHTML='<div style="background:white;border-radius:12px;border:0.5px solid #e5e7eb;padding:16px">'
+    +'<div style="font-size:12px;font-weight:500;color:#111827;margin-bottom:14px">Registrar treino</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'
+      +'<div><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Data</div><input id="runDate" type="date" value="'+tds(new Date())+'" style="width:100%;box-sizing:border-box;padding:6px 10px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif;background:#f9fafb;color:#111827"></div>'
+      +'<div><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Distância (km)</div><input id="runDist" type="number" step="0.1" placeholder="8.5" style="width:100%;box-sizing:border-box;padding:6px 10px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif;background:#f9fafb;color:#111827" oninput="updateRunPace()"></div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'
+      +'<div><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Tempo (hh:mm:ss)</div><input id="runTime" type="text" placeholder="00:52:45" style="width:100%;box-sizing:border-box;padding:6px 10px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif;background:#f9fafb;color:#111827" oninput="updateRunPace()"></div>'
+      +'<div><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Pace (/km)</div><input id="runPace" type="text" placeholder="calculado automaticamente" readonly style="width:100%;box-sizing:border-box;padding:6px 10px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif;background:#f0f2f5;color:#6b7280"></div>'
+    +'</div>'
+    +'<div style="margin-bottom:14px"><div style="font-size:9px;color:#6b7280;margin-bottom:3px">FC média (bpm)</div><input id="runFC" type="number" placeholder="158" style="width:160px;box-sizing:border-box;padding:6px 10px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif;background:#f9fafb;color:#111827"></div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between">'
+      +'<div style="font-size:9px;color:#9ca3af">Importar dados:</div>'
+      +'<div style="display:flex;gap:6px">'
+        +'<div onclick="window.open(\'https://www.strava.com/athlete/training\',\'_blank\')" style="padding:5px 10px;border:0.5px solid #d1d5db;border-radius:6px;font-size:9px;color:#6b7280;cursor:pointer">Strava ↗</div>'
+        +'<div onclick="window.open(\'https://www.apple.com/ios/health/\',\'_blank\')" style="padding:5px 10px;border:0.5px solid #d1d5db;border-radius:6px;font-size:9px;color:#6b7280;cursor:pointer">Apple Watch ↗</div>'
+      +'</div>'
+    +'</div>'
+    +'<div style="margin-top:14px;display:flex;justify-content:flex-end"><button onclick="saveRunLog()" style="background:#131F28;color:#C5CED0;border:none;border-radius:8px;padding:8px 20px;font-size:11px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif">Salvar treino</button></div>'
+  +'</div>';
+}
+
+function updateRunPace(){
+  var dist=parseFloat(document.getElementById('runDist')&&document.getElementById('runDist').value)||0;
+  var time=document.getElementById('runTime')&&document.getElementById('runTime').value||'';
+  var pace=calcPace(dist,time);
+  var paceEl=document.getElementById('runPace');
+  if(paceEl)paceEl.value=pace?pace+' /km':'';
+}
+
+function saveRunLog(){
+  var date=document.getElementById('runDate')&&document.getElementById('runDate').value;
+  var dist=document.getElementById('runDist')&&document.getElementById('runDist').value;
+  var time=document.getElementById('runTime')&&document.getElementById('runTime').value;
+  var fc=document.getElementById('runFC')&&document.getElementById('runFC').value;
+  if(!date||!dist||!time){showToast('Preencha data, distância e tempo!');return;}
+  var pace=calcPace(parseFloat(dist),time);
+  var run={id:gid(),date:date,dist:parseFloat(dist),time:time,pace:pace,fc:fc?parseInt(fc):null,createdAt:new Date().toISOString()};
+  if(!window.runData.runs)window.runData.runs=[];
+  window.runData.runs.unshift(run);
+  // Se há plano para este dia, marcar como concluído
+  (window.runData.plans||[]).forEach(function(p){
+    if(p.date===date&&p.status!=='done'){
+      p.status='done';
+      // Sincronizar com o calendário
+      var evId='run_plan_'+p.id;
+      var ev=(window.evs||[]).find(function(e){return e.id===evId;});
+      if(ev){ev.done=true;if(window.fbSaveEv)fbSaveEv(ev);}
+    }
+  });
+  fbSaveRunData();
+  showToast('Treino salvo!');
+  window._runView='historico';
+  renderRunView();
+}
+
+function renderRunHistorico(body){
+  var runs=window.runData.runs||[];
+  if(!runs.length){
+    body.innerHTML='<div style="text-align:center;color:#9ca3af;padding:60px 0;font-size:12px">Nenhum treino registrado ainda.</div>';
+    return;
+  }
+  var grouped={};
+  runs.forEach(function(r){
+    var m=(r.date||'').substring(0,7);
+    if(!grouped[m])grouped[m]=[];
+    grouped[m].push(r);
+  });
+  Object.keys(grouped).sort().reverse().forEach(function(month){
+    var label=new Date(month+'-15').toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+    body.innerHTML+='<div style="font-size:10px;font-weight:500;color:#6b7280;margin-bottom:8px;margin-top:16px;text-transform:capitalize">'+label+'</div>';
+    var card='<div style="background:white;border-radius:12px;border:0.5px solid #e5e7eb;overflow:hidden;margin-bottom:12px">';
+    grouped[month].forEach(function(r,i){
+      var last=i===grouped[month].length-1;
+      var d=new Date(r.date+'T12:00:00');
+      var dayLabel=d.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'});
+      card+='<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;'+(last?'':'border-bottom:0.5px solid #f0f2f5')+'">'
+        +'<div style="width:8px;height:8px;border-radius:50%;background:#486068;flex-shrink:0"></div>'
+        +'<div style="flex:1">'
+          +'<div style="font-size:11px;font-weight:500;color:#111827">'+r.dist+' km</div>'
+          +'<div style="font-size:9px;color:#9ca3af">'+dayLabel+' · '+r.time+(r.pace?' · pace '+r.pace:'')+(r.fc?' · '+r.fc+' bpm':'')+'</div>'
+        +'</div>'
+        +'<div style="display:flex;gap:6px;align-items:center">'
+          +'<span style="background:#e8f5ee;color:#2d7a4f;border-radius:10px;padding:2px 7px;font-size:9px;font-weight:500">concluído</span>'
+          +'<div onclick="deleteRun(\''+r.id+'\')" style="cursor:pointer;color:#d1d5db;font-size:10px;padding:2px 6px;border-radius:4px" title="Excluir">×</div>'
+        +'</div>'
+      +'</div>';
+    });
+    card+='</div>';
+    body.innerHTML+=card;
+  });
+}
+
+function deleteRun(id){
+  if(!confirm('Excluir este treino?'))return;
+  window.runData.runs=(window.runData.runs||[]).filter(function(r){return r.id!==id;});
+  fbSaveRunData();
+  renderRunView();
+}
+
+function renderRunPlano(body){
+  var plans=window.runData.plans||[];
+
+  // Botão novo plano
+  body.innerHTML='<div style="display:flex;justify-content:flex-end;margin-bottom:12px">'
+    +'<button onclick="createRunPlan()" style="background:#131F28;color:#C5CED0;border:none;border-radius:8px;padding:7px 16px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif">+ Adicionar treino</button>'
+  +'</div>';
+
+  if(!plans.length){
+    body.innerHTML+='<div style="text-align:center;color:#9ca3af;padding:40px 0;font-size:12px">Nenhum treino planejado. Adicione o primeiro!</div>';
+    return;
+  }
+
+  // Agrupar por semana
+  var weeks={};
+  plans.slice().sort(function(a,b){return (a.date||'')>(b.date||'')?1:-1;}).forEach(function(p){
+    var d=new Date(p.date+'T12:00:00');
+    var mon=new Date(d);mon.setDate(d.getDate()-d.getDay()+1);
+    var wk=tds(mon);
+    if(!weeks[wk])weeks[wk]=[];
+    weeks[wk].push(p);
+  });
+
+  Object.keys(weeks).sort().reverse().forEach(function(wk){
+    var wDate=new Date(wk+'T12:00:00');
+    var wEnd=new Date(wDate);wEnd.setDate(wDate.getDate()+6);
+    var wLabel=wDate.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' – '+wEnd.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+    var wPlans=weeks[wk];
+    var wKm=wPlans.reduce(function(s,p){return s+(parseFloat(p.dist)||0);},0);
+    var wDone=wPlans.filter(function(p){return p.status==='done';}).reduce(function(s,p){return s+(parseFloat(p.dist)||0);},0);
+
+    body.innerHTML+='<div style="background:white;border-radius:12px;border:0.5px solid #e5e7eb;overflow:hidden;margin-bottom:14px">'
+      +'<div style="padding:10px 14px;border-bottom:0.5px solid #f0f2f5;display:flex;justify-content:space-between;align-items:center">'
+        +'<div style="font-size:10px;font-weight:500;color:#111827">Semana '+wLabel+'</div>'
+        +'<div style="font-size:9px;color:#9ca3af">'+wDone.toFixed(1)+' / '+wKm.toFixed(1)+' km</div>'
+      +'</div>';
+
+    var today=tds(new Date());
+    wPlans.forEach(function(p,i){
+      var last=i===wPlans.length-1;
+      var d=new Date(p.date+'T12:00:00');
+      var dayLabel=d.toLocaleDateString('pt-BR',{weekday:'long'});
+      var isToday=p.date===today;
+      var badgeHtml='';
+      if(p.status==='done')badgeHtml='<span style="background:#e8f5ee;color:#2d7a4f;border-radius:10px;padding:2px 7px;font-size:9px;font-weight:500">feito</span>';
+      else if(isToday)badgeHtml='<span style="background:#486068;color:#C5CED0;border-radius:10px;padding:2px 7px;font-size:9px;font-weight:500">hoje</span>';
+      else if(p.date<today)badgeHtml='<span style="background:#fef2f2;color:#dc2626;border-radius:10px;padding:2px 7px;font-size:9px;font-weight:500">perdido</span>';
+      else badgeHtml='<span style="background:#f0f2f5;color:#6b7280;border-radius:10px;padding:2px 7px;font-size:9px;font-weight:500">planejado</span>';
+
+      body.innerHTML+='<div style="display:grid;grid-template-columns:90px 1fr auto auto;gap:8px;align-items:center;padding:8px 14px;'+(last?'':'border-bottom:0.5px solid #f9fafb')+'">'
+        +'<div style="font-size:10px;color:'+(isToday?'#486068':'#6b7280')+';font-weight:'+(isToday?'500':'400')+'">'+dayLabel.charAt(0).toUpperCase()+dayLabel.slice(1)+'</div>'
+        +'<div><div style="font-size:10px;color:#111827">'+p.title+'</div><div style="font-size:9px;color:#9ca3af">'+(p.dist?p.dist+' km':'')+'</div></div>'
+        +badgeHtml
+        +'<div onclick="deleteRunPlan(\''+p.id+'\')" style="cursor:pointer;color:#d1d5db;font-size:11px;padding:2px 6px" title="Excluir">×</div>'
+      +'</div>';
+    });
+    body.innerHTML+='</div>';
+  });
+}
+
+function createRunPlan(){
+  var title=prompt('Descrição do treino (ex: Fartlek 6 km, Longo 10 km):');
+  if(!title||!title.trim())return;
+  var date=prompt('Data (AAAA-MM-DD):',tds(new Date()));
+  if(!date||!date.match(/^\d{4}-\d{2}-\d{2}$/)){showToast('Data inválida');return;}
+  var dist=prompt('Distância planejada (km):','');
+  var plan={id:gid(),title:title.trim(),date:date,dist:dist?parseFloat(dist):null,status:'pending',createdAt:new Date().toISOString()};
+  if(!window.runData.plans)window.runData.plans=[];
+  window.runData.plans.push(plan);
+  fbSaveRunData();
+  syncRunPlanToCalendar(plan);
+  showToast('Treino adicionado ao plano e ao calendário!');
+  renderRunView();
+}
+
+function deleteRunPlan(planId){
+  if(!confirm('Excluir este treino do plano?'))return;
+  window.runData.plans=(window.runData.plans||[]).filter(function(p){return p.id!==planId;});
+  fbSaveRunData();
+  removeRunPlanFromCalendar(planId);
+  renderRunView();
+}
+
+// Utilitários
+function timeToSecs(t){
+  if(!t)return 0;
+  var p=t.split(':').map(Number);
+  if(p.length===3)return p[0]*3600+p[1]*60+p[2];
+  if(p.length===2)return p[0]*60+p[1];
+  return 0;
+}
+function paceToSecs(p){
+  if(!p)return 0;
+  var parts=p.split(':').map(Number);
+  return parts[0]*60+(parts[1]||0);
+}
+function secsTopace(s){
+  var m=Math.floor(s/60),sec=Math.round(s%60);
+  return m+':'+(sec<10?'0':'')+sec;
+}
+function getWeeksOfMonth(y,m){
+  var weeks=[];
+  var d=new Date(y,m,1);
+  var end=new Date(y,m+1,0);
+  while(d<=end){
+    var wStart=new Date(d);
+    var wEnd=new Date(d);wEnd.setDate(d.getDate()+6);
+    if(wEnd>end)wEnd=new Date(end);
+    weeks.push({start:new Date(wStart),end:new Date(wEnd)});
+    d.setDate(d.getDate()+7);
+  }
+  return weeks;
+}
+// ── FIM MÓDULO CORRIDA ────────────────────────────────────────────────────────
+
 function switchToNotebook(){
   var wa=document.getElementById('workApp');if(wa)wa.style.display='none';
   var cc=document.querySelector('.center-col');if(cc)cc.style.display='none';
@@ -6758,12 +7175,14 @@ function switchToNotebook(){
 function fbSaveNotebooks(){
   if(!window.auth||!window.auth.currentUser)return;
   try{var uid=window.auth.currentUser.uid;
-  // Ensure arrays exist before saving
   var data=JSON.parse(JSON.stringify(window.notebookData));
   if(!data.notebooks)data.notebooks=[];
   data.notebooks.forEach(function(nb){if(!nb.rows)nb.rows=[];if(!nb.columns)nb.columns=[];});
-  window.firestore.setDoc(window.firestore.doc(window.db,'users',uid,'config','notebookData'),data);
-  }catch(e){console.error('Notebook save error:',e);}
+  window._nbSaving=true;
+  window.firestore.setDoc(window.firestore.doc(window.db,'users',uid,'config','notebookData'),data)
+    .then(function(){setTimeout(function(){window._nbSaving=false;},2000);})
+    .catch(function(e){window._nbSaving=false;console.error('Notebook save error:',e);});
+  }catch(e){window._nbSaving=false;console.error('Notebook save error:',e);}
 }
 
 function renderNotebookView(){
@@ -6835,11 +7254,27 @@ function renderNotebookView(){
   delNb.textContent='Excluir caderno';
   (function(nbId,nbName){
     delNb.onclick=function(){
-      if(!confirm('Excluir "'+nbName+'" e todos os dados?'))return;
-      window.notebookData.notebooks=window.notebookData.notebooks.filter(function(n){return n.id!==nbId;});
-      window._activeNotebook='';
-      fbSaveNotebooks();
-      renderNotebookView();
+      var ov=document.createElement('div');
+      ov.id='nbDelOverlay';
+      ov.setAttribute('style','position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center');
+      ov.innerHTML='<div style="background:#fff;border:0.5px solid #d1d5db;border-radius:14px;width:340px;max-width:92vw;font-family:Montserrat,sans-serif;padding:20px 24px">'
+        +'<p style="font-size:13px;font-weight:600;color:#111827;margin:0 0 6px">Excluir caderno</p>'
+        +'<p style="font-size:11px;color:#6b7280;margin:0 0 18px">Tem certeza que deseja excluir <strong>'+nbName+'</strong> e todos os seus dados? Esta ação não pode ser desfeita.</p>'
+        +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+          +'<button id="nbDelCancel" style="padding:7px 16px;border-radius:8px;border:0.5px solid #d1d5db;background:#fff;font-family:Montserrat,sans-serif;font-size:11px;cursor:pointer;color:#6b7280">Cancelar</button>'
+          +'<button id="nbDelConfirm" style="padding:7px 16px;border-radius:8px;border:none;background:#dc2626;font-family:Montserrat,sans-serif;font-size:11px;font-weight:500;cursor:pointer;color:#fff">Excluir</button>'
+        +'</div>'
+      +'</div>';
+      document.body.appendChild(ov);
+      ov.querySelector('#nbDelCancel').onclick=function(){ov.remove();};
+      ov.onclick=function(e){if(e.target===ov)ov.remove();};
+      ov.querySelector('#nbDelConfirm').onclick=function(){
+        ov.remove();
+        window.notebookData.notebooks=window.notebookData.notebooks.filter(function(n){return n.id!==nbId;});
+        window._activeNotebook='';
+        fbSaveNotebooks();
+        renderNotebookView();
+      };
     };
   })(active.id,active.name);
   actions.appendChild(delNb);
