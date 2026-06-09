@@ -425,6 +425,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 .wc-app .center-col{background:var(--wbg)}
 .wc-app .topbar{background:var(--wbg2);border-bottom-color:var(--wborder)}
 .wc-app .right-panel{background:var(--wbg3)}
+#workApp{background:#f7f8fa}
 .wc-app .sidebar{background:#111827}
 /* progress icon */
 .prog-icon{width:18px;height:18px;border-radius:50%;flex-shrink:0;cursor:pointer;position:relative;overflow:visible;margin-top:2px}
@@ -608,7 +609,6 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 <div id="notebookApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
 <div id="idealWeekApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
 <div id="cycleApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
-<div id="runApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
 <div id="runApp" style="display:none;flex:1;overflow:hidden;flex-direction:column"></div>
 
 </div><!-- main-layout -->
@@ -2601,7 +2601,7 @@ function switchCal(calId){
   } else {
     if(centerCol)centerCol.style.display='none';
     if(rightPanel)rightPanel.style.display='none';
-    if(workDiv)workDiv.style.display='flex';
+    if(workDiv){workDiv.style.display='flex';workDiv.style.flexDirection='column';workDiv.style.flex='1';}
     renderWorkDay(calId);
   }
   renderCalSwitcher();
