@@ -7315,6 +7315,7 @@ function renderRunPlano(body){
         +'<div onclick="openRunEditModal(\'plan\',\''+p.id+'\')" style="cursor:pointer;color:#9ca3af;font-size:11px;padding:2px 6px" title="Editar">✎</div>'
         +'<div onclick="deleteRunPlan(\''+p.id+'\')" style="cursor:pointer;color:#d1d5db;font-size:11px;padding:2px 6px" title="Excluir">×</div>'
       +'</div>';
+    });
     body.innerHTML+='</div>';
   });
 }
@@ -7326,7 +7327,7 @@ function createRunPlan(){
   ov.innerHTML='<div style="background:#fff;border:0.5px solid #d1d5db;border-radius:14px;width:400px;max-width:96vw;font-family:Montserrat,sans-serif;overflow:hidden" onclick="event.stopPropagation()">'
     +'<div style="padding:14px 18px;border-bottom:0.5px solid #f0f2f5;display:flex;justify-content:space-between;align-items:center">'
       +'<span style="font-size:12px;font-weight:600;color:#111827">Adicionar treino</span>'
-      +'<span onclick="document.getElementById('runPlanCreateOv').remove()" style="cursor:pointer;color:#9ca3af;font-size:18px;line-height:1">×</span>'
+      +'<span onclick="document.getElementById(\'runPlanCreateOv\').remove()" style="cursor:pointer;color:#9ca3af;font-size:18px;line-height:1">×</span>'
     +'</div>'
     +'<div style="padding:14px 18px">'
       +'<div style="margin-bottom:8px"><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Descrição</div>'
