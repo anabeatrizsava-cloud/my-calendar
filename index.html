@@ -6846,6 +6846,11 @@ function openRunEditModal(type, id){
           +'<div><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Data</div><input id="reDate" type="date" value="'+item.date+'" style="width:100%;box-sizing:border-box;padding:6px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif"></div>'
           +'<div><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Distância (km)</div><input id="reDist" type="number" step="0.1" value="'+(item.dist||'')+'" style="width:100%;box-sizing:border-box;padding:6px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif"></div>'
           +'</div>'
+          +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">'
+          +'<div><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Zona</div><select id="reZone" style="width:100%;box-sizing:border-box;padding:6px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif;background:#f9fafb"><option value="">--</option><option'+(item.zone==="Z1"?" selected":"")+'>Z1</option><option'+(item.zone==="Z2"?" selected":"")+'>Z2</option><option'+(item.zone==="Z3"?" selected":"")+'>Z3</option><option'+(item.zone==="Z4"?" selected":"")+'>Z4</option><option'+(item.zone==="Z5"?" selected":"")+'>Z5</option></select></div>'
+          +'<div><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Pace alvo (/km)</div><input id="rePaceTarget" type="text" value="'+(item.pace||'')+'" placeholder="6:00" style="width:100%;box-sizing:border-box;padding:6px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif"></div>'
+          +'<div><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Duração (min)</div><input id="reDur" type="text" value="'+(item.dur||'')+'" placeholder="45-60" style="width:100%;box-sizing:border-box;padding:6px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif"></div>'
+          +'</div>'
           +'<div style="margin-bottom:8px"><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Notas</div><input id="reNotes" type="text" value="'+(item.notes||'')+'" placeholder="Observações..." style="width:100%;box-sizing:border-box;padding:6px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif"></div>'
       )
     +'</div>'
@@ -6877,7 +6882,10 @@ function openRunEditModal(type, id){
       var title=ov.querySelector('#reTitle').value;
       if(!title||!title.trim()){showToast('Preencha a descrição');return;}
       var oldDate=item.date;
-      item.title=title.trim();item.date=date;item.dist=dist;item.notes=notes;
+      var zone=ov.querySelector('#reZone')&&ov.querySelector('#reZone').value||null;
+      var paceTarget=ov.querySelector('#rePaceTarget')&&ov.querySelector('#rePaceTarget').value.trim()||null;
+      var dur=ov.querySelector('#reDur')&&ov.querySelector('#reDur').value.trim()||null;
+      item.title=title.trim();item.date=date;item.dist=dist;item.zone=zone;item.pace=paceTarget;item.dur=dur;item.notes=notes;
       // Atualizar evento no calendário se a data mudou
       if(oldDate!==date){
         var evId='run_plan_'+id;
@@ -6902,10 +6910,15 @@ function openRunWeekPlanModal(){
   for(var i=0;i<7;i++){
     var d=new Date(monday);d.setDate(monday.getDate()+i);
     var ds=tds(d);
-    rows+='<div style="display:grid;grid-template-columns:70px 1fr 80px;gap:8px;align-items:center;margin-bottom:8px">'
-      +'<div style="font-size:10px;color:#6b7280">'+days[i]+'<div style="font-size:8px;color:#9ca3af">'+d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+'</div></div>'
-      +'<input data-date="'+ds+'" class="wpTitle" type="text" placeholder="Ex: Fartlek 6km (deixe vazio para pular)" style="padding:5px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:10px;font-family:Montserrat,sans-serif;width:100%;box-sizing:border-box">'
-      +'<input data-date="'+ds+'" class="wpDist" type="number" step="0.1" placeholder="km" style="padding:5px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:10px;font-family:Montserrat,sans-serif;width:100%;box-sizing:border-box">'
+    rows+='<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:0.5px solid #f5f5f5">'
+      +'<div style="font-size:10px;font-weight:500;color:#486068;margin-bottom:5px">'+days[i]+' <span style="font-size:9px;color:#9ca3af;font-weight:400">'+d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+'</span></div>'
+      +'<div style="display:grid;grid-template-columns:1fr 55px 45px 75px 75px;gap:5px">'
+        +'<input data-date="'+ds+'" class="wpTitle" type="text" placeholder="Descrição (vazio = pular)" style="padding:5px 7px;border:0.5px solid #d1d5db;border-radius:6px;font-size:10px;font-family:Montserrat,sans-serif;width:100%;box-sizing:border-box">'
+        +'<input data-date="'+ds+'" class="wpDist" type="number" step="0.1" placeholder="km" style="padding:5px 7px;border:0.5px solid #d1d5db;border-radius:6px;font-size:10px;font-family:Montserrat,sans-serif;width:100%;box-sizing:border-box">'
+        +'<select data-date="'+ds+'" class="wpZone" style="padding:5px 4px;border:0.5px solid #d1d5db;border-radius:6px;font-size:10px;font-family:Montserrat,sans-serif;width:100%;box-sizing:border-box;background:#f9fafb"><option value="">Z?</option><option>Z1</option><option>Z2</option><option>Z3</option><option>Z4</option><option>Z5</option></select>'
+        +'<input data-date="'+ds+'" class="wpPace" type="text" placeholder="Pace" style="padding:5px 7px;border:0.5px solid #d1d5db;border-radius:6px;font-size:10px;font-family:Montserrat,sans-serif;width:100%;box-sizing:border-box">'
+        +'<input data-date="'+ds+'" class="wpDur" type="text" placeholder="45-60" style="padding:5px 7px;border:0.5px solid #d1d5db;border-radius:6px;font-size:10px;font-family:Montserrat,sans-serif;width:100%;box-sizing:border-box">'
+      +'</div>'
     +'</div>';
   }
   ov.innerHTML='<div style="background:#fff;border:0.5px solid #d1d5db;border-radius:14px;width:480px;max-width:96vw;font-family:Montserrat,sans-serif;overflow:hidden;max-height:90vh;display:flex;flex-direction:column" onclick="event.stopPropagation()">'
@@ -6928,6 +6941,9 @@ function openRunWeekPlanModal(){
   ov.querySelector('#wpSave').onclick=function(){
     var titles=ov.querySelectorAll('.wpTitle');
     var dists=ov.querySelectorAll('.wpDist');
+    var zones=ov.querySelectorAll('.wpZone');
+    var paces=ov.querySelectorAll('.wpPace');
+    var durs=ov.querySelectorAll('.wpDur');
     var added=0;
     if(!window.runData.plans)window.runData.plans=[];
     for(var i=0;i<titles.length;i++){
@@ -6935,7 +6951,10 @@ function openRunWeekPlanModal(){
       if(!title)continue;
       var date=titles[i].dataset.date;
       var dist=parseFloat(dists[i].value)||null;
-      var plan={id:gid(),title:title,date:date,dist:dist,status:'pending',createdAt:new Date().toISOString()};
+      var zone=zones[i].value||null;
+      var pace=paces[i].value.trim()||null;
+      var dur=durs[i].value.trim()||null;
+      var plan={id:gid(),title:title,date:date,dist:dist,zone:zone,pace:pace,dur:dur,status:'pending',createdAt:new Date().toISOString()};
       window.runData.plans.push(plan);
       syncRunPlanToCalendar(plan);
       added++;
@@ -7284,31 +7303,77 @@ function renderRunPlano(body){
       else if(p.date<today)badgeHtml='<span style="background:#fef2f2;color:#dc2626;border-radius:10px;padding:2px 7px;font-size:9px;font-weight:500">perdido</span>';
       else badgeHtml='<span style="background:#f0f2f5;color:#6b7280;border-radius:10px;padding:2px 7px;font-size:9px;font-weight:500">planejado</span>';
 
+      var planMeta=[];
+      if(p.dist)planMeta.push(p.dist+' km');
+      if(p.zone)planMeta.push(p.zone);
+      if(p.pace)planMeta.push(p.pace+'/km');
+      if(p.dur)planMeta.push(p.dur+' min');
       body.innerHTML+='<div style="display:grid;grid-template-columns:90px 1fr auto auto;gap:8px;align-items:center;padding:8px 14px;'+(last?'':'border-bottom:0.5px solid #f9fafb')+'">'
         +'<div style="font-size:10px;color:'+(isToday?'#486068':'#6b7280')+';font-weight:'+(isToday?'500':'400')+'">'+dayLabel.charAt(0).toUpperCase()+dayLabel.slice(1)+'</div>'
-        +'<div><div style="font-size:10px;color:#111827">'+p.title+'</div><div style="font-size:9px;color:#9ca3af">'+(p.dist?p.dist+' km':'')+'</div></div>'
+        +'<div><div style="font-size:10px;color:#111827">'+p.title+'</div><div style="font-size:9px;color:#9ca3af">'+planMeta.join(' · ')+'</div></div>'
         +badgeHtml
         +'<div onclick="openRunEditModal(\'plan\',\''+p.id+'\')" style="cursor:pointer;color:#9ca3af;font-size:11px;padding:2px 6px" title="Editar">✎</div>'
         +'<div onclick="deleteRunPlan(\''+p.id+'\')" style="cursor:pointer;color:#d1d5db;font-size:11px;padding:2px 6px" title="Excluir">×</div>'
       +'</div>';
-    });
     body.innerHTML+='</div>';
   });
 }
 
 function createRunPlan(){
-  var title=prompt('Descrição do treino (ex: Fartlek 6 km, Longo 10 km):');
-  if(!title||!title.trim())return;
-  var date=prompt('Data (AAAA-MM-DD):',tds(new Date()));
-  if(!date||!date.match(/^\d{4}-\d{2}-\d{2}$/)){showToast('Data inválida');return;}
-  var dist=prompt('Distância planejada (km):','');
-  var plan={id:gid(),title:title.trim(),date:date,dist:dist?parseFloat(dist):null,status:'pending',createdAt:new Date().toISOString()};
-  if(!window.runData.plans)window.runData.plans=[];
-  window.runData.plans.push(plan);
-  fbSaveRunData();
-  syncRunPlanToCalendar(plan);
-  showToast('Treino adicionado ao plano e ao calendário!');
-  renderRunView();
+  var ov=document.createElement('div');
+  ov.id='runPlanCreateOv';
+  ov.setAttribute('style','position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;padding:16px');
+  ov.innerHTML='<div style="background:#fff;border:0.5px solid #d1d5db;border-radius:14px;width:400px;max-width:96vw;font-family:Montserrat,sans-serif;overflow:hidden" onclick="event.stopPropagation()">'
+    +'<div style="padding:14px 18px;border-bottom:0.5px solid #f0f2f5;display:flex;justify-content:space-between;align-items:center">'
+      +'<span style="font-size:12px;font-weight:600;color:#111827">Adicionar treino</span>'
+      +'<span onclick="document.getElementById('runPlanCreateOv').remove()" style="cursor:pointer;color:#9ca3af;font-size:18px;line-height:1">×</span>'
+    +'</div>'
+    +'<div style="padding:14px 18px">'
+      +'<div style="margin-bottom:8px"><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Descrição</div>'
+        +'<input id="cpTitle" type="text" placeholder="Ex: Fartlek, Longo, Regenerativo..." style="width:100%;box-sizing:border-box;padding:6px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif"></div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
+        +'<div><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Data</div>'
+          +'<input id="cpDate" type="date" value="'+'" style="width:100%;box-sizing:border-box;padding:6px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif"></div>'
+        +'<div><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Distância (km)</div>'
+          +'<input id="cpDist" type="number" step="0.1" placeholder="6.0" style="width:100%;box-sizing:border-box;padding:6px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif"></div>'
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">'
+        +'<div><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Zona</div>'
+          +'<select id="cpZone" style="width:100%;box-sizing:border-box;padding:6px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif;background:#f9fafb"><option value="">--</option><option value="Z1">Z1</option><option value="Z2">Z2</option><option value="Z3">Z3</option><option value="Z4">Z4</option><option value="Z5">Z5</option></select></div>'
+        +'<div><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Pace alvo (/km)</div>'
+          +'<input id="cpPace" type="text" placeholder="6:00" style="width:100%;box-sizing:border-box;padding:6px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif"></div>'
+        +'<div><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Duração (min)</div>'
+          +'<input id="cpDur" type="text" placeholder="45-60" style="width:100%;box-sizing:border-box;padding:6px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif"></div>'
+      +'</div>'
+    +'</div>'
+    +'<div style="padding:0 18px 16px;display:flex;gap:8px;justify-content:flex-end">'
+      +'<button id="cpCancel" style="padding:7px 14px;border-radius:8px;border:0.5px solid #d1d5db;background:#fff;font-family:Montserrat,sans-serif;font-size:11px;cursor:pointer;color:#6b7280">Cancelar</button>'
+      +'<button id="cpSave" style="padding:7px 14px;border-radius:8px;border:none;background:#131F28;font-family:Montserrat,sans-serif;font-size:11px;font-weight:500;cursor:pointer;color:#C5CED0">Salvar</button>'
+    +'</div>'
+  +'</div>';
+  document.body.appendChild(ov);
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};
+  ov.querySelector('#cpCancel').onclick=function(){ov.remove();};
+  // set today as default
+  var dateInput=ov.querySelector('#cpDate');if(dateInput)dateInput.value=tds(new Date());
+  ov.querySelector('#cpSave').onclick=function(){
+    var title=ov.querySelector('#cpTitle').value.trim();
+    var date=ov.querySelector('#cpDate').value;
+    var dist=parseFloat(ov.querySelector('#cpDist').value)||null;
+    var zone=ov.querySelector('#cpZone').value||null;
+    var pace=ov.querySelector('#cpPace').value.trim()||null;
+    var dur=ov.querySelector('#cpDur').value.trim()||null;
+    if(!title){showToast('Preencha a descrição');return;}
+    if(!date||!date.match(/^\d{4}-\d{2}-\d{2}$/)){showToast('Data inválida');return;}
+    var plan={id:gid(),title:title,date:date,dist:dist,zone:zone,pace:pace,dur:dur,status:'pending',createdAt:new Date().toISOString()};
+    if(!window.runData.plans)window.runData.plans=[];
+    window.runData.plans.push(plan);
+    fbSaveRunData();
+    syncRunPlanToCalendar(plan);
+    ov.remove();
+    showToast('Treino adicionado!');
+    renderRunView();
+  };
 }
 
 function deleteRunPlan(planId){
@@ -7464,9 +7529,24 @@ function renderNotebookView(){
       ov.onclick=function(e){if(e.target===ov)ov.remove();};
       ov.querySelector('#nbDelConfirm').onclick=function(){
         ov.remove();
-        window.notebookData.notebooks=window.notebookData.notebooks.filter(function(n){return n.id!==nbId;});
+        // Filtrar localmente
+        window.notebookData.notebooks=(window.notebookData.notebooks||[]).filter(function(n){return n.id!==nbId;});
         window._activeNotebook='';
-        fbSaveNotebooks();
+        // Bloquear onSnapshot por 10s para evitar race condition
+        window._nbSavingUntil=Date.now()+10000;
+        // Salvar direto no Firestore com os dados já filtrados
+        if(window.auth&&window.auth.currentUser){
+          try{
+            var uid=window.auth.currentUser.uid;
+            var data=JSON.parse(JSON.stringify(window.notebookData));
+            if(!data.notebooks)data.notebooks=[];
+            data.notebooks.forEach(function(nb){if(!nb.rows)nb.rows=[];if(!nb.columns)nb.columns=[];});
+            window.firestore.setDoc(window.firestore.doc(window.db,'users',uid,'config','notebookData'),data)
+              .then(function(){showToast('Caderno excluído!');window._nbSavingUntil=Date.now()+2000;})
+              .catch(function(e){console.error('Delete notebook error:',e);showToast('Erro ao excluir');});
+          }catch(e){console.error('Delete notebook error:',e);}
+        }
+        // Renderizar imediatamente com os dados locais já atualizados
         renderNotebookView();
       };
     };
