@@ -992,7 +992,7 @@ onAuthStateChanged(auth,user=>{
     if(su)su();su=onSnapshot(doc(db,'users',uid,'config','stickies'),snap=>{if(snap.exists()){window.stickies=snap.data().stickies||[];}else{window.stickies=[];}if(window.view==='sticky')renderView();else renderStickies();});
     onSnapshot(doc(db,'users',uid,'config','calAutoSettings'),snap=>{if(snap.exists()){var d=snap.data();window.calAutoSettings=Object.assign(window.calAutoSettings||{},d);window.calCustomRules=d.customRules||[];console.log('Loaded custom rules:',window.calCustomRules.length);setTimeout(function(){runCalAutomations();},2000);}});
     onSnapshot(doc(db,'users',uid,'config','goalsData'),snap=>{if(snap.exists())window.goalsData=snap.data();updateAutoKRs();});
-    onSnapshot(doc(db,'users',uid,'config','notebookData'),snap=>{if(window._nbSaving)return;if(snap.exists()){window.notebookData=snap.data();if(!window.notebookData.notebooks)window.notebookData.notebooks=[];window.notebookData.notebooks.forEach(function(nb){if(!nb.rows)nb.rows=[];if(!nb.columns)nb.columns=[];}); }});
+    onSnapshot(doc(db,'users',uid,'config','notebookData'),snap=>{if(window._nbSavingUntil&&Date.now()<window._nbSavingUntil)return;if(snap.exists()){window.notebookData=snap.data();if(!window.notebookData.notebooks)window.notebookData.notebooks=[];window.notebookData.notebooks.forEach(function(nb){if(!nb.rows)nb.rows=[];if(!nb.columns)nb.columns=[];}); }});
     onSnapshot(doc(db,'users',uid,'config','idealWeekData'),snap=>{if(snap.exists()){window.idealWeekData=snap.data();if(!window.idealWeekData.blocks)window.idealWeekData.blocks=[];}});
     onSnapshot(doc(db,'users',uid,'config','deliverables'),snap=>{if(snap.exists()){window.deliverables=snap.data().items||[];}});
     onSnapshot(doc(db,'users',uid,'config','kanbanBoards'),snap=>{if(snap.exists()){window.kanbanBoards=snap.data().boards||[];}});
@@ -7370,11 +7370,11 @@ function fbSaveNotebooks(){
   var data=JSON.parse(JSON.stringify(window.notebookData));
   if(!data.notebooks)data.notebooks=[];
   data.notebooks.forEach(function(nb){if(!nb.rows)nb.rows=[];if(!nb.columns)nb.columns=[];});
-  window._nbSaving=true;
+  window._nbSavingUntil=Date.now()+8000;
   window.firestore.setDoc(window.firestore.doc(window.db,'users',uid,'config','notebookData'),data)
-    .then(function(){setTimeout(function(){window._nbSaving=false;},2000);})
-    .catch(function(e){window._nbSaving=false;console.error('Notebook save error:',e);});
-  }catch(e){window._nbSaving=false;console.error('Notebook save error:',e);}
+    .then(function(){window._nbSavingUntil=Date.now()+1000;})
+    .catch(function(e){window._nbSavingUntil=0;console.error('Notebook save error:',e);});
+  }catch(e){window._nbSavingUntil=0;console.error('Notebook save error:',e);}
 }
 
 function renderNotebookView(){
