@@ -2576,6 +2576,7 @@ function switchCal(calId){
   if(studyDiv)studyDiv.style.display='none';
   if(goalsDiv)goalsDiv.style.display='none';
   if(finDiv)finDiv.style.display='none';var iwDiv=document.getElementById('idealWeekApp');if(iwDiv)iwDiv.style.display='none';var cyDiv=document.getElementById('cycleApp');if(cyDiv)cyDiv.style.display='none';if(nbDiv)nbDiv.style.display='none';
+  var raC=document.getElementById('runApp');if(raC)raC.style.display='none';
   if(calId==='main'){
     if(centerCol)centerCol.style.display='flex';
     if(rightPanel)rightPanel.style.display='flex';
@@ -7351,6 +7352,7 @@ function getWeeksOfMonth(y,m){
 // ── FIM MÓDULO CORRIDA ────────────────────────────────────────────────────────
 
 function switchToNotebook(){
+  var ra=document.getElementById('runApp');if(ra)ra.style.display='none';
   var wa=document.getElementById('workApp');if(wa)wa.style.display='none';
   var cc=document.querySelector('.center-col');if(cc)cc.style.display='none';
   var rp=document.getElementById('rightPanel');if(rp)rp.style.display='none';
@@ -7631,6 +7633,7 @@ var IW_COLORS=[
 ];
 
 function switchToIdealWeek(){
+  var ra=document.getElementById('runApp');if(ra)ra.style.display='none';
   var wa=document.getElementById('workApp');if(wa)wa.style.display='none';
   var cc=document.querySelector('.center-col');if(cc)cc.style.display='none';
   var rp=document.getElementById('rightPanel');if(rp)rp.style.display='none';
@@ -7913,6 +7916,7 @@ function editIWBlock(blockId){
 window._finWeekOffset=0;
 
 function switchToFinWeek(){
+  var ra=document.getElementById('runApp');if(ra)ra.style.display='none';
   var wa=document.getElementById('workApp');if(wa)wa.style.display='none';
   var cc=document.querySelector('.center-col');if(cc)cc.style.display='none';
   var rp=document.getElementById('rightPanel');if(rp)rp.style.display='none';
@@ -8243,6 +8247,7 @@ function fbLoadStudy(){
 
 // Switch to study module
 function switchToStudy(){
+  var ra=document.getElementById('runApp');if(ra)ra.style.display='none';
   activeCal='study';
   var centerCol=document.querySelector('.center-col');
   var rightPanel=document.getElementById('rightPanel');
@@ -9574,6 +9579,7 @@ window.goalsData=window.goalsData||{objectives:[],periods:[]};
 window._goalsPeriod='';
 
 function switchToGoals(){
+  var ra=document.getElementById('runApp');if(ra)ra.style.display='none';
   var wa=document.getElementById('workApp');if(wa)wa.style.display='none';
   var cc=document.querySelector('.center-col');if(cc)cc.style.display='none';
   var rp=document.getElementById('rightPanel');if(rp)rp.style.display='none';
