@@ -2018,7 +2018,7 @@ function toggleRPModeDropdown(){
   var dd=document.createElement('div');
   dd.id='rpModeDropdown';
   dd.style.cssText='position:absolute;right:0;top:28px;width:130px;background:white;border:0.5px solid #e5e7eb;border-radius:8px;overflow:hidden;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,.06);font-family:Montserrat,sans-serif';
-  var modes=[{id:'resumo',label:'Resumo'},{id:'contas',label:'Contas'},{id:'metas',label:'Metas'},{id:'eng',label:'English Study'},{id:'cadernos',label:'Cadernos'},{id:'ciclo',label:'Ciclo'}];
+  var modes=[{id:'resumo',label:'Resumo'},{id:'contas',label:'Contas'},{id:'metas',label:'Metas'},{id:'eng',label:'English Study'},{id:'cadernos',label:'Cadernos'},{id:'ciclo',label:'Ciclo'},{id:'corrida',label:'Corrida'}];
   modes.forEach(function(m){
     var item=document.createElement('div');
     item.style.cssText='padding:8px 12px;font-size:11px;cursor:pointer;border-top:0.5px solid #f0f2f5;'+(window._rightPanelMode===m.id?'color:#111827;font-weight:500;background:#f7f8fa':'color:#6b7280');
@@ -2281,6 +2281,7 @@ function renderRightPanel(){
   if(window._rightPanelMode==='ciclo'){renderRPCycle(rp);return;}
   if(window._rightPanelMode==='metas'){renderRPGoals(rp);return;}
   if(window._rightPanelMode==='eng'){renderRPEng(rp);return;}
+  if(window._rightPanelMode==='corrida'){renderRPRun(rp);return;}
   const ds=tds(cd);
   const todayEvs=getEvs(ds);
   const total=todayEvs.filter(e=>!e.allDay).length;
@@ -6758,6 +6759,194 @@ window._activeNotebook='';
 window.runData = window.runData || {runs:[], plans:[]};
 window._runView = 'dashboard';
 
+
+function renderRPRun(rp){
+  rp.innerHTML='';
+  rp.appendChild(rpDropdownHeader(rp,'Corrida'));
+  var runs=window.runData&&window.runData.runs||[];
+  var plans=window.runData&&window.runData.plans||[];
+  var today=tds(new Date());
+  // Próximos treinos planejados
+  var upcoming=plans.filter(function(p){return p.date>=today&&p.status!=='done';}).sort(function(a,b){return a.date>b.date?1:-1;}).slice(0,3);
+  // Último treino
+  var last=runs.slice().sort(function(a,b){return (b.date||'')>(a.date||'')?1:-1;})[0];
+  // Km semana atual
+  var now=new Date();var mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));
+  var sun=new Date(mon);sun.setDate(mon.getDate()+6);
+  var wkKm=runs.filter(function(r){if(!r.date)return false;var d=new Date(r.date+'T12:00:00');return d>=mon&&d<=sun;}).reduce(function(s,r){return s+(parseFloat(r.dist)||0);},0);
+
+  var html='<div style="padding:10px 14px">';
+  // Km da semana
+  html+='<div style="background:#f0f4f5;border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">'
+    +'<div style="font-size:10px;color:#6b7280">Esta semana</div>'
+    +'<div style="font-size:16px;font-weight:500;color:#486068">'+wkKm.toFixed(1)+' km</div>'
+  +'</div>';
+  // Último treino
+  if(last){
+    html+='<div style="font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:.5px;margin-bottom:5px">ÚLTIMO TREINO</div>'
+      +'<div style="background:white;border:0.5px solid #e5e7eb;border-radius:8px;padding:8px 10px;margin-bottom:10px">'
+        +'<div style="font-size:11px;font-weight:500;color:#111827">'+last.dist+' km</div>'
+        +'<div style="font-size:9px;color:#9ca3af">'+last.date+(last.pace?' · '+last.pace+'/km':'')+(last.fc?' · '+last.fc+' bpm':'')+'</div>'
+      +'</div>';
+  }
+  // Próximos
+  if(upcoming.length){
+    html+='<div style="font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:.5px;margin-bottom:5px">PRÓXIMOS</div>';
+    upcoming.forEach(function(p){
+      var d=new Date(p.date+'T12:00:00');
+      var dl=d.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'});
+      var isToday=p.date===today;
+      html+='<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid #f5f5f5">'
+        +'<div style="width:6px;height:6px;border-radius:50%;background:#486068;flex-shrink:0"></div>'
+        +'<div style="flex:1"><div style="font-size:10px;color:#111827">'+p.title+'</div><div style="font-size:9px;color:#9ca3af">'+dl+(p.dist?' · '+p.dist+' km':'')+'</div></div>'
+        +(isToday?'<span style="background:#486068;color:#C5CED0;border-radius:8px;padding:1px 6px;font-size:8px">hoje</span>':'')
+      +'</div>';
+    });
+    html+='<div style="margin-top:4px"></div>';
+  }
+  html+='<div onclick="window._rightPanelMode=\'resumo\';switchToRun()" style="font-size:10px;color:#486068;cursor:pointer;text-align:right;margin-top:6px">Ver módulo completo →</div>';
+  html+='</div>';
+  var div=document.createElement('div');div.innerHTML=html;
+  rp.appendChild(div);
+}
+
+function openRunEditModal(type, id){
+  var existing=document.getElementById('runEditOverlay');
+  if(existing)existing.remove();
+  var item=type==='run'
+    ?(window.runData.runs||[]).find(function(r){return r.id===id;})
+    :(window.runData.plans||[]).find(function(p){return p.id===id;});
+  if(!item)return;
+  var ov=document.createElement('div');
+  ov.id='runEditOverlay';
+  ov.setAttribute('style','position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center');
+  var isRun=type==='run';
+  ov.innerHTML='<div style="background:#fff;border:0.5px solid #d1d5db;border-radius:14px;width:380px;max-width:94vw;font-family:Montserrat,sans-serif;overflow:hidden" onclick="event.stopPropagation()">'
+    +'<div style="padding:14px 18px;border-bottom:0.5px solid #f0f2f5;display:flex;justify-content:space-between;align-items:center">'
+      +'<span style="font-size:12px;font-weight:600;color:#111827">Editar '+(isRun?'treino':'plano')+'</span>'
+      +'<span onclick="document.getElementById(\'runEditOverlay\').remove()" style="cursor:pointer;color:#9ca3af;font-size:18px;line-height:1">×</span>'
+    +'</div>'
+    +'<div style="padding:14px 18px">'
+      +(isRun
+        ?'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
+          +'<div><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Data</div><input id="reDate" type="date" value="'+item.date+'" style="width:100%;box-sizing:border-box;padding:6px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif"></div>'
+          +'<div><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Distância (km)</div><input id="reDist" type="number" step="0.1" value="'+(item.dist||'')+'" style="width:100%;box-sizing:border-box;padding:6px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif"></div>'
+          +'</div>'
+          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
+          +'<div><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Tempo (hh:mm:ss)</div><input id="reTime" type="text" value="'+(item.time||'')+'" style="width:100%;box-sizing:border-box;padding:6px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif" oninput="var d=parseFloat(document.getElementById(\'reDist\').value);var p=calcPace(d,this.value);var pi=document.getElementById(\'rePace\');if(pi)pi.value=p"></div>'
+          +'<div><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Pace (/km)</div><input id="rePace" type="text" value="'+(item.pace||'')+'" readonly style="width:100%;box-sizing:border-box;padding:6px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif;background:#f9fafb;color:#9ca3af"></div>'
+          +'</div>'
+          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
+          +'<div><div style="font-size:9px;color:#6b7280;margin-bottom:3px">FC média (bpm)</div><input id="reFC" type="number" value="'+(item.fc||'')+'" style="width:100%;box-sizing:border-box;padding:6px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif"></div>'
+          +'<div><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Notas</div><input id="reNotes" type="text" value="'+(item.notes||'')+'" placeholder="Observações..." style="width:100%;box-sizing:border-box;padding:6px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif"></div>'
+          +'</div>'
+        :'<div style="margin-bottom:8px"><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Descrição</div><input id="reTitle" type="text" value="'+(item.title||'')+'" style="width:100%;box-sizing:border-box;padding:6px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif"></div>'
+          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
+          +'<div><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Data</div><input id="reDate" type="date" value="'+item.date+'" style="width:100%;box-sizing:border-box;padding:6px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif"></div>'
+          +'<div><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Distância (km)</div><input id="reDist" type="number" step="0.1" value="'+(item.dist||'')+'" style="width:100%;box-sizing:border-box;padding:6px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif"></div>'
+          +'</div>'
+          +'<div style="margin-bottom:8px"><div style="font-size:9px;color:#6b7280;margin-bottom:3px">Notas</div><input id="reNotes" type="text" value="'+(item.notes||'')+'" placeholder="Observações..." style="width:100%;box-sizing:border-box;padding:6px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:11px;font-family:Montserrat,sans-serif"></div>'
+      )
+    +'</div>'
+    +'<div style="padding:0 18px 16px;display:flex;gap:8px;justify-content:flex-end">'
+      +'<button id="runEditDel" style="padding:7px 14px;border-radius:8px;border:0.5px solid #fecaca;background:#fef2f2;font-family:Montserrat,sans-serif;font-size:11px;cursor:pointer;color:#dc2626">Excluir</button>'
+      +'<button id="runEditCancel" style="padding:7px 14px;border-radius:8px;border:0.5px solid #d1d5db;background:#fff;font-family:Montserrat,sans-serif;font-size:11px;cursor:pointer;color:#6b7280">Cancelar</button>'
+      +'<button id="runEditSave" style="padding:7px 14px;border-radius:8px;border:none;background:#131F28;font-family:Montserrat,sans-serif;font-size:11px;font-weight:500;cursor:pointer;color:#C5CED0">Salvar</button>'
+    +'</div>'
+  +'</div>';
+  document.body.appendChild(ov);
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};
+  ov.querySelector('#runEditCancel').onclick=function(){ov.remove();};
+  ov.querySelector('#runEditDel').onclick=function(){
+    ov.remove();
+    if(isRun){window.runData.runs=(window.runData.runs||[]).filter(function(r){return r.id!==id;});}
+    else{window.runData.plans=(window.runData.plans||[]).filter(function(p){return p.id!==id;});removeRunPlanFromCalendar(id);}
+    fbSaveRunData();renderRunView();showToast('Excluído!');
+  };
+  ov.querySelector('#runEditSave').onclick=function(){
+    var date=ov.querySelector('#reDate').value;
+    var dist=parseFloat(ov.querySelector('#reDist').value)||null;
+    var notes=ov.querySelector('#reNotes').value||'';
+    if(isRun){
+      var time=ov.querySelector('#reTime').value;
+      var fc=parseInt(ov.querySelector('#reFC').value)||null;
+      var pace=calcPace(dist,time);
+      item.date=date;item.dist=dist;item.time=time;item.pace=pace;item.fc=fc;item.notes=notes;
+    } else {
+      var title=ov.querySelector('#reTitle').value;
+      if(!title||!title.trim()){showToast('Preencha a descrição');return;}
+      var oldDate=item.date;
+      item.title=title.trim();item.date=date;item.dist=dist;item.notes=notes;
+      // Atualizar evento no calendário se a data mudou
+      if(oldDate!==date){
+        var evId='run_plan_'+id;
+        var ev=(window.evs||[]).find(function(e){return e.id===evId;});
+        if(ev){ev.date=date;ev.title='🏃 '+item.title;if(window.fbSaveEv)fbSaveEv(ev);}
+      }
+    }
+    fbSaveRunData();ov.remove();renderRunView();showToast('Salvo!');
+  };
+}
+
+function openRunWeekPlanModal(){
+  var existing=document.getElementById('runWeekOverlay');
+  if(existing)existing.remove();
+  var ov=document.createElement('div');
+  ov.id='runWeekOverlay';
+  ov.setAttribute('style','position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;padding:16px');
+  var now=new Date();
+  var monday=new Date(now);monday.setDate(now.getDate()-((now.getDay()+6)%7));
+  var days=['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
+  var rows='';
+  for(var i=0;i<7;i++){
+    var d=new Date(monday);d.setDate(monday.getDate()+i);
+    var ds=tds(d);
+    rows+='<div style="display:grid;grid-template-columns:70px 1fr 80px;gap:8px;align-items:center;margin-bottom:8px">'
+      +'<div style="font-size:10px;color:#6b7280">'+days[i]+'<div style="font-size:8px;color:#9ca3af">'+d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+'</div></div>'
+      +'<input data-date="'+ds+'" class="wpTitle" type="text" placeholder="Ex: Fartlek 6km (deixe vazio para pular)" style="padding:5px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:10px;font-family:Montserrat,sans-serif;width:100%;box-sizing:border-box">'
+      +'<input data-date="'+ds+'" class="wpDist" type="number" step="0.1" placeholder="km" style="padding:5px 8px;border:0.5px solid #d1d5db;border-radius:6px;font-size:10px;font-family:Montserrat,sans-serif;width:100%;box-sizing:border-box">'
+    +'</div>';
+  }
+  ov.innerHTML='<div style="background:#fff;border:0.5px solid #d1d5db;border-radius:14px;width:480px;max-width:96vw;font-family:Montserrat,sans-serif;overflow:hidden;max-height:90vh;display:flex;flex-direction:column" onclick="event.stopPropagation()">'
+    +'<div style="padding:14px 18px;border-bottom:0.5px solid #f0f2f5;display:flex;justify-content:space-between;align-items:center;flex-shrink:0">'
+      +'<span style="font-size:12px;font-weight:600;color:#111827">Planejar semana completa</span>'
+      +'<span onclick="document.getElementById(\'runWeekOverlay\').remove()" style="cursor:pointer;color:#9ca3af;font-size:18px;line-height:1">×</span>'
+    +'</div>'
+    +'<div style="padding:14px 18px;overflow-y:auto;flex:1">'
+      +'<div style="font-size:9px;color:#9ca3af;margin-bottom:12px">Preencha apenas os dias que vai treinar. Deixe em branco para pular.</div>'
+      +rows
+    +'</div>'
+    +'<div style="padding:12px 18px;border-top:0.5px solid #f0f2f5;display:flex;gap:8px;justify-content:flex-end;flex-shrink:0">'
+      +'<button id="wpCancel" style="padding:7px 14px;border-radius:8px;border:0.5px solid #d1d5db;background:#fff;font-family:Montserrat,sans-serif;font-size:11px;cursor:pointer;color:#6b7280">Cancelar</button>'
+      +'<button id="wpSave" style="padding:7px 14px;border-radius:8px;border:none;background:#131F28;font-family:Montserrat,sans-serif;font-size:11px;font-weight:500;cursor:pointer;color:#C5CED0">Salvar semana</button>'
+    +'</div>'
+  +'</div>';
+  document.body.appendChild(ov);
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};
+  ov.querySelector('#wpCancel').onclick=function(){ov.remove();};
+  ov.querySelector('#wpSave').onclick=function(){
+    var titles=ov.querySelectorAll('.wpTitle');
+    var dists=ov.querySelectorAll('.wpDist');
+    var added=0;
+    if(!window.runData.plans)window.runData.plans=[];
+    for(var i=0;i<titles.length;i++){
+      var title=titles[i].value.trim();
+      if(!title)continue;
+      var date=titles[i].dataset.date;
+      var dist=parseFloat(dists[i].value)||null;
+      var plan={id:gid(),title:title,date:date,dist:dist,status:'pending',createdAt:new Date().toISOString()};
+      window.runData.plans.push(plan);
+      syncRunPlanToCalendar(plan);
+      added++;
+    }
+    if(!added){showToast('Nenhum treino preenchido!');return;}
+    fbSaveRunData();ov.remove();
+    showToast(added+' treinos adicionados ao plano e ao calendário!');
+    renderRunView();
+  };
+}
+
+
 function switchToRun(){
   var wa=document.getElementById('workApp');if(wa)wa.style.display='none';
   var cc=document.querySelector('.center-col');if(cc)cc.style.display='none';
@@ -7027,6 +7216,7 @@ function renderRunHistorico(body){
         +'</div>'
         +'<div style="display:flex;gap:6px;align-items:center">'
           +'<span style="background:#e8f5ee;color:#2d7a4f;border-radius:10px;padding:2px 7px;font-size:9px;font-weight:500">concluído</span>'
+          +'<div onclick="openRunEditModal(\'run\',\''+r.id+'\')" style="cursor:pointer;color:#9ca3af;font-size:10px;padding:2px 6px;border-radius:4px" title="Editar">✎</div>'
           +'<div onclick="deleteRun(\''+r.id+'\')" style="cursor:pointer;color:#d1d5db;font-size:10px;padding:2px 6px;border-radius:4px" title="Excluir">×</div>'
         +'</div>'
       +'</div>';
@@ -7047,7 +7237,8 @@ function renderRunPlano(body){
   var plans=window.runData.plans||[];
 
   // Botão novo plano
-  body.innerHTML='<div style="display:flex;justify-content:flex-end;margin-bottom:12px">'
+  body.innerHTML='<div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:12px">'
+    +'<button onclick="openRunWeekPlanModal()" style="background:#486068;color:#C5CED0;border:none;border-radius:8px;padding:7px 16px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif">📅 Planejar semana</button>'
     +'<button onclick="createRunPlan()" style="background:#131F28;color:#C5CED0;border:none;border-radius:8px;padding:7px 16px;font-size:10px;font-weight:500;cursor:pointer;font-family:Montserrat,sans-serif">+ Adicionar treino</button>'
   +'</div>';
 
@@ -7096,6 +7287,7 @@ function renderRunPlano(body){
         +'<div style="font-size:10px;color:'+(isToday?'#486068':'#6b7280')+';font-weight:'+(isToday?'500':'400')+'">'+dayLabel.charAt(0).toUpperCase()+dayLabel.slice(1)+'</div>'
         +'<div><div style="font-size:10px;color:#111827">'+p.title+'</div><div style="font-size:9px;color:#9ca3af">'+(p.dist?p.dist+' km':'')+'</div></div>'
         +badgeHtml
+        +'<div onclick="openRunEditModal(\'plan\',\''+p.id+'\')" style="cursor:pointer;color:#9ca3af;font-size:11px;padding:2px 6px" title="Editar">✎</div>'
         +'<div onclick="deleteRunPlan(\''+p.id+'\')" style="cursor:pointer;color:#d1d5db;font-size:11px;padding:2px 6px" title="Excluir">×</div>'
       +'</div>';
     });
