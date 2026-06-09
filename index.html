@@ -6833,7 +6833,15 @@ function renderNotebookView(){
   var delNb=document.createElement('div');
   delNb.style.cssText='font-size:10px;color:#d1d5db;cursor:pointer;font-family:Montserrat,sans-serif';
   delNb.textContent='Excluir caderno';
-  delNb.onclick=function(){if(!confirm('Excluir "'+active.name+'" e todos os dados?'))return;window.notebookData.notebooks=window.notebookData.notebooks.filter(function(n){return n.id!==active.id;});window._activeNotebook='';fbSaveNotebooks();renderNotebookView();};
+  (function(nbId,nbName){
+    delNb.onclick=function(){
+      if(!confirm('Excluir "'+nbName+'" e todos os dados?'))return;
+      window.notebookData.notebooks=window.notebookData.notebooks.filter(function(n){return n.id!==nbId;});
+      window._activeNotebook='';
+      fbSaveNotebooks();
+      renderNotebookView();
+    };
+  })(active.id,active.name);
   actions.appendChild(delNb);
   main.appendChild(actions);
 
