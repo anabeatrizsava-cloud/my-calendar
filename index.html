@@ -5236,8 +5236,9 @@ function fbLoadWorkPlanning(){
       window.workPlanning=snap.exists()?snap.data():{boards:[]};
       if(!window.workPlanning.boards)window.workPlanning.boards=[];
       var onPlan=window._wView==='plan'&&(window.workCals||[]).some(function(c){return c.id===activeCal;});
-      var modalOpen=document.getElementById('planEntryModal')||document.getElementById('planStatusEditor');
+      var modalOpen=document.getElementById('planEntryModal')||document.getElementById('planStatusEditor')||document.getElementById('planAutoPanel')||document.getElementById('planRuleEditor');
       if(onPlan&&!modalOpen)renderWorkPlanning(activeCal);
+      if(!window._planAutoStarted){window._planAutoStarted=true;setTimeout(planRunAllTimed,3000);setInterval(planRunAllTimed,60000);}
     });
   }catch(e){console.error('workPlanning load:',e);}
 }
@@ -5296,7 +5297,7 @@ function planSaveAll(board){fbSaveWorkEvs(board.calId);fbSaveWorkPlanning();}
 function planPullFromWorkEvs(calId){
   if(!window.workPlanning||!window.workPlanning.boards||!window.workPlanning.boards.length)return;
   var changed=false;
-  (window.workEvs[calId]||[]).forEach(function(ev){
+  (window.workEvs[calId]||[]).slice().forEach(function(ev){
     if(!ev.planRef)return;
     var r=planLocate(ev.planRef.boardId,ev.planRef.itemId,ev.planRef.subId);
     if(!r.item)return;
@@ -5306,7 +5307,10 @@ function planPullFromWorkEvs(calId){
     var targetKind=PL_PROG_TO_KIND[ev.progress||'not-started']||'initial';
     if(cur.kind!==targetKind){
       var ns=planFirstOfKind(r.board,targetKind);
-      if(ns&&ns.id!==en.status){en.status=ns.id;en.statusAt=planNow();changed=true;}
+      if(ns&&ns.id!==en.status){
+        en.status=ns.id;en.statusAt=planNow();changed=true;
+        if(typeof planOnEvent==='function')planOnEvent(r.board,{type:'status',item:r.item,sub:r.sub},0);
+      }
     }
     if(ev.date&&en.due!==ev.date){en.due=ev.date;changed=true;}
     if(ev.title&&en.title!==ev.title){en.title=ev.title;changed=true;}
@@ -5367,7 +5371,8 @@ function planDeleteGroup(board,g){
 function planSetStatus(board,item,sub,statusId){
   var en=sub||item;
   en.status=statusId;en.statusAt=planNow();
-  planSyncEntry(board,item,sub);
+  planOnEvent(board,{type:'status',item:item,sub:sub},0);
+  planSyncItemTree(board,item);
   planSaveAll(board);renderWorkPlanning(board.calId);
 }
 function planOpenStatusMenu(anchor,board,item,sub){
@@ -5479,12 +5484,12 @@ function openPlanEntryModal(ctx){
   ft.appendChild(bc);ft.appendChild(bs);
   md.appendChild(ft);
 
-  function save(){
+    function save(){
     var t=ti.value.trim();
     if(!t){showToast('Digite um titulo!');ti.focus();return;}
     var l=planLocate(ctx.boardId,ctx.itemId,ctx.subId);
     var board=l.board;if(!board)return;
-    var item=l.item;
+    var item=l.item,evSub=null,evType='';
     if(ctx.mode==='new-item'){
       if(!board.groups)board.groups=[];
       var g=board.groups.find(function(x){return x.id===ctx.groupId;})||board.groups[0];
@@ -5492,16 +5497,21 @@ function openPlanEntryModal(ctx){
       item={id:gid(),title:t,due:di.value||'',status:status,statusAt:planNow(),subitems:[]};
       if(!g.items)g.items=[];
       g.items.push(item);g.collapsed=false;
+      evType='created';
     } else if(ctx.mode==='new-sub'){
       if(!item)return;
       if(!item.subitems)item.subitems=[];
-      item.subitems.push({id:gid(),title:t,due:di.value||'',status:status,statusAt:planNow()});
+      evSub={id:gid(),title:t,due:di.value||'',status:status,statusAt:planNow()};
+      item.subitems.push(evSub);
       window._planExpanded[item.id]=true;
+      evType='created';
     } else {
       var e2=l.sub||l.item;if(!e2)return;
-      if(e2.status!==status){e2.status=status;e2.statusAt=planNow();}
+      evSub=l.sub;
+      if(e2.status!==status){e2.status=status;e2.statusAt=planNow();evType='status';}
       e2.title=t;e2.due=di.value||'';
     }
+    if(evType)planOnEvent(board,{type:evType,item:item,sub:evSub},0);
     planSyncItemTree(board,item);
     planSaveAll(board);
     ov.remove();
@@ -5818,7 +5828,10 @@ function renderWorkPlanning(calId){
     ren.onclick=function(){planRenameBoard(board);};
     var del=plEl('div','font-size:10px;color:#d1d5db;cursor:pointer;margin-left:8px;'+PL_FONT,'Excluir quadro');
     del.onclick=function(){planDeleteBoard(board);};
-    [stL,arL,ren,del].forEach(function(e){bar.appendChild(e);});
+    var nAuto=planAutomations(board).filter(function(r){return r.enabled;}).length;
+    var auL=plEl('div','font-size:10px;color:#6b7280;cursor:pointer;margin-left:10px;'+PL_FONT,'Automacoes ('+nAuto+')');
+    auL.onclick=function(){openPlanAutoPanel(board.id);};
+    [stL,auL,arL,ren,del].forEach(function(e){bar.appendChild(e);});
   }
   wrap.appendChild(bar);
 
@@ -5841,6 +5854,367 @@ function renderWorkPlanning(calId){
     main.appendChild(addG);
   }
   wrap.appendChild(main);
+}
+
+// ── AUTOMACOES DO PLANEJAMENTO ───────────────────────────
+var PL_TRIGGERS=[
+  {id:'status_to',label:'Status muda para'},
+  {id:'status_days',label:'Fica no status por'},
+  {id:'due_passed',label:'Prazo vence'},
+  {id:'all_subs',label:'Todos os subitens chegam em'},
+  {id:'created',label:'For criado'}
+];
+var PL_ACTIONS=[
+  {id:'set_status',label:'Mudar status para'},
+  {id:'archive',label:'Arquivar'},
+  {id:'move_group',label:'Mover item para o grupo'},
+  {id:'set_due',label:'Mudar prazo'},
+  {id:'parent_status',label:'Mudar status do item pai para'}
+];
+var PL_APPLIES={item:'Itens',sub:'Subitens',both:'Itens e subitens'};
+
+function planAutomations(board){if(!board.automations)board.automations=[];return board.automations;}
+function planAddDays(dateStr,n){var d=dateStr?new Date(dateStr+'T12:00:00'):new Date();d.setDate(d.getDate()+n);return tds(d);}
+function planDaysSince(iso){if(!iso)return 0;return Math.floor((Date.now()-new Date(iso).getTime())/86400000);}
+function planGroupOfItem(board,item){return (board.groups||[]).find(function(g){return (g.items||[]).some(function(it){return it.id===item.id;});})||null;}
+function planStatusLabel(board,id){var s=planStatuses(board).find(function(x){return x.id===id;});return s?s.label:'(status removido)';}
+
+function planRuleApplies(board,rule,item,sub){
+  if(!rule.enabled)return false;
+  if(item.archived||(sub&&sub.archived))return false;
+  var ap=rule.applies||'both';
+  if(ap==='item'&&sub)return false;
+  if(ap==='sub'&&!sub)return false;
+  if(rule.groupId){var g=planGroupOfItem(board,item);if(!g||g.id!==rule.groupId)return false;}
+  return true;
+}
+
+function planApplyActions(board,rule,item,sub,depth){
+  var en=sub||item;
+  (rule.actions||[]).forEach(function(a){
+    if(a.type==='set_status'){
+      if(a.statusId&&planStatuses(board).some(function(s){return s.id===a.statusId;})&&en.status!==a.statusId){
+        en.status=a.statusId;en.statusAt=planNow();
+        planOnEvent(board,{type:'status',item:item,sub:sub},depth+1);
+      }
+    } else if(a.type==='archive'){
+      if(!en.archived){en.archived=true;en.archivedAt=planNow();}
+    } else if(a.type==='move_group'){
+      if(sub||!a.groupId)return;
+      var from=planGroupOfItem(board,item);
+      var to=(board.groups||[]).find(function(g){return g.id===a.groupId;});
+      if(!from||!to||from.id===to.id)return;
+      from.items=(from.items||[]).filter(function(it){return it.id!==item.id;});
+      if(!to.items)to.items=[];
+      to.items.push(item);
+    } else if(a.type==='set_due'){
+      var n=parseInt(a.days)||0;
+      if(a.mode==='clear')en.due='';
+      else if(a.mode==='due_plus')en.due=planAddDays(en.due||tds(new Date()),n);
+      else en.due=planAddDays(null,n);
+    } else if(a.type==='parent_status'){
+      if(!sub||!a.statusId||item.status===a.statusId)return;
+      if(!planStatuses(board).some(function(s){return s.id===a.statusId;}))return;
+      item.status=a.statusId;item.statusAt=planNow();
+      planOnEvent(board,{type:'status',item:item,sub:null},depth+1);
+    }
+  });
+  planSyncItemTree(board,item);
+}
+
+function planFireRule(board,rule,item,sub,depth){
+  if(depth>3)return;
+  planApplyActions(board,rule,item,sub,depth);
+}
+
+function planOnEvent(board,ev,depth){
+  depth=depth||0;
+  if(depth>3||!board||!ev.item)return;
+  var item=ev.item,sub=ev.sub||null,en=sub||item;
+  var st=en.status;
+  planAutomations(board).forEach(function(rule){
+    if(en.status!==st)return;
+    if(!planRuleApplies(board,rule,item,sub))return;
+    var tr=rule.trigger||{};
+    if(ev.type==='status'&&tr.type==='status_to'&&st===tr.statusId)planFireRule(board,rule,item,sub,depth);
+    else if(ev.type==='created'&&tr.type==='created')planFireRule(board,rule,item,sub,depth);
+  });
+  if(sub)planCheckAllSubs(board,item,depth);
+}
+
+function planCheckAllSubs(board,item,depth){
+  if(depth>3||item.archived)return;
+  var subs=(item.subitems||[]).filter(function(s){return !s.archived;});
+  planAutomations(board).forEach(function(rule){
+    var tr=rule.trigger||{};
+    if(tr.type!=='all_subs'||!planRuleApplies(board,rule,item,null))return;
+    if(!item.autoMemo)item.autoMemo={};
+    var ok=subs.length>0&&subs.every(function(s){return s.status===tr.statusId;});
+    if(ok){
+      if(item.autoMemo[rule.id])return;
+      item.autoMemo[rule.id]='1';
+      planFireRule(board,rule,item,null,depth);
+    } else if(item.autoMemo[rule.id]){
+      delete item.autoMemo[rule.id];
+    }
+  });
+}
+
+function planRunTimed(board){
+  var rules=planAutomations(board).filter(function(r){return r.enabled;});
+  if(!rules.length)return;
+  var list=[];
+  planEachEntry(board,function(it,sub){list.push({item:it,sub:sub});});
+  list.forEach(function(x){
+    var item=x.item,sub=x.sub,en=sub||item;
+    if(!en.statusAt)en.statusAt=planNow();
+    rules.forEach(function(rule){
+      if(!planRuleApplies(board,rule,item,sub))return;
+      var tr=rule.trigger||{};
+      if(!en.autoMemo)en.autoMemo={};
+      if(tr.type==='status_days'){
+        if(en.status!==tr.statusId)return;
+        if(planDaysSince(en.statusAt)<(parseInt(tr.days)||0))return;
+        if(en.autoMemo[rule.id]===en.statusAt)return;
+        en.autoMemo[rule.id]=en.statusAt;
+        planFireRule(board,rule,item,sub,0);
+      } else if(tr.type==='due_passed'){
+        if(!planIsLate(board,en))return;
+        if(en.autoMemo[rule.id]===en.due)return;
+        en.autoMemo[rule.id]=en.due;
+        planFireRule(board,rule,item,sub,0);
+      }
+    });
+    if(!sub)planCheckAllSubs(board,item,0);
+  });
+}
+
+function planRunAllTimed(){
+  if(!window.workPlanning||!window.workPlanning.boards)return;
+  if(document.getElementById('planEntryModal')||document.getElementById('planStatusEditor')||document.getElementById('planAutoPanel')||document.getElementById('planRuleEditor'))return;
+  window.workPlanning.boards.forEach(function(board){
+    if(!planAutomations(board).some(function(r){return r.enabled;}))return;
+    var before=JSON.stringify(board);
+    planRunTimed(board);
+    if(JSON.stringify(board)!==before){
+      planSaveAll(board);
+      if(window._wView==='plan'&&activeCal===board.calId)renderWorkPlanning(board.calId);
+    }
+  });
+}
+
+function planRuleText(board,rule){
+  var tr=rule.trigger||{},t='';
+  if(tr.type==='status_to')t='quando o status mudar para '+planStatusLabel(board,tr.statusId);
+  else if(tr.type==='status_days')t='quando ficar '+(tr.days||0)+' dia(s) em '+planStatusLabel(board,tr.statusId);
+  else if(tr.type==='due_passed')t='quando o prazo vencer';
+  else if(tr.type==='all_subs')t='quando todos os subitens chegarem em '+planStatusLabel(board,tr.statusId);
+  else if(tr.type==='created')t='quando for criado';
+  var acts=(rule.actions||[]).map(function(a){
+    if(a.type==='set_status')return 'mudar para '+planStatusLabel(board,a.statusId);
+    if(a.type==='archive')return 'arquivar';
+    if(a.type==='move_group'){var g=(board.groups||[]).find(function(x){return x.id===a.groupId;});return 'mover para '+(g?g.name:'(grupo removido)');}
+    if(a.type==='set_due')return a.mode==='clear'?'limpar o prazo':(a.mode==='due_plus'?'prazo atual + ':'prazo hoje + ')+(parseInt(a.days)||0)+' dia(s)';
+    if(a.type==='parent_status')return 'item pai para '+planStatusLabel(board,a.statusId);
+    return '';
+  }).join(' e ');
+  var g2=rule.groupId?(board.groups||[]).find(function(x){return x.id===rule.groupId;}):null;
+  return PL_APPLIES[rule.applies||'both']+(g2?' do grupo '+g2.name:'')+': '+t+', '+acts+'.';
+}
+
+function openPlanAutoPanel(boardId){
+  var old=document.getElementById('planAutoPanel');if(old)old.remove();
+  var board=planLocate(boardId).board;if(!board)return;
+  var rules=planAutomations(board);
+  var nOn=rules.filter(function(r){return r.enabled;}).length;
+
+  var ov=plEl('div');ov.className='mo open';ov.id='planAutoPanel';
+  ov.onclick=function(e){if(e.target===ov){ov.remove();renderWorkPlanning(board.calId);}};
+  var md=plEl('div','width:540px;padding:20px');md.className='modal';
+  md.onclick=function(e){e.stopPropagation();};
+
+  var hd=plEl('div','display:flex;align-items:center;justify-content:space-between;margin-bottom:14px');
+  var ht=plEl('div','');
+  ht.appendChild(plEl('div','font-size:14px;font-weight:500;color:#111827;'+PL_FONT,'Automacoes'));
+  ht.appendChild(plEl('div','font-size:10px;color:#9ca3af;margin-top:2px;'+PL_FONT,board.name+' . '+rules.length+' regra(s), '+nOn+' ativa(s)'));
+  hd.appendChild(ht);
+  var nb=plEl('button','background:#131F28;color:#C5CED0;border:none;border-radius:8px;padding:6px 12px;font-size:10px;font-weight:500;cursor:pointer;'+PL_FONT,'+ Nova regra');
+  nb.onclick=function(){ov.remove();openPlanRuleEditor(boardId,null);};
+  hd.appendChild(nb);
+  md.appendChild(hd);
+
+  if(!rules.length)md.appendChild(plEl('div','font-size:11px;color:#d1d5db;padding:18px 0;text-align:center;'+PL_FONT,'Nenhuma regra ainda. Crie a primeira em Nova regra.'));
+  rules.forEach(function(rule){
+    var card=plEl('div','border:0.5px solid #e5e7eb;border-radius:8px;padding:10px 12px;margin-bottom:8px;'+(rule.enabled?'':'opacity:.55'));
+    var top=plEl('div','display:flex;align-items:center;gap:10px;margin-bottom:4px');
+    top.appendChild(plEl('div','flex:1;font-size:12px;font-weight:500;color:#111827;'+PL_FONT,rule.name||'Regra sem nome'));
+    var ed=plEl('div','font-size:10px;color:#6b7280;cursor:pointer;'+PL_FONT,'Editar');
+    ed.onclick=function(){ov.remove();openPlanRuleEditor(boardId,rule.id);};
+    var dl=plEl('div','font-size:10px;color:#d1d5db;cursor:pointer;'+PL_FONT,'Excluir');
+    dl.onclick=function(){
+      if(!confirm('Excluir a regra "'+(rule.name||'')+'"?'))return;
+      var b=planLocate(boardId).board;if(!b)return;
+      b.automations=planAutomations(b).filter(function(r){return r.id!==rule.id;});
+      fbSaveWorkPlanning();openPlanAutoPanel(boardId);
+    };
+    var tg=plEl('div','width:30px;height:16px;border-radius:8px;position:relative;cursor:pointer;flex-shrink:0;background:'+(rule.enabled?'#486068':'#d1d5db'));
+    tg.appendChild(plEl('div','width:12px;height:12px;border-radius:50%;background:white;position:absolute;top:2px;'+(rule.enabled?'right:2px':'left:2px')));
+    tg.title=rule.enabled?'Desativar':'Ativar';
+    tg.onclick=function(){
+      var b=planLocate(boardId).board;if(!b)return;
+      var r=planAutomations(b).find(function(x){return x.id===rule.id;});if(!r)return;
+      r.enabled=!r.enabled;
+      fbSaveWorkPlanning();openPlanAutoPanel(boardId);
+    };
+    [ed,dl,tg].forEach(function(e){top.appendChild(e);});
+    card.appendChild(top);
+    card.appendChild(plEl('div','font-size:10px;color:#6b7280;line-height:1.6;'+PL_FONT,planRuleText(board,rule)));
+    md.appendChild(card);
+  });
+
+  md.appendChild(plEl('div','font-size:10px;color:#9ca3af;margin:8px 0 14px;line-height:1.6;'+PL_FONT,'As regras rodam quando um status muda (inclusive pelo Dia), quando algo e criado, e a cada minuto para prazos e dias no status. Uma regra pode disparar outra.'));
+  var ft=plEl('div','display:flex;justify-content:flex-end');
+  var bc=plEl('button','','Fechar');bc.className='bg-btn';
+  bc.onclick=function(){ov.remove();renderWorkPlanning(board.calId);setTimeout(planRunAllTimed,300);};
+  ft.appendChild(bc);
+  md.appendChild(ft);
+  ov.appendChild(md);
+  document.body.appendChild(ov);
+}
+
+function openPlanRuleEditor(boardId,ruleId){
+  var old=document.getElementById('planRuleEditor');if(old)old.remove();
+  var b0=planLocate(boardId).board;if(!b0)return;
+  var sts=planStatuses(b0);
+  var groups=b0.groups||[];
+  var existing=ruleId?planAutomations(b0).find(function(r){return r.id===ruleId;}):null;
+  var doneSt=planFirstOfKind(b0,'done')||sts[0];
+  var draft=existing?JSON.parse(JSON.stringify(existing)):{id:gid(),name:'',enabled:true,applies:'both',groupId:'',trigger:{type:'status_to',statusId:doneSt.id,days:3},actions:[{type:'archive'}]};
+  if(!draft.trigger)draft.trigger={type:'status_to',statusId:doneSt.id,days:3};
+  if(!draft.actions)draft.actions=[];
+
+  var ov=plEl('div');ov.className='mo open';ov.id='planRuleEditor';
+  ov.onclick=function(e){if(e.target===ov){ov.remove();openPlanAutoPanel(boardId);}};
+  var md=plEl('div','width:540px;padding:20px');md.className='modal';
+  md.onclick=function(e){e.stopPropagation();};
+  md.appendChild(plEl('div','font-size:14px;font-weight:500;color:#111827;margin-bottom:6px;'+PL_FONT,existing?'Editar regra':'Nova regra'));
+  var body=plEl('div','');md.appendChild(body);
+
+  function lbl(t){return plEl('div','font-size:10px;color:#6b7280;margin:12px 0 4px;'+PL_FONT,t);}
+  function mkSelect(opts,val,onch){
+    var s=plEl('select','width:auto;min-width:140px;'+PL_FONT);s.className='sel';
+    opts.forEach(function(o){var op=document.createElement('option');op.value=o.v;op.textContent=o.t;if(o.v===val)op.selected=true;s.appendChild(op);});
+    s.onchange=function(){onch(this.value);};
+    return s;
+  }
+  function stOpts(){return sts.map(function(s){return{v:s.id,t:s.label};});}
+  function grOpts(withAll){var o=withAll?[{v:'',t:'Todos os grupos'}]:[];groups.forEach(function(g){o.push({v:g.id,t:g.name});});return o;}
+  function numInput(val,onch){var i=plEl('input','width:64px;'+PL_FONT);i.className='inp';i.type='number';i.min='0';i.value=val;i.oninput=function(){onch(parseInt(this.value)||0);};return i;}
+  function row(){return plEl('div','display:flex;align-items:center;gap:6px;flex-wrap:wrap');}
+  function txt(t){return plEl('div','font-size:11px;color:#6b7280;'+PL_FONT,t);}
+
+  function draw(){
+    body.innerHTML='';
+    var tr=draft.trigger;
+    if(tr.type==='all_subs')draft.applies='item';
+
+    body.appendChild(lbl('Nome da regra'));
+    var ni=plEl('input',PL_FONT);ni.className='inp';ni.placeholder='Ex: Arquivar concluidos';ni.value=draft.name||'';
+    ni.oninput=function(){draft.name=this.value;};
+    body.appendChild(ni);
+
+    body.appendChild(lbl('Aplica a'));
+    var seg=plEl('div','');seg.className='seg-ctrl';
+    ['item','sub','both'].forEach(function(k){
+      var b=plEl('button',PL_FONT,PL_APPLIES[k]);b.type='button';b.className='seg-btn'+(draft.applies===k?' act':'');
+      if(tr.type==='all_subs'&&k!=='item'){b.style.opacity='.35';b.style.cursor='not-allowed';}
+      else b.onclick=function(){draft.applies=k;draw();};
+      seg.appendChild(b);
+    });
+    body.appendChild(seg);
+
+    body.appendChild(lbl('Somente no grupo'));
+    body.appendChild(mkSelect(grOpts(true),draft.groupId||'',function(v){draft.groupId=v;}));
+
+    body.appendChild(lbl('Quando'));
+    var tRow=row();
+    tRow.appendChild(mkSelect(PL_TRIGGERS.map(function(t){return{v:t.id,t:t.label};}),tr.type,function(v){
+      tr.type=v;if(!tr.statusId)tr.statusId=sts[0].id;if(!tr.days)tr.days=3;draw();
+    }));
+    if(tr.type==='status_days'){
+      tRow.appendChild(numInput(tr.days||0,function(n){tr.days=n;}));
+      tRow.appendChild(txt('dias em'));
+    }
+    if(tr.type==='status_to'||tr.type==='status_days'||tr.type==='all_subs'){
+      if(!tr.statusId)tr.statusId=sts[0].id;
+      tRow.appendChild(mkSelect(stOpts(),tr.statusId,function(v){tr.statusId=v;}));
+    }
+    body.appendChild(tRow);
+
+    body.appendChild(lbl('Entao'));
+    var aw=plEl('div','display:flex;flex-direction:column;gap:6px');
+    draft.actions.forEach(function(a,i){
+      var r=row();
+      if(i>0)r.appendChild(txt('e'));
+      r.appendChild(mkSelect(PL_ACTIONS.map(function(x){return{v:x.id,t:x.label};}),a.type,function(v){
+        a.type=v;
+        if((v==='set_status'||v==='parent_status')&&!a.statusId)a.statusId=sts[0].id;
+        if(v==='move_group'&&!a.groupId&&groups[0])a.groupId=groups[0].id;
+        if(v==='set_due'){if(!a.mode)a.mode='today_plus';if(a.days===undefined)a.days=1;}
+        draw();
+      }));
+      if(a.type==='set_status'||a.type==='parent_status'){
+        if(!a.statusId)a.statusId=sts[0].id;
+        r.appendChild(mkSelect(stOpts(),a.statusId,function(v){a.statusId=v;}));
+      }
+      if(a.type==='move_group'){
+        if(!a.groupId&&groups[0])a.groupId=groups[0].id;
+        r.appendChild(mkSelect(grOpts(false),a.groupId||'',function(v){a.groupId=v;}));
+      }
+      if(a.type==='set_due'){
+        if(!a.mode)a.mode='today_plus';
+        r.appendChild(mkSelect([{v:'today_plus',t:'Hoje +'},{v:'due_plus',t:'Prazo atual +'},{v:'clear',t:'Limpar prazo'}],a.mode,function(v){a.mode=v;draw();}));
+        if(a.mode!=='clear'){r.appendChild(numInput(a.days===undefined?1:a.days,function(n){a.days=n;}));r.appendChild(txt('dias'));}
+      }
+      var x=plEl('div','font-size:11px;color:#9ca3af;cursor:pointer;margin-left:auto;padding:0 4px','x');
+      x.title='Remover acao';
+      x.onclick=function(){draft.actions.splice(i,1);draw();};
+      r.appendChild(x);
+      aw.appendChild(r);
+    });
+    body.appendChild(aw);
+    var addA=plEl('div','font-size:11px;color:#486068;cursor:pointer;margin-top:8px;'+PL_FONT,'+ Acao');
+    addA.onclick=function(){draft.actions.push({type:'set_status',statusId:sts[0].id});draw();};
+    body.appendChild(addA);
+  }
+  draw();
+
+  var err=plEl('div','font-size:10px;color:#B3907F;min-height:14px;margin:12px 0 8px;'+PL_FONT,'');
+  md.appendChild(err);
+  var ft=plEl('div','display:flex;gap:8px;justify-content:flex-end');
+  var bc=plEl('button','','Cancelar');bc.className='bg-btn';
+  bc.onclick=function(){ov.remove();openPlanAutoPanel(boardId);};
+  var bs=plEl('button','','Salvar');bs.className='bp';
+  ft.appendChild(bc);ft.appendChild(bs);
+  md.appendChild(ft);
+
+  bs.onclick=function(){
+    if(!(draft.name||'').trim()){err.textContent='Digite um nome para a regra.';return;}
+    if(!draft.actions.length){err.textContent='Adicione pelo menos uma acao.';return;}
+    if(draft.actions.some(function(a){return a.type==='move_group'&&!a.groupId;})){err.textContent='Escolha o grupo de destino.';return;}
+    draft.name=draft.name.trim();
+    var b=planLocate(boardId).board;if(!b)return;
+    var list=planAutomations(b);
+    var idx=list.findIndex(function(r){return r.id===draft.id;});
+    if(idx>=0)list[idx]=draft;else list.push(draft);
+    fbSaveWorkPlanning();
+    ov.remove();
+    openPlanAutoPanel(boardId);
+    showToast('Regra salva.');
+  };
+
+  ov.appendChild(md);
+  document.body.appendChild(ov);
 }
 
 function setWView(view,calId){
