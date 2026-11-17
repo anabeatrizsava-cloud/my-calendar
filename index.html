@@ -1201,6 +1201,7 @@ function registerSW() {
 }
 
 function schedPushNotif(ev, mins) {
+  if(window._fcmEnabled||localStorage.getItem('monoPushToken'))return;
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   const edt = new Date(ev.date + 'T' + ev.startTime + ':00');
   const nt = new Date(edt.getTime() - mins * 60000);
