@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="Mono">
 <meta name="theme-color" content="#faf9f7">
 <title>Mono</title>
-<link rel="manifest" id="manifestLink">
+<<link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;1,300&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -577,7 +577,7 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
     <button class="hide-done-btn" id="hideDoneBtn" onclick="toggleHideDone()" style="display:flex;align-items:center;gap:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="pointer-events:none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><span id="hideDoneLabel">concluidas</span></button>
 
     <button class="notif-btn" onclick="showCalAutomationPanel()" title="Automacoes"><svg width="14" height="14" style="pointer-events:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
-
+    <button class="notif-btn" onclick="enablePush()" title="Ativar notificacoes neste dispositivo"><svg width="14" height="14" style="pointer-events:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></button>
     <button class="notif-btn" onclick="openGlobalSearch()" title="Buscar (Cmd+K)"><svg width="14" height="14" style="pointer-events:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></button>
     <button class="addb" id="addBtn" onclick="handleAdd()">
       <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -970,9 +970,35 @@ html,body{height:100%;background:var(--bg3);color:var(--text);font-family:var(--
 import{initializeApp}from'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
 import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut as fbSO}from'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
 import{getFirestore,collection,doc,getDoc,setDoc,deleteDoc,onSnapshot,updateDoc}from'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+import{getMessaging,getToken,onMessage,isSupported}from'https://www.gstatic.com/firebasejs/11.6.0/firebase-messaging.js';
 const FC={apiKey:"AIzaSyAduXAqG6vRTI6STlFD3psMWkYY-DbXBr8",authDomain:"my-calendar-ccfd0.firebaseapp.com",projectId:"my-calendar-ccfd0",storageBucket:"my-calendar-ccfd0.firebasestorage.app",messagingSenderId:"124871692654",appId:"1:124871692654:web:4c8a914cbcaea6167a317f"};
 const fapp=initializeApp(FC);const auth=getAuth(fapp);const db=getFirestore(fapp);const prov=new GoogleAuthProvider();
 window.auth=auth;window.db=db;window.firestore={collection,doc,setDoc,deleteDoc,onSnapshot,updateDoc};
+const VAPID_KEY='BAUAvFosg3qpsLzdx8PrVyBCtUVnBsmZ54kOIesfwJPL9gApxxXDCTXQ8FmtQwUFSFwk6gvKdzUVYPu9mEd1QwM';
+window.enablePush=async function(silent){
+  try{
+    if(!(await isSupported())){if(!silent)showToast('Este navegador nao suporta notificacoes. No iPhone, abra o Mono pelo icone da Tela de Inicio.');return;}
+    const perm=await Notification.requestPermission();
+    if(perm!=='granted'){if(!silent)showToast('Permissao de notificacao negada.');return;}
+    const reg=await navigator.serviceWorker.register('./firebase-messaging-sw.js');
+    await navigator.serviceWorker.ready;
+    const messaging=getMessaging(fapp);
+    const token=await getToken(messaging,{vapidKey:VAPID_KEY,serviceWorkerRegistration:reg});
+    if(!token){if(!silent)showToast('Nao foi possivel registrar este dispositivo.');return;}
+    const ua=navigator.userAgent;
+    const dev=/iPhone|iPad/.test(ua)?'iPhone':/Android/.test(ua)?'Android':/Mac/.test(ua)?'Mac':'Outro';
+    const ref=doc(db,'users',auth.currentUser.uid,'config','push');
+    const snap=await getDoc(ref);
+    const list=((snap.exists()&&snap.data().tokens)||[]).filter(function(t){return t.token!==token;});
+    list.push({token:token,device:dev,updatedAt:new Date().toISOString()});
+    await setDoc(ref,{tokens:list,enabled:true},{merge:true});
+    localStorage.setItem('monoPushToken',token);
+    window._fcmEnabled=true;
+    onMessage(messaging,function(p){const d=p.data||{};const n=p.notification||{};showToast((d.title||n.title||'Mono')+' . '+(d.body||n.body||''));});
+    if(!silent)showToast('Notificacoes ativadas neste dispositivo ('+dev+').');
+    console.log('FCM token:',token);
+  }catch(e){console.error('enablePush:',e);if(!silent)showToast('Erro ao ativar notificacoes: '+e.message);}
+};
 let eu=null,lu=null,tu=null,su=null;
 window.signInWithGoogle=async()=>{try{await signInWithPopup(auth,prov);}catch(e){if(e.code!=='auth/popup-closed-by-user')showToast('Erro: '+e.message);}};
 window.doSignOut=async()=>{if(!confirm('Sair?'))return;[eu,lu,tu,su].forEach(u=>u&&u());await fbSO(auth);document.getElementById('mainApp').style.display='none';document.getElementById('loginScreen').style.display='flex';window.evs=[];window.lists=[];window.stickies=[];window.calAutoSettings={eodReview:true,weeklyReview:true,movePending:false,highlightDeadline:true,highlightOverdue:true,autoComplete:false,templateRecurring:false};window.calCustomRules=window.calCustomRules||[];};
@@ -988,6 +1014,7 @@ onAuthStateChanged(auth,user=>{
     document.getElementById('loginScreen').style.display='none';document.getElementById('mainApp').style.display='flex';
     const _uael=document.getElementById('userAvatar');if(_uael)_uael.src=user.photoURL||'';const _un=document.getElementById('userName');if(_un)_un.textContent=user.displayName||user.email;
     const uid=user.uid;setSS('syncing');
+        if(localStorage.getItem('monoPushToken')&&('Notification' in window)&&Notification.permission==='granted')setTimeout(function(){window.enablePush(true);},4000);
     if(eu)eu();eu=onSnapshot(collection(db,'users',uid,'events'),snap=>{const fresh=snap.docs.map(d=>({id:d.id,...d.data()}));if(window.evs&&window.evs.length){  fresh.forEach(fe=>{    const local=window.evs.find(e=>e.id===fe.id);    if(local&&window._pendingSaves&&window._pendingSaves.has(fe.id)){      fe.done=local.done;      fe.doneExceptions=local.doneExceptions;      fe.deletedExceptions=local.deletedExceptions;    }  });}window.evs=fresh;renderView();renderMC();setTimeout(checkWeeklyReview,1000);renderSBTags();updProgress();setSS('ok');});
     if(lu)lu();lu=onSnapshot(collection(db,'users',uid,'lists'),snap=>{window.lists=snap.docs.map(d=>({id:d.id,...d.data()}));if(window.view==='planner')renderView();});
     if(tu)tu();tu=onSnapshot(doc(db,'users',uid,'config','tags'),snap=>{if(snap.exists()){const d=snap.data();window.tags=d.tags||dTags();window.tclr=d.tclr||dTclr();renderSBTags();}});
@@ -1253,7 +1280,7 @@ function initApp(){mkManifest();buildMDGrid();renderMC();renderView();updTop();r
     updateAutoKRs();
     checkFinSundayReminder();
   },60000);if('Notification' in window && Notification.permission==='granted'){pushEnabled=true;registerSW();}setTimeout(checkEndOfDayReview,3000);setTimeout(function(){runCalAutomations();},5000);}
-function mkManifest(){const m={name:'Mono',short_name:'Mono',start_url:'./',display:'standalone',background_color:'#2a2320',theme_color:'#2a2320',icons:[{src:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230e0f11'/><text y='.9em' font-size='80'>📅</text></svg>",sizes:'192x192',type:'image/svg+xml'}]};const b=new Blob([JSON.stringify(m)],{type:'application/json'});document.getElementById('manifestLink').href=URL.createObjectURL(b);}
+function mkManifest(){/* manifest agora e o arquivo manifest.json */}
 function handleAdd(){if(view==='planner')openNewList();else if(view==='sticky')addSticky();else openNew();}
 function updTop(){
   const isPl=view==='planner'||view==='sticky';
