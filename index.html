@@ -5213,12 +5213,26 @@ var PL_KIND_TO_PROG={initial:'not-started',progress:'in-progress',done:'done'};
 var PL_PROG_TO_KIND={'not-started':'initial','in-progress':'progress','done':'done'};
 var PL_KIND_LABELS={initial:'Inicial',progress:'Em andamento',done:'Conta como concluido'};
 var PL_STATUS_COLORS={
-  neutro:{bg:'transparent',fg:'#6b7280',bd:'#d1d5db'},
-  nevoa:{bg:'#eef1f2',fg:'#85979D',bd:''},
-  agua:{bg:'#e8edf0',fg:'#486068',bd:''},
-  terracota:{bg:'#f5eeea',fg:'#B3907F',bd:''},
-  petroleo:{bg:'#486068',fg:'#e8edf0',bd:''},
-  noite:{bg:'#131F28',fg:'#C5CED0',bd:''}
+  neutro:{bg:'transparent',fg:'#6b7280',bd:'#d1d5db',g:'soft',n:'Neutro'},
+  nevoa:{bg:'#eef1f2',fg:'#85979D',bd:'',g:'soft',n:'Nevoa'},
+  agua:{bg:'#e8edf0',fg:'#486068',bd:'',g:'soft',n:'Agua'},
+  salvia:{bg:'#eef2ef',fg:'#5c7161',bd:'',g:'soft',n:'Salvia'},
+  mostarda:{bg:'#f6efe6',fg:'#b17a3a',bd:'',g:'soft',n:'Mostarda'},
+  terracota:{bg:'#f5eeea',fg:'#B3907F',bd:'',g:'soft',n:'Terracota'},
+  coral:{bg:'#f8ecea',fg:'#c26d64',bd:'',g:'soft',n:'Coral'},
+  rosa:{bg:'#f7eef0',fg:'#a8737b',bd:'',g:'soft',n:'Rosa'},
+  lavanda:{bg:'#f1eef4',fg:'#9b8ea8',bd:'',g:'soft',n:'Lavanda'},
+  azul:{bg:'#ecf1f4',fg:'#5f7f93',bd:'',g:'soft',n:'Azul'},
+  noite:{bg:'#131F28',fg:'#C5CED0',bd:'',g:'strong',n:'Noite'},
+  petroleo:{bg:'#486068',fg:'#e8edf0',bd:'',g:'strong',n:'Petroleo'},
+  salvia_f:{bg:'#5c7161',fg:'#ffffff',bd:'',g:'strong',n:'Salvia'},
+  mostarda_f:{bg:'#b17a3a',fg:'#ffffff',bd:'',g:'strong',n:'Mostarda'},
+  terracota_f:{bg:'#B3907F',fg:'#ffffff',bd:'',g:'strong',n:'Terracota'},
+  coral_f:{bg:'#c26d64',fg:'#ffffff',bd:'',g:'strong',n:'Coral'},
+  rosa_f:{bg:'#a8737b',fg:'#ffffff',bd:'',g:'strong',n:'Rosa'},
+  lavanda_f:{bg:'#9b8ea8',fg:'#ffffff',bd:'',g:'strong',n:'Lavanda'},
+  azul_f:{bg:'#5f7f93',fg:'#ffffff',bd:'',g:'strong',n:'Azul'},
+  grafite_f:{bg:'#383a37',fg:'#ffffff',bd:'',g:'strong',n:'Grafite'}
 };
 var PL_DEFAULT_STATUSES=[
   {id:'todo',label:'A fazer',color:'neutro',kind:'initial'},
@@ -5242,9 +5256,61 @@ function planStatusObj(board,id){var sts=planStatuses(board);return sts.find(fun
 function planFirstOfKind(board,kind){return planStatuses(board).find(function(s){return s.kind===kind;})||null;}
 function planIsDone(board,en){return planStatusObj(board,en.status).kind==='done';}
 function planIsLate(board,en){return !!en.due&&!planIsDone(board,en)&&en.due<tds(new Date());}
+function planHexRgb(h){
+  h=String(h||'').replace('#','');
+  if(h.length===3)h=h.split('').map(function(c){return c+c;}).join('');
+  var n=parseInt(h,16);if(isNaN(n))return[72,96,104];
+  return[(n>>16)&255,(n>>8)&255,n&255];
+}
+function planCustomColor(key){
+  var p=String(key).split(':');var hex=p[1]||'#486068';var rgb=planHexRgb(hex);
+  if(p[2]==='strong'){var l=0.299*rgb[0]+0.587*rgb[1]+0.114*rgb[2];return{bg:hex,fg:l>160?'#131F28':'#ffffff',bd:''};}
+  return{bg:'rgb('+rgb.map(function(v){return Math.round(v+(255-v)*0.87);}).join(',')+')',fg:hex,bd:''};
+}
+function planColorDef(colorKey){
+  if(colorKey&&String(colorKey).indexOf('custom:')===0)return planCustomColor(colorKey);
+  return PL_STATUS_COLORS[colorKey]||PL_STATUS_COLORS.neutro;
+}
 function planPillCss(colorKey){
-  var c=PL_STATUS_COLORS[colorKey]||PL_STATUS_COLORS.neutro;
+  var c=planColorDef(colorKey);
   return 'background:'+c.bg+';color:'+c.fg+';border:0.5px solid '+(c.bd||'transparent')+';';
+}
+function planBuildPalette(current,onPick){
+  var box=plEl('div','flex-basis:100%;margin-top:6px;padding:10px 12px;background:white;border:0.5px solid #e5e7eb;border-radius:8px;'+PL_FONT);
+  function section(label,group){
+    box.appendChild(plEl('div','font-size:10px;color:#9ca3af;margin:4px 0 6px',label));
+    var r=plEl('div','display:flex;gap:7px;flex-wrap:wrap;margin-bottom:6px');
+    Object.keys(PL_STATUS_COLORS).forEach(function(k){
+      var c=PL_STATUS_COLORS[k];if(c.g!==group)return;
+      var bg=c.bg==='transparent'?'white':c.bg;
+      var d=plEl('div','width:22px;height:22px;border-radius:50%;cursor:pointer;border:0.5px solid #d1d5db;background:'+bg+';'+(group==='soft'?'box-shadow:inset 0 0 0 5px '+bg+',inset 0 0 0 11px '+c.fg+';':'')+(current===k?'outline:2px solid #131F28;outline-offset:2px;':''));
+      d.title=c.n+(group==='soft'?' suave':' forte');
+      d.onclick=function(){onPick(k);};
+      r.appendChild(d);
+    });
+    box.appendChild(r);
+  }
+  section('Suaves','soft');
+  section('Fortes','strong');
+  box.appendChild(plEl('div','font-size:10px;color:#9ca3af;margin:4px 0 6px','Personalizada'));
+  var cr=plEl('div','display:flex;align-items:center;gap:8px;flex-wrap:wrap');
+  var isCustom=current&&String(current).indexOf('custom:')===0;
+  var ci=document.createElement('input');ci.type='color';
+  ci.value=isCustom?String(current).split(':')[1]:'#7a5c9e';
+  ci.style.cssText='width:34px;height:24px;border:0.5px solid #d1d5db;border-radius:6px;padding:0;background:none;cursor:pointer';
+  var bs=plEl('div','','Suave');
+  var bf=plEl('div','','Forte');
+  function upd(){
+    bs.style.cssText='font-size:10px;padding:3px 10px;border-radius:10px;cursor:pointer;'+planPillCss('custom:'+ci.value+':soft');
+    bf.style.cssText='font-size:10px;padding:3px 10px;border-radius:10px;cursor:pointer;'+planPillCss('custom:'+ci.value+':strong');
+  }
+  ci.oninput=upd;upd();
+  bs.onclick=function(){onPick('custom:'+ci.value+':soft');};
+  bf.onclick=function(){onPick('custom:'+ci.value+':strong');};
+  cr.appendChild(ci);cr.appendChild(bs);cr.appendChild(bf);
+  cr.appendChild(plEl('div','font-size:10px;color:#9ca3af','Escolha a cor e clique em Suave ou Forte'));
+  box.appendChild(cr);
+  return box;
 }
 function planEachEntry(board,fn){
   (board.groups||[]).forEach(function(g){(g.items||[]).forEach(function(it){
@@ -5587,7 +5653,7 @@ function openPlanStatusEditor(boardId){
   var old=document.getElementById('planStatusEditor');if(old)old.remove();
   var b0=planLocate(boardId).board;if(!b0)return;
   var draft=JSON.parse(JSON.stringify(planStatuses(b0)));
-
+  var palOpen=-1;
   var ov=plEl('div');ov.className='mo open';ov.id='planStatusEditor';
   ov.onclick=function(e){if(e.target===ov)ov.remove();};
   var md=plEl('div','width:560px;padding:20px');md.className='modal';
@@ -5608,14 +5674,12 @@ function openPlanStatusEditor(boardId){
       var prev=plEl('div','font-size:10px;padding:3px 10px;border-radius:10px;white-space:nowrap;'+PL_FONT+planPillCss(s.color),s.label||'...');
       var inp=plEl('input','flex:1;min-width:120px;'+PL_FONT);inp.className='inp';inp.value=s.label;
       inp.oninput=function(){s.label=this.value;prev.textContent=this.value||'...';};
-      var dots=plEl('div','display:flex;gap:4px');
-      Object.keys(PL_STATUS_COLORS).forEach(function(k){
-        var c=PL_STATUS_COLORS[k];
-        var d=plEl('div','width:14px;height:14px;border-radius:50%;cursor:pointer;background:'+(c.bg==='transparent'?'white':c.bg)+';border:'+(s.color===k?'2px solid #131F28':'0.5px solid #d1d5db'));
-        d.title=k;
-        d.onclick=function(){s.color=k;draw();};
-        dots.appendChild(d);
-      });
+      var cdef=planColorDef(s.color);
+      var cbg=cdef.bg==='transparent'?'white':cdef.bg;
+      var dots=plEl('div','display:flex;align-items:center;gap:5px;cursor:pointer;padding:3px 8px;border:0.5px solid #e5e7eb;border-radius:8px;background:white');
+      dots.appendChild(plEl('div','width:14px;height:14px;border-radius:50%;border:0.5px solid #d1d5db;background:'+cbg+';box-shadow:inset 0 0 0 3px '+cbg+',inset 0 0 0 7px '+cdef.fg));
+      dots.appendChild(plEl('div','font-size:10px;color:#6b7280;'+PL_FONT,palOpen===i?'Fechar':'Cor'));
+      dots.onclick=function(){palOpen=(palOpen===i?-1:i);draw();};
       var sel=plEl('select','width:auto;'+PL_FONT);sel.className='sel';
       ['initial','progress','done'].forEach(function(k){
         var o=document.createElement('option');o.value=k;o.textContent=PL_KIND_LABELS[k];
@@ -5627,6 +5691,7 @@ function openPlanStatusEditor(boardId){
       x.title='Remover status';
       x.onclick=function(){draft.splice(i,1);draw();};
       [up,dn,prev,inp,dots,sel,x].forEach(function(e){row.appendChild(e);});
+      if(palOpen===i)row.appendChild(planBuildPalette(s.color,function(k){s.color=k;palOpen=-1;draw();}));
       list.appendChild(row);
     });
   }
@@ -6070,32 +6135,12 @@ function renderWorkPlanning(calId){
     var nAuto=planAutomations(board).filter(function(r){return r.enabled;}).length;
     var auL=plEl('div','font-size:10px;color:#6b7280;cursor:pointer;margin-left:10px;'+PL_FONT,'Automacoes ('+nAuto+')');
     auL.onclick=function(){openPlanAutoPanel(board.id);};
-    [stL,auL,arL,ren,del].forEach(function(e){bar.appendChild(e);});
+        var peL=plEl('div','font-size:10px;color:#6b7280;cursor:pointer;margin-left:10px;'+PL_FONT,'Pessoas');
+    peL.onclick=function(){openPlanPeopleEditor();};
+    [stL,peL,auL,arL,ren,del].forEach(function(e){bar.appendChild(e);});
   }
   wrap.appendChild(bar);
 
-    // Filtro por responsavel
-  if(!planPeople().length)window._planFilterPerson[calId]='all';
-  if(board&&!showArchive&&planPeople().length){
-    var fbar=plEl('div','display:flex;gap:6px;align-items:center;padding:8px 20px;background:white;border-bottom:0.5px solid #e5e7eb;flex-wrap:wrap;flex-shrink:0');
-    fbar.appendChild(plEl('div','font-size:10px;color:#9ca3af;margin-right:4px;'+PL_FONT,'Responsavel'));
-    var fopts=[{v:'all',t:'Todos'}];
-    if(planPeople().some(function(p){return p.me;}))fopts.push({v:'me',t:'Eu'});
-    planPeople().forEach(function(p){if(!p.me)fopts.push({v:p.id,t:p.name});});
-    fopts.push({v:'none',t:'Sem responsavel'});
-    var curF=window._planFilterPerson[calId]||'all';
-    if(!fopts.some(function(o){return o.v===curF;})){curF='all';window._planFilterPerson[calId]='all';}
-    fopts.forEach(function(o){
-      var act=curF===o.v;
-      var pp=plEl('div','padding:3px 10px;border-radius:12px;font-size:10px;cursor:pointer;'+PL_FONT+(act?'background:#131F28;color:#C5CED0;font-weight:500':'border:0.5px solid #e5e7eb;color:#6b7280'),o.t);
-      pp.onclick=function(){window._planFilterPerson[calId]=o.v;renderWorkPlanning(calId);};
-      fbar.appendChild(pp);
-    });
-    var gp=plEl('div','font-size:10px;color:#486068;cursor:pointer;margin-left:auto;'+PL_FONT,'Pessoas');
-    gp.onclick=function(){openPlanPeopleEditor();};
-    fbar.appendChild(gp);
-    wrap.appendChild(fbar);
-  }
 
   // Conteudo
   var main=plEl('div','flex:1;overflow-y:auto;padding:'+(isMob?'14px 12px 70px':'20px 24px')+';background:#f7f8fa');
