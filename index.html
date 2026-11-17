@@ -5404,12 +5404,15 @@ function planPullFromWorkEvs(calId){
     if(cur.kind!==targetKind){
       var ns=planFirstOfKind(r.board,targetKind);
       if(ns&&ns.id!==en.status){
-        en.status=ns.id;en.statusAt=planNow();changed=true;
+        en.prevStatus=en.status;en.status=ns.id;en.statusAt=planNow();en.updatedAt=planNow();changed=true;
         if(typeof planOnEvent==='function')planOnEvent(r.board,{type:'status',item:r.item,sub:r.sub},0);
       }
     }
-    if(ev.date&&en.due!==ev.date){en.due=ev.date;changed=true;}
-    if(ev.title&&en.title!==ev.title){en.title=ev.title;changed=true;}
+    if(ev.date&&en.due!==ev.date){
+      en.due=ev.date;en.updatedAt=planNow();changed=true;
+      if(typeof planOnEvent==='function')planOnEvent(r.board,{type:'due_changed',item:r.item,sub:r.sub},0);
+    }
+    if(ev.title&&en.title!==ev.title){en.title=ev.title;en.updatedAt=planNow();changed=true;}
   });
   if(changed)fbSaveWorkPlanning();
 }
@@ -5466,11 +5469,13 @@ function planDeleteGroup(board,g){
 // Item e subitem
 function planSetStatus(board,item,sub,statusId){
   var en=sub||item;
-  en.status=statusId;en.statusAt=planNow();
+  if(en.status!==statusId)en.prevStatus=en.status;
+  en.status=statusId;en.statusAt=planNow();en.updatedAt=planNow();
   planOnEvent(board,{type:'status',item:item,sub:sub},0);
   planSyncItemTree(board,item);
   planSaveAll(board);renderWorkPlanning(board.calId);
 }
+
 function planOpenStatusMenu(anchor,board,item,sub){
   var old=document.getElementById('planStatusMenu');if(old)old.remove();
   var en=sub||item;
@@ -5629,12 +5634,16 @@ function openPlanEntryModal(ctx){
     } else {
       var e2=l.sub||l.item;if(!e2)return;
       evSub=l.sub;
-      if(e2.status!==status){e2.status=status;e2.statusAt=planNow();evType='status';}
-      e2.title=t;e2.due=di.value||'';
+      if(e2.status!==status){e2.prevStatus=e2.status;e2.status=status;e2.statusAt=planNow();evType='status';}
+      var dueChanged=(e2.due||'')!==(di.value||'');
+      e2.title=t;e2.due=di.value||'';e2.updatedAt=planNow();
     }
     var target=ctx.mode==='new-item'?item:(ctx.mode==='new-sub'?evSub:(l.sub||l.item));
-    if(target)target.assignees=assignees.slice();
+    var addedP=[];
+    if(target){var beforeP=target.assignees||[];addedP=assignees.filter(function(id){return beforeP.indexOf(id)<0;});target.assignees=assignees.slice();}
     if(evType)planOnEvent(board,{type:evType,item:item,sub:evSub},0);
+    if(addedP.length)planOnEvent(board,{type:'assigned',item:item,sub:evSub,added:addedP},0);
+    if(dueChanged)planOnEvent(board,{type:'due_changed',item:item,sub:evSub},0);
     planSyncItemTree(board,item);
     planSaveAll(board);
     ov.remove();
@@ -5820,8 +5829,10 @@ function planOpenPeopleMenu(anchor,boardId,itemId,subId){
         var c2=cur();if(!c2.en)return;
         var list=(c2.en.assignees||[]).slice();
         var i=list.indexOf(p.id);
+        var addedNow=i<0;
         if(i>=0)list.splice(i,1);else list.push(p.id);
-        c2.en.assignees=list;
+        c2.en.assignees=list;c2.en.updatedAt=planNow();
+        if(addedNow)planOnEvent(c2.board,{type:'assigned',item:c2.item,sub:c2.sub,added:[p.id]},0);
         apply(c2);draw();
       };
       m.appendChild(row);
@@ -6163,77 +6174,232 @@ function renderWorkPlanning(calId){
   wrap.appendChild(main);
 }
 
-// ── AUTOMACOES DO PLANEJAMENTO ───────────────────────────
+// ── AUTOMACOES DO PLANEJAMENTO (v2) ──────────────────────
+var PL_API='https://mono-api.vercel.app';
+var PL_APPLIES={item:'Itens',sub:'Subitens',both:'Itens e subitens'};
 var PL_TRIGGERS=[
-  {id:'status_to',label:'Status muda para'},
-  {id:'status_days',label:'Fica no status por'},
-  {id:'due_passed',label:'Prazo vence'},
-  {id:'all_subs',label:'Todos os subitens chegam em'},
-  {id:'created',label:'For criado'}
+  {id:'status_to',label:'Status muda para',d:'Quando o item passa a ter o status escolhido',tip:'Dispara no momento em que o status muda para o escolhido, seja pelo quadro, pelo Dia do My Work ou por outra regra.',ex:'Ex.: ao mudar para Concluido, arquivar.',fields:['status']},
+  {id:'status_from',label:'Status sai de',d:'Quando o item deixa o status escolhido',tip:'Dispara quando o item estava no status escolhido e passa para qualquer outro.',ex:'Ex.: ao sair de Aguardando cliente, prazo hoje + 2.',fields:['status']},
+  {id:'status_days',label:'Fica no status por',d:'Item parado no mesmo status por N dias',tip:'Dispara quando o item continua no mesmo status pelo numero de dias escolhido. A contagem recomeca se o status mudar.',ex:'Ex.: 5 dias em Aguardando cliente.',fields:['days','status']},
+  {id:'idle_days',label:'Sem alteracao ha',d:'Nada mudou no item por N dias',tip:'Dispara quando o item fica sem mudanca de status, prazo, titulo ou responsavel pelo numero de dias escolhido.',ex:'Ex.: 7 dias parado, me notificar.',fields:['days']},
+  {id:'due_soon',label:'Prazo se aproxima',d:'Age N dias antes do vencimento',tip:'Dispara uma vez quando faltam N dias ou menos para o prazo e o item ainda nao foi concluido. Itens sem prazo sao ignorados.',ex:'Ex.: 2 dias antes, me notificar.',fields:['days']},
+  {id:'due_passed',label:'Prazo vence',d:'O prazo passou sem concluir',tip:'Dispara uma vez quando o prazo fica no passado e o item nao esta num status do tipo concluido.',ex:'Ex.: ao vencer, mudar para Urgente.',fields:[]},
+  {id:'due_changed',label:'Prazo e alterado',d:'A data do prazo muda',tip:'Dispara quando o prazo muda pelo modal do item, pelo Dia do My Work ou por outra regra.',ex:'Ex.: ao adiar, me notificar.',fields:[]},
+  {id:'all_subs',label:'Todos os subitens chegam em',d:'Todos os subitens ativos no mesmo status',tip:'Dispara no item quando todos os subitens nao arquivados chegam ao status escolhido. Itens sem subitens nao disparam. Vale so para itens.',ex:'Ex.: todos em Concluido, concluir o item.',fields:['status'],itemOnly:true},
+  {id:'any_sub',label:'Algum subitem chega em',d:'Basta um subitem atingir o status',tip:'Dispara no item quando qualquer um dos subitens muda para o status escolhido. Vale so para itens.',ex:'Ex.: algum subitem Bloqueado, item vira Bloqueado.',fields:['status'],itemOnly:true},
+  {id:'assigned',label:'Responsavel e atribuido',d:'Uma pessoa e adicionada ao item',tip:'Dispara quando uma pessoa e adicionada como responsavel. Escolha uma pessoa especifica ou Qualquer pessoa.',ex:'Ex.: ao atribuir a mim, mudar para Em andamento.',fields:['person_any']},
+  {id:'moved_group',label:'Item e movido para o grupo',d:'Outra regra move o item de grupo',tip:'Dispara quando o item chega ao grupo escolhido por meio de uma automacao. Vale so para itens.',ex:'Ex.: ao entrar em Entregues, registrar Entregavel.',fields:['group'],itemOnly:true},
+  {id:'created',label:'For criado',d:'Novo item ou subitem',tip:'Dispara uma vez, logo que o item ou subitem e criado.',ex:'Ex.: ao criar, atribuir a mim.',fields:[]},
+  {id:'scheduled',label:'Agendado',d:'Roda em dias e horario fixos',tip:'Roda nos dias e horario escolhidos para todos os itens que atendem as condicoes. Funciona com o Mono aberto em algum aparelho; se estiver fechado, roda na proxima abertura do mesmo dia. Use condicoes para nao afetar o quadro inteiro.',ex:'Ex.: segunda 09:00, itens atrasados ganham prazo hoje + 1.',fields:['weekdays','time']}
+];
+var PL_CONDS=[
+  {id:'group_is',label:'Grupo e',d:'So itens deste grupo',tip:'So age em itens que estao no grupo escolhido. Para subitens, vale o grupo do item pai.',fields:['group']},
+  {id:'group_not',label:'Grupo nao e',d:'Ignora este grupo',tip:'Ignora itens que estao no grupo escolhido.',ex:'Ex.: nao mexer no que esta em Entregues.',fields:['group']},
+  {id:'person_is',label:'Responsavel e',d:'So itens desta pessoa',tip:'So age se a pessoa escolhida estiver entre os responsaveis.',fields:['person']},
+  {id:'person_none',label:'Sem responsavel',d:'So itens sem ninguem',tip:'So age em itens sem nenhum responsavel.',fields:[]},
+  {id:'status_is',label:'Status atual e',d:'So neste status',tip:'So age se o item estiver neste status no momento da execucao.',fields:['status']},
+  {id:'status_not',label:'Status atual nao e',d:'Ignora este status',tip:'Ignora itens que estejam neste status no momento da execucao.',fields:['status']},
+  {id:'has_due',label:'Tem prazo',d:'So itens com prazo',tip:'So age em itens com prazo definido.',fields:[]},
+  {id:'no_due',label:'Sem prazo',d:'So itens sem prazo',tip:'So age em itens sem prazo.',fields:[]},
+  {id:'due_within',label:'Prazo nos proximos',d:'Vence em ate N dias',tip:'So age se o prazo estiver entre hoje e N dias a frente.',fields:['days']},
+  {id:'has_subs',label:'Tem subitens',d:'So itens com subitens',tip:'So age em itens com pelo menos um subitem ativo. Subitens nunca atendem a esta condicao.',fields:[]},
+  {id:'title_has',label:'Titulo contem',d:'Filtra pelo texto do titulo',tip:'So age se o titulo contiver o texto, sem diferenciar maiusculas e acentos.',fields:['text']},
+  {id:'is_item',label:'E item',d:'So linhas principais',tip:'So age em itens, nunca em subitens.',fields:[]},
+  {id:'is_sub',label:'E subitem',d:'So subitens',tip:'So age em subitens.',fields:[]}
 ];
 var PL_ACTIONS=[
-  {id:'set_status',label:'Mudar status para'},
-  {id:'archive',label:'Arquivar'},
-  {id:'move_group',label:'Mover item para o grupo'},
-  {id:'set_due',label:'Mudar prazo'},
-  {id:'parent_status',label:'Mudar status do item pai para'}
+  {id:'set_status',label:'Mudar status para',d:'Define o status',tip:'Muda o status. Se outra regra estiver esperando esse status, ela tambem dispara.',fields:['status']},
+  {id:'archive',label:'Arquivar',d:'Tira do quadro e guarda no Arquivo',tip:'O item vai para o Arquivo, de onde pode ser restaurado. A tarefa continua no Dia como historico.',fields:[]},
+  {id:'move_group',label:'Mover para o grupo',d:'Muda de grupo no mesmo quadro',tip:'Move o item, com os subitens, para o grupo escolhido. Nao se aplica a subitens.',fields:['group']},
+  {id:'set_due',label:'Mudar prazo',d:'Define, adia ou limpa o prazo',tip:'"Hoje +" conta a partir de hoje. "Prazo atual +" adia o prazo existente. "Limpar" remove o prazo e tira a tarefa do Dia.',fields:['due_mode']},
+  {id:'parent_status',label:'Mudar status do item pai para',d:'So quando a regra age num subitem',tip:'Quando a regra age num subitem, muda o status do item ao qual ele pertence.',fields:['status']},
+  {id:'subs_status',label:'Mudar status dos subitens para',d:'Aplica a todos os subitens ativos',tip:'Muda todos os subitens nao arquivados do item para o status escolhido.',fields:['status']},
+  {id:'assign',label:'Atribuir responsavel',d:'Adiciona uma pessoa',tip:'Adiciona a pessoa aos responsaveis, sem remover os atuais.',fields:['person']},
+  {id:'unassign',label:'Remover responsavel',d:'Tira uma pessoa ou todas',tip:'Remove a pessoa escolhida, ou todos os responsaveis se escolher Todos.',fields:['person_all']},
+  {id:'create_subs',label:'Criar subitens',d:'Cria uma lista de subitens',tip:'Cria um subitem para cada linha do texto, com status inicial e sem prazo. So para itens.',ex:'Ex.: ao criar, gerar o checklist padrao.',fields:['lines']},
+  {id:'repeat',label:'Repetir (criar copia)',d:'Copia com prazo + N dias',tip:'Cria uma copia do item (e dos subitens) com status inicial e prazo + N dias a partir do prazo atual, ou de hoje se nao houver prazo.',ex:'Ex.: ao concluir, repetir em 7 dias.',fields:['days']},
+  {id:'to_board',label:'Mover ou copiar para outro quadro',d:'Envia para outro quadro',tip:'Move ou copia o item para o primeiro grupo do quadro escolhido. Se o quadro for de outro Work Calendar, a tarefa muda de calendario.',fields:['board','board_mode']},
+  {id:'deliverable',label:'Registrar como Entregavel',d:'Cria um registro em Entregaveis',tip:'Cria um entregavel com o titulo do item, o nome do quadro como cliente e a data de hoje. Cada item gera no maximo um.',fields:[]},
+  {id:'notify',label:'Me notificar',d:'Push no celular e no Mac',tip:'Envia uma notificacao para os aparelhos com o Mono ativado, com o titulo do item e o nome da regra, ou com a mensagem que voce escrever.',fields:['text_opt']}
 ];
-var PL_APPLIES={item:'Itens',sub:'Subitens',both:'Itens e subitens'};
+function planTrig(id){return PL_TRIGGERS.find(function(t){return t.id===id;})||PL_TRIGGERS[0];}
+function planCondDef(id){return PL_CONDS.find(function(t){return t.id===id;})||PL_CONDS[0];}
+function planActDef(id){return PL_ACTIONS.find(function(t){return t.id===id;})||PL_ACTIONS[0];}
 
 function planAutomations(board){if(!board.automations)board.automations=[];return board.automations;}
 function planAddDays(dateStr,n){var d=dateStr?new Date(dateStr+'T12:00:00'):new Date();d.setDate(d.getDate()+n);return tds(d);}
 function planDaysSince(iso){if(!iso)return 0;return Math.floor((Date.now()-new Date(iso).getTime())/86400000);}
+function planDaysUntil(ds){var t=new Date();t.setHours(0,0,0,0);return Math.round((new Date(ds+'T00:00:00')-t)/86400000);}
 function planGroupOfItem(board,item){return (board.groups||[]).find(function(g){return (g.items||[]).some(function(it){return it.id===item.id;});})||null;}
 function planStatusLabel(board,id){var s=planStatuses(board).find(function(x){return x.id===id;});return s?s.label:'(status removido)';}
+function planNorm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
+function planTouch(en){en.updatedAt=planNow();}
 
+// Condicoes
+function planCondsOk(board,rule,item,sub){
+  var en=sub||item;
+  var g=planGroupOfItem(board,item);
+  var ok=true;
+  (rule.conds||[]).forEach(function(c){
+    if(!ok)return;
+    var a=(en.assignees||[]).filter(function(id){return planPerson(id);});
+    if(c.type==='group_is')ok=!!g&&g.id===c.groupId;
+    else if(c.type==='group_not')ok=!g||g.id!==c.groupId;
+    else if(c.type==='person_is')ok=a.indexOf(c.personId)>=0;
+    else if(c.type==='person_none')ok=!a.length;
+    else if(c.type==='status_is')ok=en.status===c.statusId;
+    else if(c.type==='status_not')ok=en.status!==c.statusId;
+    else if(c.type==='has_due')ok=!!en.due;
+    else if(c.type==='no_due')ok=!en.due;
+    else if(c.type==='due_within'){var du=en.due?planDaysUntil(en.due):-1;ok=!!en.due&&du>=0&&du<=(parseInt(c.days)||0);}
+    else if(c.type==='has_subs')ok=!sub&&(item.subitems||[]).some(function(s){return !s.archived;});
+    else if(c.type==='title_has')ok=!c.text||planNorm(en.title).indexOf(planNorm(c.text))>=0;
+    else if(c.type==='is_item')ok=!sub;
+    else if(c.type==='is_sub')ok=!!sub;
+  });
+  return ok;
+}
 function planRuleApplies(board,rule,item,sub){
   if(!rule.enabled)return false;
   if(item.archived||(sub&&sub.archived))return false;
   var ap=rule.applies||'both';
+  if(planTrig((rule.trigger||{}).type).itemOnly)ap='item';
   if(ap==='item'&&sub)return false;
   if(ap==='sub'&&!sub)return false;
-  if(rule.groupId){var g=planGroupOfItem(board,item);if(!g||g.id!==rule.groupId)return false;}
-  return true;
+  if(rule.groupId){var g0=planGroupOfItem(board,item);if(!g0||g0.id!==rule.groupId)return false;}
+  return planCondsOk(board,rule,item,sub);
 }
 
+// Acoes
+function planAutoSetStatus(board,item,sub,statusId,depth){
+  var en=sub||item;
+  if(!statusId||en.status===statusId)return;
+  if(!planStatuses(board).some(function(s){return s.id===statusId;}))return;
+  en.prevStatus=en.status;en.status=statusId;en.statusAt=planNow();planTouch(en);
+  planOnEvent(board,{type:'status',item:item,sub:sub},depth+1);
+}
+function planAutoRepeat(board,item,sub,n){
+  var ini=(planFirstOfKind(board,'initial')||planStatuses(board)[0]).id;
+  var src=sub||item;
+  var base=src.due||tds(new Date());
+  function clone(e){return{id:gid(),title:e.title,due:e.due?planAddDays(e.due,n):'',status:ini,statusAt:planNow(),assignees:(e.assignees||[]).slice()};}
+  if(sub){
+    var c=clone(sub);c.due=planAddDays(base,n);
+    if(!item.subitems)item.subitems=[];
+    item.subitems.push(c);
+  } else {
+    var c2=clone(item);c2.due=planAddDays(base,n);
+    c2.subitems=(item.subitems||[]).filter(function(s){return !s.archived;}).map(clone);
+    var g=planGroupOfItem(board,item);
+    if(g){g.items.push(c2);planSyncItemTree(board,c2);}
+  }
+}
+function planAutoToBoard(board,item,boardId,mode){
+  var target=(window.workPlanning.boards||[]).find(function(b){return b.id===boardId;});
+  if(!target||target.id===board.id)return false;
+  if(!target.groups||!target.groups.length)target.groups=[{id:gid(),name:'Geral',color:'#486068',collapsed:false,items:[]}];
+  var tg=target.groups[0];if(!tg.items)tg.items=[];
+  var tIni=(planFirstOfKind(target,'initial')||planStatuses(target)[0]).id;
+  var tIds=planStatuses(target).map(function(s){return s.id;});
+  function fix(e){if(tIds.indexOf(e.status)<0)e.status=tIni;delete e.autoMemo;}
+  if(mode==='copy'){
+    var cp=JSON.parse(JSON.stringify(item));cp.id=gid();fix(cp);
+    (cp.subitems||[]).forEach(function(s){s.id=gid();fix(s);});
+    tg.items.push(cp);planSyncItemTree(target,cp);fbSaveWorkEvs(target.calId);
+    return false;
+  }
+  planRemoveTree(board.calId,item);
+  var g=planGroupOfItem(board,item);
+  if(g)g.items=g.items.filter(function(it){return it.id!==item.id;});
+  fix(item);(item.subitems||[]).forEach(fix);
+  tg.items.push(item);planSyncItemTree(target,item);
+  if(target.calId!==board.calId)fbSaveWorkEvs(target.calId);
+  return true;
+}
+function planAutoDeliverable(board,item,sub){
+  var en=sub||item;
+  if(en.deliverableId)return;
+  if(!window.deliverables)window.deliverables=[];
+  var d={id:gid(),title:en.title,client:board.name,date:tds(new Date()),type:'projeto',description:'Registrado pelo Planejamento'+(sub?' ('+item.title+')':''),tags:[],metrics:[],skills:[]};
+  window.deliverables.push(d);
+  en.deliverableId=d.id;
+  if(typeof fbSaveDeliverables==='function')fbSaveDeliverables();
+}
+function planAutoNotify(board,rule,item,sub,text){
+  var en=sub||item;
+  if(!window.auth||!window.auth.currentUser)return;
+  var body=(text&&String(text).trim())?String(text).trim():(rule.name+' . '+board.name+(sub?' › '+item.title:''));
+  window.auth.currentUser.getIdToken().then(function(tok){
+    return fetch(PL_API+'/api/push',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({title:en.title,body:body,tag:'plan_'+en.id})});
+  }).catch(function(e){console.error('notify:',e);});
+}
 function planApplyActions(board,rule,item,sub,depth){
   var en=sub||item;
+  var moved=false;
   (rule.actions||[]).forEach(function(a){
-    if(a.type==='set_status'){
-      if(a.statusId&&planStatuses(board).some(function(s){return s.id===a.statusId;})&&en.status!==a.statusId){
-        en.status=a.statusId;en.statusAt=planNow();
-        planOnEvent(board,{type:'status',item:item,sub:sub},depth+1);
-      }
-    } else if(a.type==='archive'){
-      if(!en.archived){en.archived=true;en.archivedAt=planNow();}
-    } else if(a.type==='move_group'){
+    if(moved)return;
+    if(a.type==='set_status')planAutoSetStatus(board,item,sub,a.statusId,depth);
+    else if(a.type==='archive'){if(!en.archived){en.archived=true;en.archivedAt=planNow();}}
+    else if(a.type==='move_group'){
       if(sub||!a.groupId)return;
       var from=planGroupOfItem(board,item);
       var to=(board.groups||[]).find(function(g){return g.id===a.groupId;});
       if(!from||!to||from.id===to.id)return;
       from.items=(from.items||[]).filter(function(it){return it.id!==item.id;});
       if(!to.items)to.items=[];
-      to.items.push(item);
-    } else if(a.type==='set_due'){
-      var n=parseInt(a.days)||0;
+      to.items.push(item);planTouch(item);
+      planOnEvent(board,{type:'moved_group',item:item,sub:null},depth+1);
+    }
+    else if(a.type==='set_due'){
+      var n=parseInt(a.days)||0,old=en.due||'';
       if(a.mode==='clear')en.due='';
       else if(a.mode==='due_plus')en.due=planAddDays(en.due||tds(new Date()),n);
       else en.due=planAddDays(null,n);
-    } else if(a.type==='parent_status'){
-      if(!sub||!a.statusId||item.status===a.statusId)return;
-      if(!planStatuses(board).some(function(s){return s.id===a.statusId;}))return;
-      item.status=a.statusId;item.statusAt=planNow();
-      planOnEvent(board,{type:'status',item:item,sub:null},depth+1);
+      if((en.due||'')!==old){planTouch(en);planOnEvent(board,{type:'due_changed',item:item,sub:sub},depth+1);}
     }
+    else if(a.type==='parent_status'){if(sub)planAutoSetStatus(board,item,null,a.statusId,depth);}
+    else if(a.type==='subs_status'){
+      if(sub)return;
+      (item.subitems||[]).filter(function(s){return !s.archived;}).forEach(function(s){planAutoSetStatus(board,item,s,a.statusId,depth);});
+    }
+    else if(a.type==='assign'){
+      if(!a.personId||!planPerson(a.personId))return;
+      var l=en.assignees||[];
+      if(l.indexOf(a.personId)<0){en.assignees=l.concat([a.personId]);planTouch(en);planOnEvent(board,{type:'assigned',item:item,sub:sub,added:[a.personId]},depth+1);}
+    }
+    else if(a.type==='unassign'){
+      if(a.personId==='all')en.assignees=[];
+      else en.assignees=(en.assignees||[]).filter(function(id){return id!==a.personId;});
+      planTouch(en);
+    }
+    else if(a.type==='create_subs'){
+      if(sub)return;
+      var ini=(planFirstOfKind(board,'initial')||planStatuses(board)[0]).id;
+      if(!item.subitems)item.subitems=[];
+      String(a.lines||'').split('\n').map(function(s){return s.trim();}).filter(function(s){return s;}).forEach(function(t){
+        item.subitems.push({id:gid(),title:t,due:'',status:ini,statusAt:planNow(),assignees:[]});
+      });
+    }
+    else if(a.type==='repeat')planAutoRepeat(board,item,sub,parseInt(a.days)||0);
+    else if(a.type==='to_board'){if(!sub)moved=planAutoToBoard(board,item,a.boardId,a.mode||'move');}
+    else if(a.type==='deliverable')planAutoDeliverable(board,item,sub);
+    else if(a.type==='notify')planAutoNotify(board,rule,item,sub,a.text);
   });
-  planSyncItemTree(board,item);
+  if(!moved)planSyncItemTree(board,item);
 }
-
+function planLog(board,rule,title){
+  if(!board.autoLog)board.autoLog=[];
+  board.autoLog.unshift({ruleId:rule.id,at:planNow(),title:title,text:planActsText(board,rule)});
+  if(board.autoLog.length>150)board.autoLog.length=150;
+}
 function planFireRule(board,rule,item,sub,depth){
   if(depth>3)return;
+  var title=(sub||item).title;
   planApplyActions(board,rule,item,sub,depth);
+  planLog(board,rule,title);
 }
 
+// Motor
 function planOnEvent(board,ev,depth){
   depth=depth||0;
   if(depth>3||!board||!ev.item)return;
@@ -6242,13 +6408,27 @@ function planOnEvent(board,ev,depth){
   planAutomations(board).forEach(function(rule){
     if(en.status!==st)return;
     if(!planRuleApplies(board,rule,item,sub))return;
-    var tr=rule.trigger||{};
-    if(ev.type==='status'&&tr.type==='status_to'&&st===tr.statusId)planFireRule(board,rule,item,sub,depth);
-    else if(ev.type==='created'&&tr.type==='created')planFireRule(board,rule,item,sub,depth);
+    var tr=rule.trigger||{},fire=false;
+    if(ev.type==='status'){
+      if(tr.type==='status_to'&&st===tr.statusId)fire=true;
+      if(tr.type==='status_from'&&en.prevStatus===tr.statusId&&st!==tr.statusId)fire=true;
+    }
+    else if(ev.type==='created'&&tr.type==='created')fire=true;
+    else if(ev.type==='due_changed'&&tr.type==='due_changed')fire=true;
+    else if(ev.type==='assigned'&&tr.type==='assigned')fire=!tr.personId||tr.personId==='any'||(ev.added||[]).indexOf(tr.personId)>=0;
+    else if(ev.type==='moved_group'&&tr.type==='moved_group'&&!sub){var g=planGroupOfItem(board,item);fire=!!g&&g.id===tr.groupId;}
+    if(fire)planFireRule(board,rule,item,sub,depth);
   });
+  if(sub&&ev.type==='status'){
+    planAutomations(board).forEach(function(rule){
+      var tr=rule.trigger||{};
+      if(tr.type!=='any_sub'||sub.status!==tr.statusId)return;
+      if(!planRuleApplies(board,rule,item,null))return;
+      planFireRule(board,rule,item,null,depth);
+    });
+  }
   if(sub)planCheckAllSubs(board,item,depth);
 }
-
 function planCheckAllSubs(board,item,depth){
   if(depth>3||item.archived)return;
   var subs=(item.subitems||[]).filter(function(s){return !s.archived;});
@@ -6266,39 +6446,43 @@ function planCheckAllSubs(board,item,depth){
     }
   });
 }
-
 function planRunTimed(board){
   var rules=planAutomations(board).filter(function(r){return r.enabled;});
   if(!rules.length)return;
   var list=[];
   planEachEntry(board,function(it,sub){list.push({item:it,sub:sub});});
+  var now=new Date(),today=tds(now);
+  var hm=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  rules.forEach(function(rule){
+    var tr=rule.trigger||{};
+    if(tr.type!=='scheduled')return;
+    var days=tr.weekdays&&tr.weekdays.length?tr.weekdays:[0,1,2,3,4,5,6];
+    if(days.indexOf(now.getDay())<0||(tr.time||'09:00')>hm||rule.lastRun===today)return;
+    rule.lastRun=today;
+    list.forEach(function(x){if(planRuleApplies(board,rule,x.item,x.sub))planFireRule(board,rule,x.item,x.sub,0);});
+  });
   list.forEach(function(x){
     var item=x.item,sub=x.sub,en=sub||item;
     if(!en.statusAt)en.statusAt=planNow();
     rules.forEach(function(rule){
       if(!planRuleApplies(board,rule,item,sub))return;
-      var tr=rule.trigger||{};
+      var tr=rule.trigger||{},key=null;
       if(!en.autoMemo)en.autoMemo={};
-      if(tr.type==='status_days'){
-        if(en.status!==tr.statusId)return;
-        if(planDaysSince(en.statusAt)<(parseInt(tr.days)||0))return;
-        if(en.autoMemo[rule.id]===en.statusAt)return;
-        en.autoMemo[rule.id]=en.statusAt;
-        planFireRule(board,rule,item,sub,0);
-      } else if(tr.type==='due_passed'){
-        if(!planIsLate(board,en))return;
-        if(en.autoMemo[rule.id]===en.due)return;
-        en.autoMemo[rule.id]=en.due;
-        planFireRule(board,rule,item,sub,0);
-      }
+      if(tr.type==='status_days'){if(en.status!==tr.statusId||planDaysSince(en.statusAt)<(parseInt(tr.days)||0))return;key=en.statusAt;}
+      else if(tr.type==='idle_days'){var last=en.updatedAt||en.statusAt;if(planDaysSince(last)<(parseInt(tr.days)||0))return;key=last;}
+      else if(tr.type==='due_soon'){if(!en.due||planIsDone(board,en))return;var du=planDaysUntil(en.due);if(du<0||du>(parseInt(tr.days)||0))return;key=en.due;}
+      else if(tr.type==='due_passed'){if(!planIsLate(board,en))return;key=en.due;}
+      else return;
+      if(en.autoMemo[rule.id]===key)return;
+      en.autoMemo[rule.id]=key;
+      planFireRule(board,rule,item,sub,0);
     });
     if(!sub)planCheckAllSubs(board,item,0);
   });
 }
-
 function planRunAllTimed(){
   if(!window.workPlanning||!window.workPlanning.boards)return;
-  if(document.getElementById('planEntryModal')||document.getElementById('planStatusEditor')||document.getElementById('planAutoPanel')||document.getElementById('planRuleEditor'))return;
+  if(document.getElementById('planEntryModal')||document.getElementById('planStatusEditor')||document.getElementById('planAutoPanel')||document.getElementById('planRuleEditor')||document.getElementById('planPeopleEditor'))return;
   window.workPlanning.boards.forEach(function(board){
     if(!planAutomations(board).some(function(r){return r.enabled;}))return;
     var before=JSON.stringify(board);
@@ -6310,37 +6494,206 @@ function planRunAllTimed(){
   });
 }
 
-function planRuleText(board,rule){
-  var tr=rule.trigger||{},t='';
-  if(tr.type==='status_to')t='quando o status mudar para '+planStatusLabel(board,tr.statusId);
-  else if(tr.type==='status_days')t='quando ficar '+(tr.days||0)+' dia(s) em '+planStatusLabel(board,tr.statusId);
-  else if(tr.type==='due_passed')t='quando o prazo vencer';
-  else if(tr.type==='all_subs')t='quando todos os subitens chegarem em '+planStatusLabel(board,tr.statusId);
-  else if(tr.type==='created')t='quando for criado';
-  var acts=(rule.actions||[]).map(function(a){
-    if(a.type==='set_status')return 'mudar para '+planStatusLabel(board,a.statusId);
-    if(a.type==='archive')return 'arquivar';
-    if(a.type==='move_group'){var g=(board.groups||[]).find(function(x){return x.id===a.groupId;});return 'mover para '+(g?g.name:'(grupo removido)');}
-    if(a.type==='set_due')return a.mode==='clear'?'limpar o prazo':(a.mode==='due_plus'?'prazo atual + ':'prazo hoje + ')+(parseInt(a.days)||0)+' dia(s)';
-    if(a.type==='parent_status')return 'item pai para '+planStatusLabel(board,a.statusId);
-    return '';
-  }).join(' e ');
-  var g2=rule.groupId?(board.groups||[]).find(function(x){return x.id===rule.groupId;}):null;
-  return PL_APPLIES[rule.applies||'both']+(g2?' do grupo '+g2.name:'')+': '+t+', '+acts+'.';
+// Simulacao
+function planSimulate(board,rule){
+  var r=JSON.parse(JSON.stringify(rule));r.enabled=true;
+  var tr=r.trigger||{},out=[];
+  planEachEntry(board,function(it,sub){
+    if(!planRuleApplies(board,r,it,sub))return;
+    var en=sub||it,ok=true;
+    if(tr.type==='status_to')ok=en.status===tr.statusId;
+    else if(tr.type==='status_from')ok=en.prevStatus===tr.statusId&&en.status!==tr.statusId;
+    else if(tr.type==='status_days')ok=en.status===tr.statusId&&planDaysSince(en.statusAt)>=(parseInt(tr.days)||0);
+    else if(tr.type==='idle_days')ok=planDaysSince(en.updatedAt||en.statusAt)>=(parseInt(tr.days)||0);
+    else if(tr.type==='due_soon'){var du=en.due?planDaysUntil(en.due):-1;ok=!!en.due&&!planIsDone(board,en)&&du>=0&&du<=(parseInt(tr.days)||0);}
+    else if(tr.type==='due_passed')ok=planIsLate(board,en);
+    else if(tr.type==='all_subs'){var ss=(it.subitems||[]).filter(function(s){return !s.archived;});ok=!sub&&ss.length>0&&ss.every(function(s){return s.status===tr.statusId;});}
+    else if(tr.type==='any_sub')ok=!sub&&(it.subitems||[]).some(function(s){return !s.archived&&s.status===tr.statusId;});
+    else if(tr.type==='assigned')ok=(!tr.personId||tr.personId==='any')?!!(en.assignees||[]).length:(en.assignees||[]).indexOf(tr.personId)>=0;
+    else if(tr.type==='moved_group'){var g=planGroupOfItem(board,it);ok=!sub&&!!g&&g.id===tr.groupId;}
+    if(ok)out.push({title:en.title,path:sub?it.title:''});
+  });
+  return out;
 }
 
+// Textos
+function planFieldText(board,obj,f){
+  if(f==='status')return planStatusLabel(board,obj.statusId);
+  if(f==='days')return (parseInt(obj.days)||0)+' dia(s)';
+  if(f==='group'){var g=(board.groups||[]).find(function(x){return x.id===obj.groupId;});return g?g.name:'(grupo removido)';}
+  if(f==='person'||f==='person_any'||f==='person_all'){
+    if(!obj.personId||obj.personId==='any')return 'qualquer pessoa';
+    if(obj.personId==='all')return 'todos';
+    var p=planPerson(obj.personId);return p?p.name:'(pessoa removida)';
+  }
+  if(f==='weekdays'){var nm=['dom','seg','ter','qua','qui','sex','sab'];return (obj.weekdays||[]).slice().sort().map(function(i){return nm[i];}).join(', ');}
+  if(f==='time')return 'as '+(obj.time||'09:00');
+  if(f==='text')return '"'+(obj.text||'')+'"';
+  if(f==='text_opt')return obj.text?'"'+obj.text+'"':'';
+  if(f==='lines')return String(obj.lines||'').split('\n').filter(function(s){return s.trim();}).length+' subitem(ns)';
+  if(f==='due_mode')return obj.mode==='clear'?'limpar':((obj.mode==='due_plus'?'prazo atual + ':'hoje + ')+(parseInt(obj.days)||0)+' dia(s)');
+  if(f==='board'){var b=(window.workPlanning.boards||[]).find(function(x){return x.id===obj.boardId;});return b?b.name:'(quadro removido)';}
+  if(f==='board_mode')return obj.mode==='copy'?'(copiar)':'(mover)';
+  return '';
+}
+function planDefText(board,def,obj){
+  return [def.label.toLowerCase()].concat(def.fields.map(function(f){return planFieldText(board,obj,f);}).filter(function(s){return s;})).join(' ');
+}
+function planActsText(board,rule){return (rule.actions||[]).map(function(a){return planDefText(board,planActDef(a.type),a);}).join(' e ');}
+function planRuleText(board,rule){
+  var tr=rule.trigger||{};
+  var conds=(rule.conds||[]).map(function(c){return planDefText(board,planCondDef(c.type),c);});
+  if(rule.groupId){var g=(board.groups||[]).find(function(x){return x.id===rule.groupId;});if(g)conds.unshift('grupo e '+g.name);}
+  return PL_APPLIES[rule.applies||'both']+': quando '+planDefText(board,planTrig(tr.type),tr)+(conds.length?', se '+conds.join(' e '):'')+', entao '+planActsText(board,rule)+'.';
+}
+
+// Tooltip e lista com descricao
+function planTipHide(){var t=document.getElementById('planTip');if(t)t.remove();}
+function planTipShow(anchor,def){
+  planTipHide();
+  var t=plEl('div','position:fixed;z-index:10001;max-width:260px;background:#131F28;color:#e8edf0;font-size:11px;line-height:1.5;padding:10px 12px;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.2);'+PL_FONT);
+  t.id='planTip';
+  t.appendChild(plEl('div','font-weight:600;color:#fff;margin-bottom:3px',def.label));
+  t.appendChild(plEl('div','',def.tip||def.d||''));
+  if(def.ex)t.appendChild(plEl('div','color:#C5CED0;margin-top:6px',def.ex));
+  document.body.appendChild(t);
+  var r=anchor.getBoundingClientRect();
+  var left=Math.max(8,Math.min(r.left+r.width/2-t.offsetWidth/2,window.innerWidth-t.offsetWidth-8));
+  var top=r.top-t.offsetHeight-8;if(top<8)top=r.bottom+8;
+  t.style.left=left+'px';t.style.top=top+'px';
+}
+function planTipIcon(def){
+  var i=plEl('div','width:16px;height:16px;border-radius:50%;border:0.5px solid #9ca3af;color:#6b7280;font-size:10px;display:inline-flex;align-items:center;justify-content:center;cursor:help;flex-shrink:0;'+PL_FONT,'i');
+  i.onmouseenter=function(){planTipShow(i,def);i._at=Date.now();};
+  i.onmouseleave=planTipHide;
+  i.onclick=function(e){
+    e.stopPropagation();
+    if(document.getElementById('planTip')&&Date.now()-(i._at||0)>400)planTipHide();
+    else{planTipShow(i,def);i._at=Date.now();}
+  };
+  return i;
+}
+document.addEventListener('click',function(){planTipHide();});
+function planDD(opts,val,onch,minW){
+  var cur=opts.find(function(o){return o.v===val;})||opts[0]||{t:'',v:''};
+  var b=plEl('div','display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:0.5px solid #d1d5db;border-radius:8px;background:white;cursor:pointer;font-size:11px;color:#111827;min-width:'+(minW||120)+'px;'+PL_FONT);
+  b.appendChild(plEl('span','flex:1',cur.t));
+  b.appendChild(plEl('span','color:#9ca3af;font-size:9px','▼'));
+  b.onclick=function(e){
+    e.stopPropagation();
+    var old=document.getElementById('planDDPop');
+    if(old){var same=old._owner===b;old.remove();if(same)return;}
+    var r=b.getBoundingClientRect();
+    var p=plEl('div','position:fixed;z-index:10000;background:white;border:0.5px solid #e5e7eb;border-radius:10px;padding:4px;box-shadow:0 6px 20px rgba(0,0,0,.12);max-height:320px;overflow-y:auto;min-width:'+Math.max(r.width,220)+'px;max-width:320px;'+PL_FONT);
+    p.id='planDDPop';p._owner=b;
+    opts.forEach(function(o){
+      var it=plEl('div','padding:7px 10px;border-radius:6px;cursor:pointer;'+(o.v===val?'background:#f0f2f5':''));
+      it.onmouseenter=function(){it.style.background='#f7f8fa';};
+      it.onmouseleave=function(){it.style.background=o.v===val?'#f0f2f5':'';};
+      it.appendChild(plEl('div','font-size:12px;color:#111827',o.t));
+      if(o.d)it.appendChild(plEl('div','font-size:10px;color:#9ca3af;margin-top:1px',o.d));
+      it.onclick=function(ev){ev.stopPropagation();p.remove();onch(o.v);};
+      p.appendChild(it);
+    });
+    document.body.appendChild(p);
+    var top=r.bottom+4;if(top+p.offsetHeight>window.innerHeight-8)top=Math.max(8,r.top-p.offsetHeight-4);
+    p.style.left=Math.max(8,Math.min(r.left,window.innerWidth-p.offsetWidth-8))+'px';
+    p.style.top=top+'px';
+    setTimeout(function(){
+      document.addEventListener('click',function cl(ev){if(!p.contains(ev.target)){p.remove();document.removeEventListener('click',cl);}});
+    },0);
+  };
+  return b;
+}
+function planFieldEls(board,obj,fields,redraw){
+  var els=[];
+  var sts=planStatuses(board);
+  function num(key,def){
+    if(obj[key]===undefined)obj[key]=def;
+    var n=plEl('input','width:60px;'+PL_FONT);n.className='inp';n.type='number';n.min='0';n.value=obj[key];
+    n.oninput=function(){obj[key]=parseInt(this.value)||0;};
+    return n;
+  }
+  function txt(t){return plEl('div','font-size:11px;color:#6b7280;'+PL_FONT,t);}
+  fields.forEach(function(f){
+    if(f==='status'){
+      if(!obj.statusId)obj.statusId=sts[0].id;
+      els.push(planDD(sts.map(function(s){return{v:s.id,t:s.label};}),obj.statusId,function(v){obj.statusId=v;redraw();},130));
+    } else if(f==='days'){
+      els.push(num('days',3));els.push(txt('dia(s)'));
+    } else if(f==='group'){
+      var gs=board.groups||[];
+      if(!obj.groupId&&gs[0])obj.groupId=gs[0].id;
+      els.push(planDD(gs.length?gs.map(function(g){return{v:g.id,t:g.name};}):[{v:'',t:'Sem grupos'}],obj.groupId||'',function(v){obj.groupId=v;redraw();},130));
+    } else if(f==='person'||f==='person_any'||f==='person_all'){
+      var opts=planPeople().map(function(p){return{v:p.id,t:p.name+(p.me?' (eu)':'')};});
+      if(f==='person_any')opts.unshift({v:'any',t:'Qualquer pessoa'});
+      if(f==='person_all')opts.unshift({v:'all',t:'Todos'});
+      if(!opts.length)opts=[{v:'',t:'Cadastre pessoas primeiro'}];
+      if(!obj.personId)obj.personId=opts[0].v;
+      els.push(planDD(opts,obj.personId,function(v){obj.personId=v;redraw();},140));
+    } else if(f==='weekdays'){
+      if(!obj.weekdays)obj.weekdays=[1,2,3,4,5];
+      var w=plEl('div','display:flex;gap:3px');
+      ['D','S','T','Q','Q','S','S'].forEach(function(l,i){
+        var on=obj.weekdays.indexOf(i)>=0;
+        var d=plEl('div','width:24px;height:24px;border-radius:50%;font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;'+PL_FONT+(on?'background:#131F28;color:#C5CED0':'border:0.5px solid #d1d5db;color:#6b7280'),l);
+        d.onclick=function(){var k=obj.weekdays.indexOf(i);if(k>=0)obj.weekdays.splice(k,1);else obj.weekdays.push(i);redraw();};
+        w.appendChild(d);
+      });
+      els.push(w);
+    } else if(f==='time'){
+      if(!obj.time)obj.time='09:00';
+      var t=plEl('input','width:96px;'+PL_FONT);t.className='inp';t.type='time';t.value=obj.time;
+      t.oninput=function(){obj.time=this.value;};
+      els.push(t);
+    } else if(f==='text'||f==='text_opt'){
+      var x=plEl('input','min-width:160px;flex:1;'+PL_FONT);x.className='inp';x.value=obj.text||'';
+      x.placeholder=f==='text'?'Texto':'Mensagem (opcional)';
+      x.oninput=function(){obj.text=this.value;};
+      els.push(x);
+    } else if(f==='lines'){
+      var ta=plEl('textarea','flex-basis:100%;min-height:64px;'+PL_FONT);ta.className='inp';ta.value=obj.lines||'';
+      ta.placeholder='Um subitem por linha';
+      ta.oninput=function(){obj.lines=this.value;};
+      els.push(ta);
+    } else if(f==='due_mode'){
+      if(!obj.mode)obj.mode='today_plus';
+      els.push(planDD([{v:'today_plus',t:'Hoje +',d:'Conta a partir de hoje'},{v:'due_plus',t:'Prazo atual +',d:'Adia o prazo existente'},{v:'clear',t:'Limpar prazo',d:'Remove o prazo e tira a tarefa do Dia'}],obj.mode,function(v){obj.mode=v;redraw();},120));
+      if(obj.mode!=='clear'){els.push(num('days',1));els.push(txt('dia(s)'));}
+    } else if(f==='board'){
+      var bs=[];
+      (window.workPlanning.boards||[]).forEach(function(b){
+        if(b.id===board.id)return;
+        var c=(window.workCals||[]).find(function(x){return x.id===b.calId;});
+        bs.push({v:b.id,t:b.name,d:c?c.name:''});
+      });
+      if(!bs.length)bs=[{v:'',t:'Crie outro quadro primeiro'}];
+      if(!obj.boardId)obj.boardId=bs[0].v;
+      els.push(planDD(bs,obj.boardId,function(v){obj.boardId=v;redraw();},140));
+    } else if(f==='board_mode'){
+      if(!obj.mode)obj.mode='move';
+      els.push(planDD([{v:'move',t:'Mover',d:'Sai deste quadro'},{v:'copy',t:'Copiar',d:'Fica nos dois quadros'}],obj.mode,function(v){obj.mode=v;redraw();},100));
+    }
+  });
+  return els;
+}
+
+// Painel
 function openPlanAutoPanel(boardId){
   var old=document.getElementById('planAutoPanel');if(old)old.remove();
   var board=planLocate(boardId).board;if(!board)return;
   var rules=planAutomations(board);
   var nOn=rules.filter(function(r){return r.enabled;}).length;
+  var tab=window._planAutoTab||'rules';
+  var logs=board.autoLog||[];
 
   var ov=plEl('div');ov.className='mo open';ov.id='planAutoPanel';
   ov.onclick=function(e){if(e.target===ov){ov.remove();renderWorkPlanning(board.calId);}};
-  var md=plEl('div','width:540px;padding:20px');md.className='modal';
+  var md=plEl('div','width:580px;padding:20px');md.className='modal';
   md.onclick=function(e){e.stopPropagation();};
 
-  var hd=plEl('div','display:flex;align-items:center;justify-content:space-between;margin-bottom:14px');
+  var hd=plEl('div','display:flex;align-items:center;justify-content:space-between;margin-bottom:12px');
   var ht=plEl('div','');
   ht.appendChild(plEl('div','font-size:14px;font-weight:500;color:#111827;'+PL_FONT,'Automacoes'));
   ht.appendChild(plEl('div','font-size:10px;color:#9ca3af;margin-top:2px;'+PL_FONT,board.name+' . '+rules.length+' regra(s), '+nOn+' ativa(s)'));
@@ -6350,36 +6703,65 @@ function openPlanAutoPanel(boardId){
   hd.appendChild(nb);
   md.appendChild(hd);
 
-  if(!rules.length)md.appendChild(plEl('div','font-size:11px;color:#d1d5db;padding:18px 0;text-align:center;'+PL_FONT,'Nenhuma regra ainda. Crie a primeira em Nova regra.'));
-  rules.forEach(function(rule){
-    var card=plEl('div','border:0.5px solid #e5e7eb;border-radius:8px;padding:10px 12px;margin-bottom:8px;'+(rule.enabled?'':'opacity:.55'));
-    var top=plEl('div','display:flex;align-items:center;gap:10px;margin-bottom:4px');
-    top.appendChild(plEl('div','flex:1;font-size:12px;font-weight:500;color:#111827;'+PL_FONT,rule.name||'Regra sem nome'));
-    var ed=plEl('div','font-size:10px;color:#6b7280;cursor:pointer;'+PL_FONT,'Editar');
-    ed.onclick=function(){ov.remove();openPlanRuleEditor(boardId,rule.id);};
-    var dl=plEl('div','font-size:10px;color:#d1d5db;cursor:pointer;'+PL_FONT,'Excluir');
-    dl.onclick=function(){
-      if(!confirm('Excluir a regra "'+(rule.name||'')+'"?'))return;
-      var b=planLocate(boardId).board;if(!b)return;
-      b.automations=planAutomations(b).filter(function(r){return r.id!==rule.id;});
-      fbSaveWorkPlanning();openPlanAutoPanel(boardId);
-    };
-    var tg=plEl('div','width:30px;height:16px;border-radius:8px;position:relative;cursor:pointer;flex-shrink:0;background:'+(rule.enabled?'#486068':'#d1d5db'));
-    tg.appendChild(plEl('div','width:12px;height:12px;border-radius:50%;background:white;position:absolute;top:2px;'+(rule.enabled?'right:2px':'left:2px')));
-    tg.title=rule.enabled?'Desativar':'Ativar';
-    tg.onclick=function(){
-      var b=planLocate(boardId).board;if(!b)return;
-      var r=planAutomations(b).find(function(x){return x.id===rule.id;});if(!r)return;
-      r.enabled=!r.enabled;
-      fbSaveWorkPlanning();openPlanAutoPanel(boardId);
-    };
-    [ed,dl,tg].forEach(function(e){top.appendChild(e);});
-    card.appendChild(top);
-    card.appendChild(plEl('div','font-size:10px;color:#6b7280;line-height:1.6;'+PL_FONT,planRuleText(board,rule)));
-    md.appendChild(card);
+  var tabs=plEl('div','display:flex;gap:4px;margin-bottom:12px');
+  [['rules','Regras'],['log','Historico ('+logs.length+')']].forEach(function(t){
+    var act=tab===t[0];
+    var b=plEl('div','padding:4px 12px;border-radius:12px;font-size:10px;cursor:pointer;'+PL_FONT+(act?'background:#131F28;color:#C5CED0;font-weight:500':'border:0.5px solid #e5e7eb;color:#6b7280'),t[1]);
+    b.onclick=function(){window._planAutoTab=t[0];openPlanAutoPanel(boardId);};
+    tabs.appendChild(b);
   });
+  md.appendChild(tabs);
 
-  md.appendChild(plEl('div','font-size:10px;color:#9ca3af;margin:8px 0 14px;line-height:1.6;'+PL_FONT,'As regras rodam quando um status muda (inclusive pelo Dia), quando algo e criado, e a cada minuto para prazos e dias no status. Uma regra pode disparar outra.'));
+  if(tab==='rules'){
+    if(!rules.length)md.appendChild(plEl('div','font-size:11px;color:#d1d5db;padding:18px 0;text-align:center;'+PL_FONT,'Nenhuma regra ainda. Crie a primeira em Nova regra.'));
+    rules.forEach(function(rule){
+      var card=plEl('div','border:0.5px solid #e5e7eb;border-radius:8px;padding:10px 12px;margin-bottom:8px;'+(rule.enabled?'':'opacity:.55'));
+      var top=plEl('div','display:flex;align-items:center;gap:10px;margin-bottom:4px');
+      top.appendChild(plEl('div','flex:1;font-size:12px;font-weight:500;color:#111827;'+PL_FONT,rule.name||'Regra sem nome'));
+      var ed=plEl('div','font-size:10px;color:#6b7280;cursor:pointer;'+PL_FONT,'Editar');
+      ed.onclick=function(){ov.remove();openPlanRuleEditor(boardId,rule.id);};
+      var dl=plEl('div','font-size:10px;color:#d1d5db;cursor:pointer;'+PL_FONT,'Excluir');
+      dl.onclick=function(){
+        if(!confirm('Excluir a regra "'+(rule.name||'')+'"?'))return;
+        var b=planLocate(boardId).board;if(!b)return;
+        b.automations=planAutomations(b).filter(function(r){return r.id!==rule.id;});
+        fbSaveWorkPlanning();openPlanAutoPanel(boardId);
+      };
+      var tg=plEl('div','width:30px;height:16px;border-radius:8px;position:relative;cursor:pointer;flex-shrink:0;background:'+(rule.enabled?'#486068':'#d1d5db'));
+      tg.appendChild(plEl('div','width:12px;height:12px;border-radius:50%;background:white;position:absolute;top:2px;'+(rule.enabled?'right:2px':'left:2px')));
+      tg.title=rule.enabled?'Desativar':'Ativar';
+      tg.onclick=function(){
+        var b=planLocate(boardId).board;if(!b)return;
+        var r=planAutomations(b).find(function(x){return x.id===rule.id;});if(!r)return;
+        r.enabled=!r.enabled;fbSaveWorkPlanning();openPlanAutoPanel(boardId);
+      };
+      [ed,dl,tg].forEach(function(e){top.appendChild(e);});
+      card.appendChild(top);
+      card.appendChild(plEl('div','font-size:10px;color:#6b7280;line-height:1.6;'+PL_FONT,planRuleText(board,rule)));
+      md.appendChild(card);
+    });
+  } else {
+    if(!logs.length)md.appendChild(plEl('div','font-size:11px;color:#d1d5db;padding:18px 0;text-align:center;'+PL_FONT,'Nenhuma execucao registrada ainda.'));
+    logs.slice(0,60).forEach(function(l){
+      var r=rules.find(function(x){return x.id===l.ruleId;});
+      var d=new Date(l.at);
+      var when=String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+      var row=plEl('div','display:flex;gap:10px;padding:7px 0;border-bottom:0.5px solid #f0f2f5');
+      row.appendChild(plEl('div','font-size:10px;color:#9ca3af;width:72px;flex-shrink:0;'+PL_FONT,when));
+      var tx=plEl('div','flex:1;min-width:0');
+      tx.appendChild(plEl('div','font-size:11px;color:#111827;'+PL_FONT,l.title));
+      tx.appendChild(plEl('div','font-size:10px;color:#6b7280;'+PL_FONT,(r?r.name:'Regra excluida')+' . '+l.text));
+      row.appendChild(tx);
+      md.appendChild(row);
+    });
+    if(logs.length){
+      var clr=plEl('div','font-size:10px;color:#9ca3af;cursor:pointer;margin-top:8px;'+PL_FONT,'Limpar historico');
+      clr.onclick=function(){if(!confirm('Limpar o historico deste quadro?'))return;var b=planLocate(boardId).board;if(!b)return;b.autoLog=[];fbSaveWorkPlanning();openPlanAutoPanel(boardId);};
+      md.appendChild(clr);
+    }
+  }
+
+  md.appendChild(plEl('div','font-size:10px;color:#9ca3af;margin:12px 0 14px;line-height:1.6;'+PL_FONT,'As regras rodam quando algo muda (inclusive pelo Dia) e a cada minuto para prazos, dias parados e agendamentos, enquanto o Mono estiver aberto em algum aparelho. Uma regra pode disparar outra.'));
   var ft=plEl('div','display:flex;justify-content:flex-end');
   var bc=plEl('button','','Fechar');bc.className='bg-btn';
   bc.onclick=function(){ov.remove();renderWorkPlanning(board.calId);setTimeout(planRunAllTimed,300);};
@@ -6389,133 +6771,143 @@ function openPlanAutoPanel(boardId){
   document.body.appendChild(ov);
 }
 
+// Editor de regra
 function openPlanRuleEditor(boardId,ruleId){
   var old=document.getElementById('planRuleEditor');if(old)old.remove();
   var b0=planLocate(boardId).board;if(!b0)return;
-  var sts=planStatuses(b0);
-  var groups=b0.groups||[];
   var existing=ruleId?planAutomations(b0).find(function(r){return r.id===ruleId;}):null;
-  var doneSt=planFirstOfKind(b0,'done')||sts[0];
-  var draft=existing?JSON.parse(JSON.stringify(existing)):{id:gid(),name:'',enabled:true,applies:'both',groupId:'',trigger:{type:'status_to',statusId:doneSt.id,days:3},actions:[{type:'archive'}]};
-  if(!draft.trigger)draft.trigger={type:'status_to',statusId:doneSt.id,days:3};
+  var doneSt=planFirstOfKind(b0,'done')||planStatuses(b0)[0];
+  var draft=existing?JSON.parse(JSON.stringify(existing)):{id:gid(),name:'',enabled:true,applies:'both',trigger:{type:'status_to',statusId:doneSt.id},conds:[],actions:[{type:'archive'}]};
+  if(!draft.trigger)draft.trigger={type:'status_to',statusId:doneSt.id};
+  if(!draft.conds)draft.conds=[];
   if(!draft.actions)draft.actions=[];
+  if(draft.groupId){draft.conds.unshift({type:'group_is',groupId:draft.groupId});delete draft.groupId;}
 
   var ov=plEl('div');ov.className='mo open';ov.id='planRuleEditor';
-  ov.onclick=function(e){if(e.target===ov){ov.remove();openPlanAutoPanel(boardId);}};
-  var md=plEl('div','width:540px;padding:20px');md.className='modal';
-  md.onclick=function(e){e.stopPropagation();};
-  md.appendChild(plEl('div','font-size:14px;font-weight:500;color:#111827;margin-bottom:6px;'+PL_FONT,existing?'Editar regra':'Nova regra'));
+  ov.onclick=function(e){if(e.target===ov){planTipHide();ov.remove();openPlanAutoPanel(boardId);}};
+  var md=plEl('div','width:620px;padding:20px');md.className='modal';
+  md.onclick=function(e){e.stopPropagation();planTipHide();};
+  var mh=plEl('div','display:flex;align-items:baseline;gap:10px;margin-bottom:6px');
+  mh.appendChild(plEl('div','font-size:14px;font-weight:500;color:#111827;flex:1;'+PL_FONT,existing?'Editar regra':'Nova regra'));
+  mh.appendChild(plEl('div','font-size:10px;color:#9ca3af;'+PL_FONT,'Passe o mouse ou toque no i para ver a explicacao'));
+  md.appendChild(mh);
   var body=plEl('div','');md.appendChild(body);
 
   function lbl(t){return plEl('div','font-size:10px;color:#6b7280;margin:12px 0 4px;'+PL_FONT,t);}
-  function mkSelect(opts,val,onch){
-    var s=plEl('select','width:auto;min-width:140px;'+PL_FONT);s.className='sel';
-    opts.forEach(function(o){var op=document.createElement('option');op.value=o.v;op.textContent=o.t;if(o.v===val)op.selected=true;s.appendChild(op);});
-    s.onchange=function(){onch(this.value);};
+  function sec(t,color,sub){
+    var s=plEl('div','display:flex;align-items:baseline;gap:8px;margin:16px 0 6px');
+    s.appendChild(plEl('div','font-size:11px;font-weight:600;letter-spacing:.4px;color:'+color+';'+PL_FONT,t));
+    if(sub)s.appendChild(plEl('div','font-size:10px;color:#9ca3af;'+PL_FONT,sub));
     return s;
   }
-  function stOpts(){return sts.map(function(s){return{v:s.id,t:s.label};});}
-  function grOpts(withAll){var o=withAll?[{v:'',t:'Todos os grupos'}]:[];groups.forEach(function(g){o.push({v:g.id,t:g.name});});return o;}
-  function numInput(val,onch){var i=plEl('input','width:64px;'+PL_FONT);i.className='inp';i.type='number';i.min='0';i.value=val;i.oninput=function(){onch(parseInt(this.value)||0);};return i;}
-  function row(){return plEl('div','display:flex;align-items:center;gap:6px;flex-wrap:wrap');}
-  function txt(t){return plEl('div','font-size:11px;color:#6b7280;'+PL_FONT,t);}
+  function row(){return plEl('div','display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px');}
+  function rmBtn(fn){var x=plEl('div','font-size:11px;color:#9ca3af;cursor:pointer;margin-left:auto;padding:0 4px','x');x.title='Remover';x.onclick=fn;return x;}
 
+  var simOut=plEl('div','');
   function draw(){
+    planTipHide();
     body.innerHTML='';
-    var tr=draft.trigger;
-    if(tr.type==='all_subs')draft.applies='item';
+    var tr=draft.trigger;var td=planTrig(tr.type);
+    if(td.itemOnly)draft.applies='item';
 
     body.appendChild(lbl('Nome da regra'));
-    var ni=plEl('input',PL_FONT);ni.className='inp';ni.placeholder='Ex: Arquivar concluidos';ni.value=draft.name||'';
+    var ni=plEl('input',PL_FONT);ni.className='inp';ni.placeholder='Ex: Cobrar cliente parado';ni.value=draft.name||'';
     ni.oninput=function(){draft.name=this.value;};
     body.appendChild(ni);
 
     body.appendChild(lbl('Aplica a'));
+    var ar=row();
     var seg=plEl('div','');seg.className='seg-ctrl';
     ['item','sub','both'].forEach(function(k){
       var b=plEl('button',PL_FONT,PL_APPLIES[k]);b.type='button';b.className='seg-btn'+(draft.applies===k?' act':'');
-      if(tr.type==='all_subs'&&k!=='item'){b.style.opacity='.35';b.style.cursor='not-allowed';}
+      if(td.itemOnly&&k!=='item'){b.style.opacity='.35';b.style.cursor='not-allowed';}
       else b.onclick=function(){draft.applies=k;draw();};
       seg.appendChild(b);
     });
-    body.appendChild(seg);
+    ar.appendChild(seg);
+    ar.appendChild(planTipIcon({label:'Aplica a',tip:'Escolhe se a regra age em itens, subitens ou nos dois. Gatilhos de subitens e de grupo valem so para itens.'}));
+    body.appendChild(ar);
 
-    body.appendChild(lbl('Somente no grupo'));
-    body.appendChild(mkSelect(grOpts(true),draft.groupId||'',function(v){draft.groupId=v;}));
-
-    body.appendChild(lbl('Quando'));
+    body.appendChild(sec('QUANDO','#486068'));
     var tRow=row();
-    tRow.appendChild(mkSelect(PL_TRIGGERS.map(function(t){return{v:t.id,t:t.label};}),tr.type,function(v){
-      tr.type=v;if(!tr.statusId)tr.statusId=sts[0].id;if(!tr.days)tr.days=3;draw();
-    }));
-    if(tr.type==='status_days'){
-      tRow.appendChild(numInput(tr.days||0,function(n){tr.days=n;}));
-      tRow.appendChild(txt('dias em'));
-    }
-    if(tr.type==='status_to'||tr.type==='status_days'||tr.type==='all_subs'){
-      if(!tr.statusId)tr.statusId=sts[0].id;
-      tRow.appendChild(mkSelect(stOpts(),tr.statusId,function(v){tr.statusId=v;}));
-    }
+    tRow.appendChild(planDD(PL_TRIGGERS.map(function(t){return{v:t.id,t:t.label,d:t.d};}),tr.type,function(v){draft.trigger={type:v};draw();},200));
+    tRow.appendChild(planTipIcon(td));
+    planFieldEls(b0,tr,td.fields,draw).forEach(function(e){tRow.appendChild(e);});
     body.appendChild(tRow);
 
-    body.appendChild(lbl('Entao'));
-    var aw=plEl('div','display:flex;flex-direction:column;gap:6px');
-    draft.actions.forEach(function(a,i){
+    body.appendChild(sec('E SE','#B3907F','todas as condicoes precisam ser verdadeiras'));
+    if(!draft.conds.length)body.appendChild(plEl('div','font-size:10px;color:#d1d5db;margin-bottom:6px;'+PL_FONT,'Sem condicoes: a regra vale para todos os itens.'));
+    draft.conds.forEach(function(c,i){
+      var cd=planCondDef(c.type);
       var r=row();
-      if(i>0)r.appendChild(txt('e'));
-      r.appendChild(mkSelect(PL_ACTIONS.map(function(x){return{v:x.id,t:x.label};}),a.type,function(v){
-        a.type=v;
-        if((v==='set_status'||v==='parent_status')&&!a.statusId)a.statusId=sts[0].id;
-        if(v==='move_group'&&!a.groupId&&groups[0])a.groupId=groups[0].id;
-        if(v==='set_due'){if(!a.mode)a.mode='today_plus';if(a.days===undefined)a.days=1;}
-        draw();
-      }));
-      if(a.type==='set_status'||a.type==='parent_status'){
-        if(!a.statusId)a.statusId=sts[0].id;
-        r.appendChild(mkSelect(stOpts(),a.statusId,function(v){a.statusId=v;}));
-      }
-      if(a.type==='move_group'){
-        if(!a.groupId&&groups[0])a.groupId=groups[0].id;
-        r.appendChild(mkSelect(grOpts(false),a.groupId||'',function(v){a.groupId=v;}));
-      }
-      if(a.type==='set_due'){
-        if(!a.mode)a.mode='today_plus';
-        r.appendChild(mkSelect([{v:'today_plus',t:'Hoje +'},{v:'due_plus',t:'Prazo atual +'},{v:'clear',t:'Limpar prazo'}],a.mode,function(v){a.mode=v;draw();}));
-        if(a.mode!=='clear'){r.appendChild(numInput(a.days===undefined?1:a.days,function(n){a.days=n;}));r.appendChild(txt('dias'));}
-      }
-      var x=plEl('div','font-size:11px;color:#9ca3af;cursor:pointer;margin-left:auto;padding:0 4px','x');
-      x.title='Remover acao';
-      x.onclick=function(){draft.actions.splice(i,1);draw();};
-      r.appendChild(x);
-      aw.appendChild(r);
+      r.appendChild(planDD(PL_CONDS.map(function(t){return{v:t.id,t:t.label,d:t.d};}),c.type,function(v){draft.conds[i]={type:v};draw();},170));
+      r.appendChild(planTipIcon(cd));
+      planFieldEls(b0,c,cd.fields,draw).forEach(function(e){r.appendChild(e);});
+      r.appendChild(rmBtn(function(){draft.conds.splice(i,1);draw();}));
+      body.appendChild(r);
     });
-    body.appendChild(aw);
-    var addA=plEl('div','font-size:11px;color:#486068;cursor:pointer;margin-top:8px;'+PL_FONT,'+ Acao');
-    addA.onclick=function(){draft.actions.push({type:'set_status',statusId:sts[0].id});draw();};
+    var addC=plEl('div','font-size:11px;color:#486068;cursor:pointer;'+PL_FONT,'+ Condicao');
+    addC.onclick=function(){draft.conds.push({type:'group_not'});draw();};
+    body.appendChild(addC);
+
+    body.appendChild(sec('ENTAO','#131F28','acoes em sequencia'));
+    draft.actions.forEach(function(a,i){
+      var ad=planActDef(a.type);
+      var r=row();
+      if(i>0)r.appendChild(plEl('div','font-size:11px;color:#6b7280;'+PL_FONT,'e'));
+      r.appendChild(planDD(PL_ACTIONS.map(function(t){return{v:t.id,t:t.label,d:t.d};}),a.type,function(v){draft.actions[i]={type:v};draw();},200));
+      r.appendChild(planTipIcon(ad));
+      planFieldEls(b0,a,ad.fields,draw).forEach(function(e){r.appendChild(e);});
+      r.appendChild(rmBtn(function(){draft.actions.splice(i,1);draw();}));
+      body.appendChild(r);
+    });
+    var addA=plEl('div','font-size:11px;color:#486068;cursor:pointer;'+PL_FONT,'+ Acao');
+    addA.onclick=function(){draft.actions.push({type:'set_status'});draw();};
     body.appendChild(addA);
+
+    var sim=plEl('div','display:flex;gap:10px;align-items:flex-start;background:#f7f8fa;border-radius:8px;padding:10px 12px;margin-top:16px');
+    var st=plEl('div','flex:1');
+    st.appendChild(plEl('div','font-size:12px;font-weight:500;color:#111827;'+PL_FONT,'Simulacao'));
+    st.appendChild(simOut);
+    var sb=plEl('div','font-size:11px;padding:5px 12px;border-radius:8px;border:0.5px solid #d1d5db;background:white;cursor:pointer;'+PL_FONT,'Simular');
+    sb.onclick=function(){
+      var bf=planLocate(boardId).board;if(!bf)return;
+      var res=planSimulate(bf,draft);
+      var evOnly=['created','due_changed','status_from'].indexOf(draft.trigger.type)>=0;
+      simOut.innerHTML='';
+      simOut.appendChild(plEl('div','font-size:11px;color:#486068;margin-top:2px;'+PL_FONT,res.length+' item(ns) '+(evOnly?'atendem as condicoes hoje (a regra so age quando o evento acontecer)':'seriam afetados agora')));
+      if(res.length)simOut.appendChild(plEl('div','font-size:10px;color:#6b7280;margin-top:3px;line-height:1.6;'+PL_FONT,res.slice(0,6).map(function(x){return x.title+(x.path?' ('+x.path+')':'');}).join(' . ')+(res.length>6?' . e mais '+(res.length-6):'')));
+    };
+    sim.appendChild(st);sim.appendChild(sb);
+    body.appendChild(sim);
   }
+  simOut.appendChild(plEl('div','font-size:10px;color:#9ca3af;margin-top:2px;'+PL_FONT,'Mostra quais itens a regra afetaria antes de salvar.'));
   draw();
 
   var err=plEl('div','font-size:10px;color:#B3907F;min-height:14px;margin:12px 0 8px;'+PL_FONT,'');
   md.appendChild(err);
   var ft=plEl('div','display:flex;gap:8px;justify-content:flex-end');
   var bc=plEl('button','','Cancelar');bc.className='bg-btn';
-  bc.onclick=function(){ov.remove();openPlanAutoPanel(boardId);};
-  var bs=plEl('button','','Salvar');bs.className='bp';
+  bc.onclick=function(){planTipHide();ov.remove();openPlanAutoPanel(boardId);};
+  var bs=plEl('button','','Salvar regra');bs.className='bp';
   ft.appendChild(bc);ft.appendChild(bs);
   md.appendChild(ft);
 
   bs.onclick=function(){
     if(!(draft.name||'').trim()){err.textContent='Digite um nome para a regra.';return;}
     if(!draft.actions.length){err.textContent='Adicione pelo menos uma acao.';return;}
-    if(draft.actions.some(function(a){return a.type==='move_group'&&!a.groupId;})){err.textContent='Escolha o grupo de destino.';return;}
+    var miss=draft.actions.some(function(a){
+      return (a.type==='move_group'&&!a.groupId)||(a.type==='to_board'&&!a.boardId)||(a.type==='assign'&&!a.personId)||(a.type==='create_subs'&&!String(a.lines||'').trim());
+    });
+    if(miss){err.textContent='Complete os campos das acoes (grupo, quadro, pessoa ou lista de subitens).';return;}
+    if(draft.trigger.type==='scheduled'&&!(draft.trigger.weekdays||[]).length){err.textContent='Escolha pelo menos um dia da semana.';return;}
     draft.name=draft.name.trim();
     var b=planLocate(boardId).board;if(!b)return;
     var list=planAutomations(b);
     var idx=list.findIndex(function(r){return r.id===draft.id;});
     if(idx>=0)list[idx]=draft;else list.push(draft);
     fbSaveWorkPlanning();
-    ov.remove();
+    planTipHide();ov.remove();
     openPlanAutoPanel(boardId);
     showToast('Regra salva.');
   };
