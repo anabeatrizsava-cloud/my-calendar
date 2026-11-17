@@ -5265,7 +5265,7 @@ function fbLoadWorkPlanning(){
       window.workPlanning=snap.exists()?snap.data():{boards:[]};
       if(!window.workPlanning.boards)window.workPlanning.boards=[];
       var onPlan=window._wView==='plan'&&(window.workCals||[]).some(function(c){return c.id===activeCal;});
-      var modalOpen=document.getElementById('planEntryModal')||document.getElementById('planStatusEditor')||document.getElementById('planAutoPanel')||document.getElementById('planRuleEditor');
+      var modalOpen=document.getElementById('planEntryModal')||document.getElementById('planStatusEditor')||document.getElementById('planAutoPanel')||document.getElementById('planRuleEditor')||document.getElementById('planPeopleEditor');
       if(onPlan&&!modalOpen)renderWorkPlanning(activeCal);
       if(!window._planAutoStarted){window._planAutoStarted=true;setTimeout(planRunAllTimed,3000);setInterval(planRunAllTimed,60000);}
     });
@@ -5296,7 +5296,8 @@ function planSyncEntry(board,item,sub){
   ev.date=en.due;
   ev.deadline=en.due;
   ev.progress=PL_KIND_TO_PROG[planStatusObj(board,en.status).kind]||'not-started';
-  ev.client=sub?(board.name+' › '+item.title):board.name;
+  var resp=planAssigneeNames(en);
+  ev.client=(sub?(board.name+' › '+item.title):board.name)+(resp?' · Resp.: '+resp:'');
   if(!ev.tags)ev.tags=[];
   if(ev.tags.indexOf('Planejamento')<0)ev.tags.push('Planejamento');
   ev.calId=calId;
@@ -5498,6 +5499,31 @@ function openPlanEntryModal(ctx){
   }
   drawSt();
   md.appendChild(stWrap);
+  md.appendChild(lbl('Responsavel'));
+  var assignees=en?(en.assignees||[]).slice():[];
+  if(!en){
+    var ff=window._planFilterPerson[loc.board.calId];
+    if(ff==='me'){var mp=planPeople().find(function(p){return p.me;});if(mp)assignees=[mp.id];}
+    else if(ff&&ff!=='all'&&ff!=='none'&&planPerson(ff))assignees=[ff];
+  }
+  var pWrap=plEl('div','display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px');
+  function drawPeople(){
+    pWrap.innerHTML='';
+    planPeople().forEach(function(p){
+      var on=assignees.indexOf(p.id)>=0;
+      var c=plEl('div','display:flex;align-items:center;gap:5px;padding:3px 10px 3px 3px;border-radius:14px;cursor:pointer;font-size:11px;'+PL_FONT+(on?'background:#131F28;color:#C5CED0':'border:0.5px solid #e5e7eb;color:#6b7280'));
+      c.appendChild(planAvatar(p,18));
+      c.appendChild(document.createTextNode(p.name));
+      c.onclick=function(){var i=assignees.indexOf(p.id);if(i>=0)assignees.splice(i,1);else assignees.push(p.id);drawPeople();};
+      pWrap.appendChild(c);
+    });
+    var addP=plEl('div','font-size:11px;color:#486068;cursor:pointer;padding:4px 6px;'+PL_FONT,'+ Nova pessoa');
+    addP.onclick=function(){var p=planCreatePerson();if(!p)return;assignees.push(p.id);fbSaveWorkPlanning();drawPeople();};
+    pWrap.appendChild(addP);
+  }
+  drawPeople();
+  md.appendChild(pWrap);
+
 
   var ft=plEl('div','display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap');
   if(isEdit){
@@ -5540,6 +5566,8 @@ function openPlanEntryModal(ctx){
       if(e2.status!==status){e2.status=status;e2.statusAt=planNow();evType='status';}
       e2.title=t;e2.due=di.value||'';
     }
+    var target=ctx.mode==='new-item'?item:(ctx.mode==='new-sub'?evSub:(l.sub||l.item));
+    if(target)target.assignees=assignees.slice();
     if(evType)planOnEvent(board,{type:evType,item:item,sub:evSub},0);
     planSyncItemTree(board,item);
     planSaveAll(board);
@@ -5643,7 +5671,184 @@ function openPlanStatusEditor(boardId){
 }
 
 // Render
-function planCols(isMob){return isMob?'minmax(0,1fr) 84px 52px 44px':'minmax(0,1fr) 110px 70px 90px 44px';}
+// ── Responsaveis ──
+window._planFilterPerson=window._planFilterPerson||{};
+var PL_PERSON_COLORS=['petroleo','terracota_f','lavanda_f','salvia_f','mostarda_f','azul_f','coral_f','rosa_f','noite','grafite_f'];
+function planPeople(){if(!window.workPlanning.people)window.workPlanning.people=[];return window.workPlanning.people;}
+function planPerson(id){return planPeople().find(function(p){return p.id===id;})||null;}
+function planInitials(name){
+  var w=String(name||'?').trim().split(/\s+/);
+  var a=(w[0]||'?').charAt(0);
+  var b=w.length>1?w[w.length-1].charAt(0):((w[0]||'').charAt(1)||'');
+  return (a+b).toUpperCase();
+}
+function planAssigneeNames(en){
+  return (en.assignees||[]).map(function(id){var p=planPerson(id);return p?p.name:'';}).filter(function(n){return n;}).join(', ');
+}
+function planAvatar(p,size,extra){
+  size=size||22;
+  var c=planColorDef(p.color);
+  var bg=c.bg==='transparent'?'#e5e7eb':c.bg;
+  var a=plEl('div','width:'+size+'px;height:'+size+'px;border-radius:50%;background:'+bg+';color:'+c.fg+';font-size:'+Math.round(size*0.4)+'px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;border:1.5px solid white;'+PL_FONT+(extra||''),planInitials(p.name));
+  a.title=p.name+(p.me?' (eu)':'');
+  return a;
+}
+function planMatchesPerson(calId,en){
+  var f=window._planFilterPerson[calId]||'all';
+  if(f==='all')return true;
+  var a=(en.assignees||[]).filter(function(id){return planPerson(id);});
+  if(f==='none')return !a.length;
+  if(f==='me')return a.some(function(id){var p=planPerson(id);return p&&p.me;});
+  return a.indexOf(f)>=0;
+}
+function planItemVisible(calId,it){
+  if(planMatchesPerson(calId,it))return true;
+  return (it.subitems||[]).some(function(s){return !s.archived&&planMatchesPerson(calId,s);});
+}
+function planCreatePerson(){
+  var name=prompt('Nome da pessoa:');
+  if(!name||!name.trim())return null;
+  var people=planPeople();
+  var p={id:gid(),name:name.trim(),color:PL_PERSON_COLORS[people.length%PL_PERSON_COLORS.length],me:false};
+  if(!people.length&&confirm('Essa pessoa e voce? (usado no filtro "Eu")'))p.me=true;
+  people.push(p);
+  return p;
+}
+function planAvatarStack(board,item,sub){
+  var en=sub||item;
+  var ids=(en.assignees||[]).filter(function(id){return planPerson(id);});
+  var w=plEl('div','display:flex;align-items:center;cursor:pointer;min-width:0');
+  w.title=ids.length?planAssigneeNames(en):'Atribuir responsavel';
+  if(!ids.length){
+    w.appendChild(plEl('div','width:22px;height:22px;border-radius:50%;border:1px dashed #d1d5db;color:#9ca3af;font-size:12px;display:inline-flex;align-items:center;justify-content:center','+'));
+  } else {
+    ids.slice(0,3).forEach(function(id,i){w.appendChild(planAvatar(planPerson(id),22,i?'margin-left:-6px;':''));});
+    if(ids.length>3)w.appendChild(plEl('div','font-size:10px;color:#6b7280;margin-left:3px;'+PL_FONT,'+'+(ids.length-3)));
+  }
+  w.onclick=function(e){e.stopPropagation();planOpenPeopleMenu(w,board.id,item.id,sub?sub.id:'');};
+  return w;
+}
+function planOpenPeopleMenu(anchor,boardId,itemId,subId){
+  var old=document.getElementById('planPeopleMenu');if(old)old.remove();
+  var r=anchor.getBoundingClientRect();
+  var m=plEl('div','position:fixed;z-index:9999;background:white;border:0.5px solid #e5e7eb;border-radius:10px;padding:6px;box-shadow:0 4px 16px rgba(0,0,0,.1);min-width:210px;max-height:320px;overflow-y:auto;'+PL_FONT);
+  m.id='planPeopleMenu';
+  m.style.left=Math.max(8,Math.min(r.left,window.innerWidth-230))+'px';
+  m.style.top=Math.min(r.bottom+4,window.innerHeight-330)+'px';
+  function cur(){var l=planLocate(boardId,itemId,subId);return{board:l.board,item:l.item,sub:l.sub,en:l.sub||l.item};}
+  function apply(c){planSyncEntry(c.board,c.item,c.sub);planSaveAll(c.board);renderWorkPlanning(c.board.calId);}
+  function draw(){
+    m.innerHTML='';
+    var c=cur();if(!c.en)return;
+    var people=planPeople();
+    if(!people.length)m.appendChild(plEl('div','font-size:11px;color:#9ca3af;padding:6px 8px','Nenhuma pessoa cadastrada ainda.'));
+    people.forEach(function(p){
+      var on=(c.en.assignees||[]).indexOf(p.id)>=0;
+      var row=plEl('div','display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer');
+      row.onmouseenter=function(){row.style.background='#f7f8fa';};
+      row.onmouseleave=function(){row.style.background='';};
+      row.appendChild(plEl('div','width:14px;height:14px;border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:white;'+(on?'background:#131F28;border:0.5px solid #131F28':'border:0.5px solid #d1d5db'),on?'✓':''));
+      row.appendChild(planAvatar(p,20));
+      row.appendChild(plEl('div','font-size:12px;color:#111827',p.name+(p.me?' (eu)':'')));
+      row.onclick=function(e){
+        e.stopPropagation();
+        var c2=cur();if(!c2.en)return;
+        var list=(c2.en.assignees||[]).slice();
+        var i=list.indexOf(p.id);
+        if(i>=0)list.splice(i,1);else list.push(p.id);
+        c2.en.assignees=list;
+        apply(c2);draw();
+      };
+      m.appendChild(row);
+    });
+    var add=plEl('div','font-size:11px;color:#486068;padding:7px 8px 4px;cursor:pointer;border-top:0.5px solid #f0f2f5;margin-top:4px','+ Nova pessoa');
+    add.onclick=function(e){
+      e.stopPropagation();
+      var p=planCreatePerson();if(!p)return;
+      var c3=cur();if(!c3.en)return;
+      c3.en.assignees=(c3.en.assignees||[]).concat([p.id]);
+      apply(c3);draw();
+    };
+    m.appendChild(add);
+    var man=plEl('div','font-size:11px;color:#9ca3af;padding:4px 8px;cursor:pointer','Gerenciar pessoas');
+    man.onclick=function(e){e.stopPropagation();m.remove();openPlanPeopleEditor();};
+    m.appendChild(man);
+  }
+  draw();
+  document.body.appendChild(m);
+  setTimeout(function(){
+    document.addEventListener('click',function closePM(ev){
+      if(!m.contains(ev.target)){m.remove();document.removeEventListener('click',closePM);}
+    });
+  },0);
+}
+function openPlanPeopleEditor(){
+  var old=document.getElementById('planPeopleEditor');if(old)old.remove();
+  var draft=JSON.parse(JSON.stringify(planPeople()));
+  var palOpen=-1;
+  var ov=plEl('div');ov.className='mo open';ov.id='planPeopleEditor';
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};
+  var md=plEl('div','width:540px;padding:20px');md.className='modal';
+  md.onclick=function(e){e.stopPropagation();};
+  md.appendChild(plEl('div','font-size:14px;font-weight:500;color:#111827;margin-bottom:4px;'+PL_FONT,'Pessoas'));
+  md.appendChild(plEl('div','font-size:10px;color:#9ca3af;margin-bottom:14px;'+PL_FONT,'Valem para todos os quadros. Marque quem e voce para usar o filtro "Eu".'));
+  var list=plEl('div','display:flex;flex-direction:column;gap:8px;margin-bottom:10px');
+  md.appendChild(list);
+  function draw(){
+    list.innerHTML='';
+    if(!draft.length)list.appendChild(plEl('div','font-size:11px;color:#d1d5db;padding:10px 0;'+PL_FONT,'Nenhuma pessoa ainda.'));
+    draft.forEach(function(p,i){
+      var row=plEl('div','display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px;background:#f7f8fa;border-radius:8px');
+      var av=planAvatar(p,26);
+      var inp=plEl('input','flex:1;min-width:120px;'+PL_FONT);inp.className='inp';inp.value=p.name;inp.placeholder='Nome';
+      inp.oninput=function(){p.name=this.value;av.textContent=planInitials(this.value);};
+      var cb=plEl('div','font-size:10px;color:#6b7280;cursor:pointer;padding:4px 8px;border:0.5px solid #e5e7eb;border-radius:8px;background:white;'+PL_FONT,palOpen===i?'Fechar':'Cor');
+      cb.onclick=function(){palOpen=(palOpen===i?-1:i);draw();};
+      var me=plEl('div','font-size:10px;padding:3px 9px;border-radius:10px;cursor:pointer;'+PL_FONT+(p.me?'background:#e8edf0;color:#486068':'border:0.5px solid #e5e7eb;color:#9ca3af'),p.me?'sou eu':'sou eu?');
+      me.onclick=function(){var v=!p.me;draft.forEach(function(x){x.me=false;});p.me=v;draw();};
+      var x=plEl('div','font-size:11px;color:#9ca3af;cursor:pointer;padding:0 4px','x');
+      x.title='Remover pessoa';
+      x.onclick=function(){if(!confirm('Remover '+(p.name||'esta pessoa')+'? Ela sai de todos os itens.'))return;draft.splice(i,1);palOpen=-1;draw();};
+      [av,inp,cb,me,x].forEach(function(e){row.appendChild(e);});
+      if(palOpen===i)row.appendChild(planBuildPalette(p.color,function(k){p.color=k;palOpen=-1;draw();}));
+      list.appendChild(row);
+    });
+  }
+  draw();
+  var add=plEl('div','font-size:11px;color:#486068;cursor:pointer;margin-bottom:8px;'+PL_FONT,'+ Adicionar pessoa');
+  add.onclick=function(){draft.push({id:gid(),name:'',color:PL_PERSON_COLORS[draft.length%PL_PERSON_COLORS.length],me:false});draw();};
+  md.appendChild(add);
+  var err=plEl('div','font-size:10px;color:#B3907F;min-height:14px;margin-bottom:8px;'+PL_FONT,'');
+  md.appendChild(err);
+  var ft=plEl('div','display:flex;gap:8px;justify-content:flex-end');
+  var bc=plEl('button','','Cancelar');bc.className='bg-btn';bc.onclick=function(){ov.remove();};
+  var bs=plEl('button','','Salvar');bs.className='bp';
+  ft.appendChild(bc);ft.appendChild(bs);
+  md.appendChild(ft);
+  bs.onclick=function(){
+    if(draft.some(function(p){return !(p.name||'').trim();})){err.textContent='Todas as pessoas precisam de nome.';return;}
+    draft.forEach(function(p){p.name=p.name.trim();});
+    var ids=draft.map(function(p){return p.id;});
+    window.workPlanning.people=draft;
+    var boards=window.workPlanning.boards||[];
+    boards.forEach(function(b){
+      planEachEntry(b,function(it,sub){
+        var en=sub||it;
+        if(en.assignees)en.assignees=en.assignees.filter(function(id){return ids.indexOf(id)>=0;});
+      });
+      (b.groups||[]).forEach(function(g){(g.items||[]).forEach(function(it){planSyncItemTree(b,it);});});
+      fbSaveWorkEvs(b.calId);
+    });
+    fbSaveWorkPlanning();
+    ov.remove();
+    if(window._wView==='plan')renderWorkPlanning(activeCal);
+    showToast('Pessoas atualizadas.');
+  };
+  ov.appendChild(md);
+  document.body.appendChild(ov);
+}
+
+function planCols(isMob){return isMob?'minmax(0,1fr) 50px 84px 48px 40px':'minmax(0,1fr) 84px 110px 70px 90px 44px';}
 
 function planBuildRow(board,item,sub,gcol,isMob){
   var en=sub||item;
@@ -5670,6 +5875,8 @@ function planBuildRow(board,item,sub,gcol,isMob){
     }
   }
   row.appendChild(tc);
+
+  row.appendChild(planAvatarStack(board,item,sub));
 
   var so=planStatusObj(board,en.status);
   var sp=plEl('div','font-size:10px;padding:2px 8px;border-radius:10px;text-align:center;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'+PL_FONT+planPillCss(so.color),so.label);
@@ -5710,19 +5917,21 @@ function planBuildRow(board,item,sub,gcol,isMob){
 
 function planBuildGroup(board,g,isMob){
   var gcol=g.color||'#486068';
-  var items=(g.items||[]).filter(function(it){return !it.archived;});
+  var calId=board.calId;
+  var filtered=(window._planFilterPerson[calId]||'all')!=='all';
+  var items=(g.items||[]).filter(function(it){return !it.archived&&planItemVisible(calId,it);});
   var box=plEl('div','background:white;border-radius:12px;border:0.5px solid #e5e7eb;margin-bottom:14px;overflow:hidden');
 
   var hd=plEl('div','display:flex;align-items:center;gap:8px;padding:10px 12px;'+(g.collapsed?'':'border-bottom:0.5px solid #e5e7eb'));
   var chev=plEl('div','font-size:11px;color:'+gcol+';cursor:pointer;width:12px;transition:transform .15s;transform:rotate('+(g.collapsed?'-90':'0')+'deg)','▾');
-  chev.onclick=function(){g.collapsed=!g.collapsed;fbSaveWorkPlanning();renderWorkPlanning(board.calId);};
+  chev.onclick=function(){g.collapsed=!g.collapsed;fbSaveWorkPlanning();renderWorkPlanning(calId);};
   var dot=plEl('div','width:8px;height:8px;border-radius:50%;background:'+gcol+';flex-shrink:0;cursor:pointer');
   dot.title='Trocar cor do grupo';
-  dot.onclick=function(){var i=PL_GROUP_COLORS.indexOf(gcol);g.color=PL_GROUP_COLORS[(i+1)%PL_GROUP_COLORS.length];fbSaveWorkPlanning();renderWorkPlanning(board.calId);};
+  dot.onclick=function(){var i=PL_GROUP_COLORS.indexOf(gcol);g.color=PL_GROUP_COLORS[(i+1)%PL_GROUP_COLORS.length];fbSaveWorkPlanning();renderWorkPlanning(calId);};
   var nm=plEl('div','font-size:12px;font-weight:500;color:'+gcol+';cursor:pointer;'+PL_FONT,g.name);
   nm.title='Renomear grupo';
-  nm.onclick=function(){var n=prompt('Nome do grupo:',g.name);if(!n||!n.trim())return;g.name=n.trim();fbSaveWorkPlanning();renderWorkPlanning(board.calId);};
-  var cnt=plEl('div','font-size:10px;color:#9ca3af;'+PL_FONT,items.length+' ite'+(items.length===1?'m':'ns'));
+  nm.onclick=function(){var n=prompt('Nome do grupo:',g.name);if(!n||!n.trim())return;g.name=n.trim();fbSaveWorkPlanning();renderWorkPlanning(calId);};
+  var cnt=plEl('div','font-size:10px;color:#9ca3af;'+PL_FONT,items.length+' ite'+(items.length===1?'m':'ns')+(filtered?' (filtrado)':''));
   var addI=plEl('div','font-size:10px;color:#486068;cursor:pointer;margin-left:auto;'+PL_FONT,'+ Item');
   addI.onclick=function(){openPlanEntryModal({boardId:board.id,groupId:g.id,mode:'new-item'});};
   var delG=plEl('div','font-size:10px;color:#d1d5db;cursor:pointer;margin-left:10px;'+PL_FONT,'Excluir grupo');
@@ -5732,14 +5941,15 @@ function planBuildGroup(board,g,isMob){
   if(g.collapsed)return box;
 
   var colHd=plEl('div','display:grid;grid-template-columns:'+planCols(isMob)+';gap:8px;padding:6px 10px;font-size:10px;color:#9ca3af;border-bottom:0.5px solid #f0f2f5;'+PL_FONT);
-  (isMob?['Item','Status','Prazo','']:['Item','Status','Prazo','No dia','']).forEach(function(t){colHd.appendChild(plEl('div','',t));});
+  (isMob?['Item','Resp.','Status','Prazo','']:['Item','Responsavel','Status','Prazo','No dia','']).forEach(function(t){colHd.appendChild(plEl('div','',t));});
   box.appendChild(colHd);
 
-  if(!items.length)box.appendChild(plEl('div','padding:12px 10px;font-size:11px;color:#d1d5db;'+PL_FONT,'Nenhum item neste grupo.'));
+  if(!items.length)box.appendChild(plEl('div','padding:12px 10px;font-size:11px;color:#d1d5db;'+PL_FONT,filtered?'Nenhum item deste responsavel neste grupo.':'Nenhum item neste grupo.'));
   items.forEach(function(it){
     box.appendChild(planBuildRow(board,it,null,gcol,isMob));
-    if(window._planExpanded[it.id]){
-      (it.subitems||[]).filter(function(s){return !s.archived;}).forEach(function(s){box.appendChild(planBuildRow(board,it,s,gcol,isMob));});
+    var showSubs=window._planExpanded[it.id]||(filtered&&!planMatchesPerson(calId,it));
+    if(showSubs){
+      (it.subitems||[]).filter(function(s){return !s.archived&&planMatchesPerson(calId,s);}).forEach(function(s){box.appendChild(planBuildRow(board,it,s,gcol,isMob));});
       var addS=plEl('div','padding:6px 10px 6px 34px;font-size:10px;color:#85979D;cursor:pointer;border-bottom:0.5px solid #f0f2f5;background:#fafafa;'+PL_FONT,'+ Subitem');
       addS.onclick=function(){openPlanEntryModal({boardId:board.id,itemId:it.id,mode:'new-sub'});};
       box.appendChild(addS);
@@ -5863,6 +6073,29 @@ function renderWorkPlanning(calId){
     [stL,auL,arL,ren,del].forEach(function(e){bar.appendChild(e);});
   }
   wrap.appendChild(bar);
+
+    // Filtro por responsavel
+  if(!planPeople().length)window._planFilterPerson[calId]='all';
+  if(board&&!showArchive&&planPeople().length){
+    var fbar=plEl('div','display:flex;gap:6px;align-items:center;padding:8px 20px;background:white;border-bottom:0.5px solid #e5e7eb;flex-wrap:wrap;flex-shrink:0');
+    fbar.appendChild(plEl('div','font-size:10px;color:#9ca3af;margin-right:4px;'+PL_FONT,'Responsavel'));
+    var fopts=[{v:'all',t:'Todos'}];
+    if(planPeople().some(function(p){return p.me;}))fopts.push({v:'me',t:'Eu'});
+    planPeople().forEach(function(p){if(!p.me)fopts.push({v:p.id,t:p.name});});
+    fopts.push({v:'none',t:'Sem responsavel'});
+    var curF=window._planFilterPerson[calId]||'all';
+    if(!fopts.some(function(o){return o.v===curF;})){curF='all';window._planFilterPerson[calId]='all';}
+    fopts.forEach(function(o){
+      var act=curF===o.v;
+      var pp=plEl('div','padding:3px 10px;border-radius:12px;font-size:10px;cursor:pointer;'+PL_FONT+(act?'background:#131F28;color:#C5CED0;font-weight:500':'border:0.5px solid #e5e7eb;color:#6b7280'),o.t);
+      pp.onclick=function(){window._planFilterPerson[calId]=o.v;renderWorkPlanning(calId);};
+      fbar.appendChild(pp);
+    });
+    var gp=plEl('div','font-size:10px;color:#486068;cursor:pointer;margin-left:auto;'+PL_FONT,'Pessoas');
+    gp.onclick=function(){openPlanPeopleEditor();};
+    fbar.appendChild(gp);
+    wrap.appendChild(fbar);
+  }
 
   // Conteudo
   var main=plEl('div','flex:1;overflow-y:auto;padding:'+(isMob?'14px 12px 70px':'20px 24px')+';background:#f7f8fa');
@@ -11206,7 +11439,7 @@ function gsCollect(q){
       var entries=[{item:it,sub:null}].concat((it.subitems||[]).map(function(s){return{item:it,sub:s};}));
       entries.forEach(function(x){
         var en=x.sub||x.item;
-        if(!gsMatch(tokens,[en.title,board.name,g.name,x.sub?it.title:''].join(' ')))return;
+        if(!gsMatch(tokens,[en.title,board.name,g.name,x.sub?it.title:'',planAssigneeNames(en)].join(' ')))return;
         var archived=!!(it.archived||(x.sub&&x.sub.archived));
         var badge=null;
         if(typeof planStatusObj==='function'){var so=planStatusObj(board,en.status);badge={label:so.label,css:planPillCss(so.color)};}
